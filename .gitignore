@@ -1,0 +1,17 @@
+# Rust
+target/
+.embuild/
+
+# Android / Gradle
+build/
+.gradle/
+local.properties
+*.keystore
+captures/
+
+# IDE
+.idea/
+*.iml
+
+# macOS
+.DS_Store

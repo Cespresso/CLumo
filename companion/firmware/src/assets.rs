@@ -1,0 +1,13 @@
+/// 8x8 LED matrix dot patterns.
+/// Each `[u8; 8]` represents 8 rows (row 0 = top), MSB = leftmost pixel.
+
+// --- Mode icons ---
+
+pub const ICON_TIMER: [u8; 8] = [0x3C, 0x42, 0x42, 0x3C, 0x18, 0x18, 0x3C, 0x00];
+pub const ICON_DISPLAY: [u8; 8] = [0x18, 0x18, 0x7E, 0x7E, 0x18, 0x18, 0x18, 0x00];
+pub const ICON_VISUALIZER: [u8; 8] = [0x7E, 0x42, 0x42, 0x42, 0x7E, 0x18, 0x7E, 0x00];
+
+// --- Utility ---
+
+pub const PATTERN_ALL_ON: [u8; 8] = [0xFF; 8];
+pub const PATTERN_ALL_OFF: [u8; 8] = [0x00; 8];

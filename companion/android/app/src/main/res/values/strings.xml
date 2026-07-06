@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">CLumo</string>
+
+    <!-- Onboarding -->
+    <string name="ob1_title">CLumoへようこそ</string>
+    <string name="ob1_subtitle">机の上の小さな相棒。</string>
+    <string name="ob1_cta">はじめる</string>
+    <string name="ob2_title">Bluetoothの使用について</string>
+    <string name="ob2_body">近くのCLumoを見つけて接続するために\nBluetoothを使用します。</string>
+    <string name="ob2_allow">許可する</string>
+    <string name="ob2_later">あとで</string>
+
+    <!-- Device list -->
+    <string name="list_title">マイデバイス</string>
+    <string name="list_settings">設定</string>
+    <string name="list_empty_title">まだデバイスがありません</string>
+    <string name="list_empty_body">電源を入れて近くに置いてください</string>
+    <string name="list_scanning">スキャン中…</string>
+    <string name="list_found">見つかったデバイス</string>
+    <string name="list_connect">接続</string>
+    <string name="list_passkey_prefix">初回接続時はパスキー </string>
+    <string name="list_passkey">123456</string>
+    <string name="list_passkey_suffix"> を入力</string>
+    <string name="list_scan_button">CLumoを探す</string>
+
+    <!-- Connection states -->
+    <string name="state_connected">接続済み</string>
+    <string name="state_connecting">接続中…</string>
+    <string name="state_disconnected">未接続</string>
+    <string name="state_error">接続エラー</string>
+
+    <!-- Device screen -->
+    <string name="device_menu_rename">名前を変更</string>
+    <string name="device_menu_settings">設定</string>
+    <string name="device_menu_disconnect">切断</string>
+    <string name="device_error_banner">接続が切れました</string>
+    <string name="device_error_retry">再接続</string>
+    <string name="device_brightness">明るさ</string>
+    <string name="seg_timer">タイマー</string>
+    <string name="seg_patterns">マイ表示</string>
+    <string name="seg_viz">ビジュアライザ</string>
+
+    <!-- Timer -->
+    <string name="timer_phase_work">作業中</string>
+    <string name="timer_phase_break">休憩中</string>
+    <string name="timer_work_label">作業</string>
+    <string name="timer_break_label">休憩</string>
+    <string name="timer_minutes_unit">分</string>
+    <string name="timer_start">開始</string>
+    <string name="timer_pause">一時停止</string>
+    <string name="timer_reset">リセット</string>
+
+    <!-- Patterns -->
+    <string name="patterns_add_new">あたらしい表示</string>
+    <string name="patterns_edit_selected">選択中の表示を編集</string>
+
+    <!-- Visualizer -->
+    <string name="viz_start">開始</string>
+    <string name="viz_stop">停止</string>
+    <string name="viz_sensitivity">感度</string>
+    <string name="viz_caption">上の本体表示がライブミラーです</string>
+
+    <!-- Pattern editor -->
+    <string name="editor_new_title">あたらしい表示</string>
+    <string name="editor_save">保存</string>
+    <string name="editor_clear">クリア</string>
+    <string name="editor_invert">反転</string>
+    <string name="editor_live_preview">実機プレビュー</string>
+    <string name="editor_sending">本体に送信中</string>
+    <string name="editor_save_dialog_title">名前をつけて保存</string>
+    <string name="editor_name_placeholder">マイ表示の名前</string>
+    <string name="editor_delete">この表示を削除</string>
+    <string name="editor_delete_confirm_title">この表示を削除しますか？</string>
+    <string name="editor_delete_confirm_body">削除するともとに戻せません。</string>
+    <string name="editor_delete_confirm">削除する</string>
+    <string name="dialog_cancel">キャンセル</string>
+    <string name="dialog_save">保存</string>
+
+    <!-- Rename dialog -->
+    <string name="rename_title">名前を変更</string>
+
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_version">バージョン</string>
+    <string name="settings_licenses">オープンソースライセンス</string>
+    <string name="settings_github" translatable="false">GitHub</string>
+    <string name="licenses_title">オープンソースライセンス</string>
+
+    <!-- Default pattern names -->
+    <string name="pattern_default_heart">ハート</string>
+    <string name="pattern_default_smile">スマイル</string>
+    <string name="pattern_default_star">ほし</string>
+    <string name="pattern_default_name_prefix">マイ表示 </string>
+
+    <!-- Foreground service notification -->
+    <string name="notif_channel_name">デバイス接続</string>
+    <string name="notif_title" translatable="false">CLumo</string>
+    <string name="notif_idle">待機中</string>
+    <string name="notif_connected">デバイスと接続中</string>
+</resources>

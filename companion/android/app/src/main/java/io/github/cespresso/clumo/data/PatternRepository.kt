@@ -1,0 +1,128 @@
+package io.github.cespresso.clumo.data
+
+import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import io.github.cespresso.clumo.R
+import io.github.cespresso.clumo.domain.Pattern
+import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
+
+private val Context.patternStore by preferencesDataStore(name = "clumo_patterns")
+
+/**
+ * DataStore-backed store of user display patterns (JSON list of
+ * {id, name, bits}) plus the currently selected pattern id.
+ * Seeds three default patterns on first run.
+ */
+class PatternRepository(private val context: Context) {
+
+    companion object {
+        private val KEY_PATTERNS = stringPreferencesKey("patterns_json")
+        private val KEY_SELECTED = stringPreferencesKey("selected_pattern_id")
+        private val KEY_SEEDED = booleanPreferencesKey("patterns_seeded")
+
+        private val HEART_BITS = listOf(
+            "00000000", "01100110", "11111111", "11111111",
+            "01111110", "00111100", "00011000", "00000000",
+        ).joinToString("")
+
+        private val SMILE_BITS = listOf(
+            "00000000", "01100110", "01100110", "00000000",
+            "00000000", "10000001", "01000010", "00111100",
+        ).joinToString("")
+
+        private val STAR_BITS = listOf(
+            "00011000", "00011000", "01111110", "00111100",
+            "00011000", "00111100", "01100110", "00000000",
+        ).joinToString("")
+    }
+
+    private val store = context.applicationContext.patternStore
+
+    val patterns: Flow<List<Pattern>> = store.data.map { prefs ->
+        decode(prefs[KEY_PATTERNS])
+    }
+
+    val selectedId: Flow<String?> = store.data.map { it[KEY_SELECTED] }
+
+    /** Seed the default patterns exactly once. */
+    suspend fun ensureSeeded() {
+        val seeded = store.data.first()[KEY_SEEDED] ?: false
+        if (seeded) return
+        val defaults = listOf(
+            Pattern(UUID.randomUUID().toString(), context.getString(R.string.pattern_default_heart), HEART_BITS),
+            Pattern(UUID.randomUUID().toString(), context.getString(R.string.pattern_default_smile), SMILE_BITS),
+            Pattern(UUID.randomUUID().toString(), context.getString(R.string.pattern_default_star), STAR_BITS),
+        )
+        store.edit { prefs ->
+            if (prefs[KEY_SEEDED] == true) return@edit
+            prefs[KEY_PATTERNS] = encode(defaults)
+            prefs[KEY_SELECTED] = defaults.first().id
+            prefs[KEY_SEEDED] = true
+        }
+    }
+
+    suspend fun upsert(pattern: Pattern) {
+        store.edit { prefs ->
+            val current = decode(prefs[KEY_PATTERNS])
+            val index = current.indexOfFirst { it.id == pattern.id }
+            val updated = if (index >= 0) {
+                current.toMutableList().apply { set(index, pattern) }
+            } else {
+                current + pattern
+            }
+            prefs[KEY_PATTERNS] = encode(updated)
+        }
+    }
+
+    suspend fun remove(id: String) {
+        store.edit { prefs ->
+            val updated = decode(prefs[KEY_PATTERNS]).filter { it.id != id }
+            prefs[KEY_PATTERNS] = encode(updated)
+            if (prefs[KEY_SELECTED] == id) {
+                val fallback = updated.firstOrNull()?.id
+                if (fallback != null) prefs[KEY_SELECTED] = fallback else prefs.remove(KEY_SELECTED)
+            }
+        }
+    }
+
+    suspend fun select(id: String) {
+        store.edit { it[KEY_SELECTED] = id }
+    }
+
+    private fun decode(raw: String?): List<Pattern> {
+        if (raw.isNullOrEmpty()) return emptyList()
+        return runCatching {
+            val array = JSONArray(raw)
+            List(array.length()) { i ->
+                val obj = array.getJSONObject(i)
+                Pattern(
+                    id = obj.getString("id"),
+                    name = obj.getString("name"),
+                    bits = obj.getString("bits"),
+                )
+            }
+        }.getOrElse { emptyList() }
+    }
+
+    private fun encode(patterns: List<Pattern>): String {
+        val array = JSONArray()
+        patterns.forEach { p ->
+            array.put(
+                JSONObject().apply {
+                    put("id", p.id)
+                    put("name", p.name)
+                    put("bits", p.bits)
+                }
+            )
+        }
+        return array.toString()
+    }
+}

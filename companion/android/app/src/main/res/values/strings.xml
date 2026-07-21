@@ -10,6 +10,7 @@
     <string name="ob2_body">近くのCLumoを見つけて接続するために\nBluetoothを使用します。</string>
     <string name="ob2_allow">許可する</string>
     <string name="ob2_later">あとで</string>
+    <string name="ob2_permission_denied">接続するにはBluetoothの許可が必要です。あとから一覧画面でも許可できます。</string>
 
     <!-- Device list -->
     <string name="list_title">マイデバイス</string>
@@ -23,12 +24,21 @@
     <string name="list_passkey">123456</string>
     <string name="list_passkey_suffix"> を入力</string>
     <string name="list_scan_button">CLumoを探す</string>
+    <string name="scan_empty">近くにCLumoが見つかりませんでした。本体の電源と距離を確認してください。</string>
+    <string name="scan_error_bluetooth_off">Bluetoothがオフになっています。</string>
+    <string name="scan_error_permission">Bluetoothの権限がありません。</string>
+    <string name="scan_error_unavailable">この端末ではBluetoothを利用できません。</string>
+    <string name="scan_error_generic">スキャンを開始できませんでした。</string>
 
     <!-- Connection states -->
     <string name="state_connected">接続済み</string>
     <string name="state_connecting">接続中…</string>
     <string name="state_disconnected">未接続</string>
     <string name="state_error">接続エラー</string>
+    <string name="state_reconnecting">再接続中… (%1$d/3)</string>
+    <string name="state_pairing">ペアリング中…</string>
+    <string name="state_discovering">デバイスを確認中…</string>
+    <string name="state_synchronizing">デバイスを準備中…</string>
 
     <!-- Device screen -->
     <string name="device_menu_rename">名前を変更</string>
@@ -36,6 +46,22 @@
     <string name="device_menu_disconnect">切断</string>
     <string name="device_error_banner">接続が切れました</string>
     <string name="device_error_retry">再接続</string>
+    <string name="connection_pairing_hint">画面に表示されたら、パスキー 123456 を入力してください。</string>
+    <string name="connection_reconnecting_banner">接続が切れました。自動で再接続しています（%1$d/3）</string>
+    <string name="connection_dialog_title">接続を完了できません</string>
+    <string name="connection_error_unavailable">この端末ではBluetoothを利用できません。</string>
+    <string name="connection_error_bluetooth_off">Bluetoothがオフになっています。設定でオンにしてください。</string>
+    <string name="connection_error_permission">CLumoへ接続するためのBluetooth権限がありません。</string>
+    <string name="connection_error_timeout">CLumoから応答がありませんでした。本体を近くに置いてもう一度お試しください。</string>
+    <string name="connection_error_pairing">ペアリングできませんでした。AndroidのBluetooth設定を確認して、もう一度お試しください。</string>
+    <string name="connection_error_services">CLumoの接続情報を取得できませんでした。</string>
+    <string name="connection_error_incompatible">このCLumoのファームウェアには対応していません。ファームウェアを更新してください。</string>
+    <string name="connection_error_sync">CLumoの初期設定を完了できませんでした。</string>
+    <string name="permission_dialog_title">Bluetoothの許可が必要です</string>
+    <string name="permission_dialog_body">近くのCLumoを探して接続するには、Androidの設定でBluetoothを許可してください。</string>
+    <string name="action_open_settings">設定を開く</string>
+    <string name="action_retry">もう一度試す</string>
+    <string name="action_back_to_list">一覧に戻る</string>
     <string name="device_brightness">明るさ</string>
     <string name="seg_timer">タイマー</string>
     <string name="seg_patterns">マイ表示</string>

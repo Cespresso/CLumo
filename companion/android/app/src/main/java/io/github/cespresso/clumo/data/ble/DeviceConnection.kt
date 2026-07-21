@@ -1,5 +1,6 @@
 package io.github.cespresso.clumo.data.ble
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -12,8 +13,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.audio.AudioVisualizerManager
+import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.TimerStatus
 import java.util.UUID
@@ -45,7 +50,9 @@ class DeviceConnection(
     companion object {
         private const val TAG = "DeviceConnection"
         private const val MAX_RECONNECT_ATTEMPTS = 3
-        private const val RECONNECT_WINDOW_MS = 10_000L
+        private const val CONNECT_TIMEOUT_MS = 12_000L
+        private const val BOND_TIMEOUT_MS = 45_000L
+        private const val SYNC_TIMEOUT_MS = 12_000L
         private const val AUDIO_SEND_INTERVAL_MS = 80L
     }
 
@@ -55,6 +62,12 @@ class DeviceConnection(
 
     private val _connectionState = MutableStateFlow(ConnectionState.Disconnected)
     val connectionState = _connectionState.asStateFlow()
+
+    private val _connectionFailure = MutableStateFlow<ConnectionFailure?>(null)
+    val connectionFailure = _connectionFailure.asStateFlow()
+
+    private val _reconnectAttempt = MutableStateFlow(0)
+    val reconnectAttempt = _reconnectAttempt.asStateFlow()
 
     private val _currentMode = MutableStateFlow<Int?>(null)
     val currentMode = _currentMode.asStateFlow()
@@ -87,18 +100,25 @@ class DeviceConnection(
 
     // --- Internals ---
 
-    private var gatt: BluetoothGatt? = null
+    @Volatile private var gatt: BluetoothGatt? = null
     private val characteristics = mutableMapOf<UUID, BluetoothGattCharacteristic>()
     private var audioSendJob: Job? = null
     private var reconnectJob: Job? = null
-    private var userDisconnect = false
+    private var phaseTimeoutJob: Job? = null
+    private var reconnectAttempts = 0
+    private var initialSync = false
+    @Volatile private var userDisconnect = false
 
     private val bondReceiver = object : BroadcastReceiver() {
         @SuppressLint("MissingPermission")
         override fun onReceive(ctx: Context, intent: Intent) {
             if (intent.action != BluetoothDevice.ACTION_BOND_STATE_CHANGED) return
-            val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
-                ?: return
+            val device = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+            } ?: return
             if (device.address != address) return
 
             val state = intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.BOND_NONE)
@@ -106,13 +126,20 @@ class DeviceConnection(
 
             when (state) {
                 BluetoothDevice.BOND_BONDED -> {
+                    if (_connectionState.value != ConnectionState.Bonding) return
+                    phaseTimeoutJob?.cancel()
                     _connectionState.value = ConnectionState.Connected
-                    gatt?.discoverServices()
+                    val started = runCatching { gatt?.discoverServices() == true }.getOrDefault(false)
+                    if (started) {
+                        startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+                    } else {
+                        fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+                    }
                 }
                 BluetoothDevice.BOND_NONE -> if (prevState == BluetoothDevice.BOND_BONDING) {
+                    if (_connectionState.value != ConnectionState.Bonding) return
                     Log.w(TAG, "$address: bonding failed")
-                    disconnect()
-                    _connectionState.value = ConnectionState.Error
+                    fail(ConnectionFailure.PairingFailed, retry = false)
                 }
             }
         }
@@ -130,14 +157,52 @@ class DeviceConnection(
             _connectionState.value != ConnectionState.Error
         ) return
         userDisconnect = false
-        val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter ?: run {
-            Log.w(TAG, "Bluetooth adapter not available")
-            _connectionState.value = ConnectionState.Error
+        reconnectJob?.cancel()
+        reconnectAttempts = 0
+        _reconnectAttempt.value = 0
+        _connectionFailure.value = null
+        closeGatt()
+        startGattConnection(isReconnect = false)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startGattConnection(isReconnect: Boolean) {
+        if (!hasConnectPermission()) {
+            fail(ConnectionFailure.PermissionDenied, retry = false)
             return
         }
-        val device = adapter.getRemoteDevice(address)
-        _connectionState.value = ConnectionState.Connecting
-        device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter ?: run {
+            Log.w(TAG, "Bluetooth adapter not available")
+            fail(ConnectionFailure.BluetoothUnavailable, retry = false)
+            return
+        }
+        if (!adapter.isEnabled) {
+            fail(ConnectionFailure.BluetoothDisabled, retry = false)
+            return
+        }
+        val device = runCatching { adapter.getRemoteDevice(address) }.getOrElse {
+            Log.w(TAG, "$address: invalid Bluetooth address", it)
+            fail(ConnectionFailure.ConnectionLost, retry = false)
+            return
+        }
+        _connectionState.value = if (isReconnect) {
+            ConnectionState.Reconnecting
+        } else {
+            ConnectionState.Connecting
+        }
+        val newGatt = runCatching {
+            device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        }.getOrElse {
+            Log.w(TAG, "$address: connectGatt failed", it)
+            if (it is SecurityException) {
+                fail(ConnectionFailure.PermissionDenied, retry = false)
+            } else {
+                fail(ConnectionFailure.ConnectionLost, retry = true)
+            }
+            return
+        }
+        gatt = newGatt
+        startPhaseTimeout(CONNECT_TIMEOUT_MS, ConnectionFailure.ConnectionTimedOut, retry = true)
     }
 
     @SuppressLint("MissingPermission")
@@ -145,12 +210,13 @@ class DeviceConnection(
         userDisconnect = true
         reconnectJob?.cancel()
         reconnectJob = null
+        phaseTimeoutJob?.cancel()
+        phaseTimeoutJob = null
         stopAudioVisualizer()
-        gatt?.disconnect()
-        gatt?.close()
-        gatt = null
-        clearGattState()
+        closeGatt()
         _connectionState.value = ConnectionState.Disconnected
+        _connectionFailure.value = null
+        _reconnectAttempt.value = 0
         _currentMode.value = null
         _timerStatus.value = null
         _deviceId.value = null
@@ -163,6 +229,7 @@ class DeviceConnection(
     }
 
     private fun clearGattState() {
+        initialSync = false
         characteristics.clear()
         synchronized(queueLock) {
             opQueue.clear()
@@ -171,28 +238,59 @@ class DeviceConnection(
     }
 
     @SuppressLint("MissingPermission")
-    private fun attemptReconnect() {
-        reconnectJob?.cancel()
+    private fun scheduleReconnect(reason: ConnectionFailure) {
+        if (userDisconnect || reconnectJob?.isActive == true) return
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            _connectionFailure.value = reason
+            _connectionState.value = ConnectionState.Error
+            _reconnectAttempt.value = 0
+            return
+        }
+        reconnectAttempts++
+        _reconnectAttempt.value = reconnectAttempts
+        _connectionFailure.value = reason
+        _connectionState.value = ConnectionState.Reconnecting
         reconnectJob = scope.launch {
-            var attempt = 0
-            while (_connectionState.value != ConnectionState.Ready && !userDisconnect) {
-                if (attempt >= MAX_RECONNECT_ATTEMPTS) {
-                    _connectionState.value = ConnectionState.Error
-                    break
-                }
-                attempt++
-                _connectionState.value = ConnectionState.Connecting
-                val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter ?: break
-                val device = adapter.getRemoteDevice(address)
-                device.connectGatt(context, true, gattCallback, BluetoothDevice.TRANSPORT_LE)
-                delay(RECONNECT_WINDOW_MS)
-                if (_connectionState.value == ConnectionState.Ready || userDisconnect) break
-                gatt?.close()
-                gatt = null
-            }
+            delay(700L * reconnectAttempts)
             reconnectJob = null
+            if (!userDisconnect) startGattConnection(isReconnect = true)
         }
     }
+
+    private fun startPhaseTimeout(durationMs: Long, failure: ConnectionFailure, retry: Boolean) {
+        phaseTimeoutJob?.cancel()
+        phaseTimeoutJob = scope.launch {
+            delay(durationMs)
+            Log.w(TAG, "$address: phase timed out in ${_connectionState.value}")
+            fail(failure, retry)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun fail(failure: ConnectionFailure, retry: Boolean) {
+        phaseTimeoutJob?.cancel()
+        phaseTimeoutJob = null
+        _connectionFailure.value = failure
+        stopAudioVisualizer()
+        closeGatt()
+        if (retry) scheduleReconnect(failure) else _connectionState.value = ConnectionState.Error
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun closeGatt() {
+        val old = gatt
+        gatt = null
+        clearGattState()
+        if (old != null) {
+            runCatching { old.disconnect() }
+            runCatching { old.close() }
+        }
+    }
+
+    private fun hasConnectPermission(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+            PackageManager.PERMISSION_GRANTED
 
     // --- Queue machinery ---
 
@@ -203,11 +301,16 @@ class DeviceConnection(
 
     @SuppressLint("MissingPermission")
     private fun processQueue() {
-        val op: GattOp
-        synchronized(queueLock) {
+        val op = synchronized(queueLock) {
             if (opInFlight) return
-            op = opQueue.removeFirstOrNull() ?: return
+            val next = opQueue.removeFirstOrNull()
+            if (next == null) return@synchronized null
             opInFlight = true
+            next
+        }
+        if (op == null) {
+            maybeFinishInitialSync()
+            return
         }
         val g = gatt
         val started = if (g == null) false else when (op) {
@@ -243,14 +346,39 @@ class DeviceConnection(
         }
         if (!started) {
             synchronized(queueLock) { opInFlight = false }
+            if (initialSync) {
+                fail(ConnectionFailure.SynchronizationFailed, retry = true)
+                return
+            }
             // Skip the failed op and keep the queue moving.
             processQueue()
         }
     }
 
-    private fun onOpComplete() {
+    private fun onOpComplete(success: Boolean = true) {
         synchronized(queueLock) { opInFlight = false }
+        if (!success && initialSync) {
+            fail(ConnectionFailure.SynchronizationFailed, retry = true)
+            return
+        }
         processQueue()
+    }
+
+    private fun maybeFinishInitialSync() {
+        if (!initialSync) return
+        val idle = synchronized(queueLock) { !opInFlight && opQueue.isEmpty() }
+        if (!idle) return
+        if (_deviceId.value == null || _currentMode.value == null || _timerStatus.value == null) {
+            fail(ConnectionFailure.SynchronizationFailed, retry = true)
+            return
+        }
+        initialSync = false
+        phaseTimeoutJob?.cancel()
+        phaseTimeoutJob = null
+        reconnectAttempts = 0
+        _reconnectAttempt.value = 0
+        _connectionFailure.value = null
+        _connectionState.value = ConnectionState.Ready
     }
 
     // --- Public actions ---
@@ -326,27 +454,42 @@ class DeviceConnection(
 
         @SuppressLint("MissingPermission")
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
+            if (g !== gatt) {
+                runCatching { g.close() }
+                return
+            }
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    gatt = g
+                    phaseTimeoutJob?.cancel()
                     _deviceName.value = g.device.name ?: _deviceName.value
                     if (g.device.bondState == BluetoothDevice.BOND_BONDED) {
                         _connectionState.value = ConnectionState.Connected
-                        g.discoverServices()
+                        val started = runCatching { g.discoverServices() }.getOrDefault(false)
+                        if (started) {
+                            startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+                        } else {
+                            fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+                        }
                     } else {
                         // System pairing dialog will prompt for the passkey (123456).
                         _connectionState.value = ConnectionState.Bonding
-                        g.device.createBond()
+                        val started = runCatching { g.device.createBond() }.getOrDefault(false)
+                        if (started) {
+                            startPhaseTimeout(BOND_TIMEOUT_MS, ConnectionFailure.PairingFailed, retry = false)
+                        } else {
+                            fail(ConnectionFailure.PairingFailed, retry = false)
+                        }
                     }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     Log.d(TAG, "$address: connection lost (status=$status)")
-                    g.close()
+                    phaseTimeoutJob?.cancel()
                     gatt = null
+                    runCatching { g.close() }
                     clearGattState()
                     stopAudioVisualizer()
                     if (!userDisconnect) {
-                        attemptReconnect()
+                        scheduleReconnect(ConnectionFailure.ConnectionLost)
                     } else {
                         _connectionState.value = ConnectionState.Disconnected
                     }
@@ -356,14 +499,15 @@ class DeviceConnection(
 
         @SuppressLint("MissingPermission")
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
+            if (g !== gatt) return
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 Log.w(TAG, "$address: service discovery failed ($status)")
-                _connectionState.value = ConnectionState.Error
+                fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
                 return
             }
             val service = g.getService(BleUuids.SERVICE) ?: run {
                 Log.w(TAG, "$address: CLumo service not found")
-                _connectionState.value = ConnectionState.Error
+                fail(ConnectionFailure.IncompatibleDevice, retry = false)
                 return
             }
             characteristics.clear()
@@ -373,8 +517,22 @@ class DeviceConnection(
             ).forEach { uuid ->
                 service.getCharacteristic(uuid)?.let { characteristics[uuid] = it }
             }
+            val required = setOf(
+                BleUuids.MODE, BleUuids.DISPLAY, BleUuids.TIMER,
+                BleUuids.BRIGHTNESS, BleUuids.DEVICE_ID,
+            )
+            if (!characteristics.keys.containsAll(required)) {
+                Log.w(TAG, "$address: required CLumo characteristics are missing")
+                fail(ConnectionFailure.IncompatibleDevice, retry = false)
+                return
+            }
 
-            _connectionState.value = ConnectionState.Ready
+            _connectionState.value = ConnectionState.Synchronizing
+            _deviceId.value = null
+            _currentMode.value = null
+            _timerStatus.value = null
+            initialSync = true
+            startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.SynchronizationFailed, retry = true)
 
             // Subscribe to server notifications, then load initial state.
             enqueue(GattOp.Subscribe(BleUuids.MODE))
@@ -387,18 +545,21 @@ class DeviceConnection(
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, desc: BluetoothGattDescriptor, status: Int) {
-            onOpComplete()
+            if (g !== gatt) return
+            onOpComplete(status == BluetoothGatt.GATT_SUCCESS)
         }
 
         @Suppress("DEPRECATION")
         override fun onCharacteristicRead(g: BluetoothGatt, char: BluetoothGattCharacteristic, status: Int) {
+            if (g !== gatt) return
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 char.value?.let { handleValue(char.uuid, it) }
             }
-            onOpComplete()
+            onOpComplete(status == BluetoothGatt.GATT_SUCCESS)
         }
 
         override fun onCharacteristicWrite(g: BluetoothGatt, char: BluetoothGattCharacteristic, status: Int) {
+            if (g !== gatt) return
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 // The device may not notify on app-initiated changes; re-read to stay in sync.
                 when (char.uuid) {
@@ -407,11 +568,12 @@ class DeviceConnection(
                     else -> Unit
                 }
             }
-            onOpComplete()
+            onOpComplete(status == BluetoothGatt.GATT_SUCCESS)
         }
 
         @Suppress("DEPRECATION")
         override fun onCharacteristicChanged(g: BluetoothGatt, char: BluetoothGattCharacteristic) {
+            if (g !== gatt) return
             char.value?.let { handleValue(char.uuid, it) }
         }
     }

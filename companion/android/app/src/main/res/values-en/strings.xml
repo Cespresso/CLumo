@@ -10,6 +10,7 @@
     <string name="ob2_body">Bluetooth is used to find and connect to nearby CLumo devices.\\n</string>
     <string name="ob2_allow">Allow</string>
     <string name="ob2_later">Not now</string>
+    <string name="ob2_permission_denied">Bluetooth permission is required to connect. You can also allow it later from the device list.</string>
 
     <!-- Device list -->
     <string name="list_title">My Devices</string>
@@ -23,12 +24,21 @@
     <string name="list_passkey">123456</string>
     <string name="list_passkey_suffix">.</string>
     <string name="list_scan_button">Find CLumo</string>
+    <string name="scan_empty">No CLumo was found nearby. Check that the device is powered on and close to your phone.</string>
+    <string name="scan_error_bluetooth_off">Bluetooth is turned off.</string>
+    <string name="scan_error_permission">Bluetooth permission has not been granted.</string>
+    <string name="scan_error_unavailable">Bluetooth is not available on this phone.</string>
+    <string name="scan_error_generic">Scanning could not be started.</string>
 
     <!-- Connection states -->
     <string name="state_connected">Connected</string>
     <string name="state_connecting">Connecting…</string>
     <string name="state_disconnected">Not connected</string>
     <string name="state_error">Connection error</string>
+    <string name="state_reconnecting">Reconnecting… (%1$d/3)</string>
+    <string name="state_pairing">Pairing…</string>
+    <string name="state_discovering">Checking device…</string>
+    <string name="state_synchronizing">Preparing device…</string>
 
     <!-- Device screen -->
     <string name="device_menu_rename">Rename</string>
@@ -36,6 +46,22 @@
     <string name="device_menu_disconnect">Disconnect</string>
     <string name="device_error_banner">Connection lost</string>
     <string name="device_error_retry">Reconnect</string>
+    <string name="connection_pairing_hint">When prompted, enter passkey 123456.</string>
+    <string name="connection_reconnecting_banner">Connection lost. Reconnecting automatically (%1$d/3)</string>
+    <string name="connection_dialog_title">Couldn’t finish connecting</string>
+    <string name="connection_error_unavailable">Bluetooth is not available on this phone.</string>
+    <string name="connection_error_bluetooth_off">Bluetooth is turned off. Turn it on in Settings.</string>
+    <string name="connection_error_permission">Bluetooth permission is required to connect to CLumo.</string>
+    <string name="connection_error_timeout">CLumo did not respond. Move it closer and try again.</string>
+    <string name="connection_error_pairing">Pairing failed. Check Android Bluetooth settings and try again.</string>
+    <string name="connection_error_services">Couldn’t load CLumo connection information.</string>
+    <string name="connection_error_incompatible">This CLumo firmware is not supported. Update the device firmware.</string>
+    <string name="connection_error_sync">Couldn’t finish preparing CLumo.</string>
+    <string name="permission_dialog_title">Bluetooth permission required</string>
+    <string name="permission_dialog_body">Allow Bluetooth in Android Settings to find and connect to nearby CLumo devices.</string>
+    <string name="action_open_settings">Open Settings</string>
+    <string name="action_retry">Try again</string>
+    <string name="action_back_to_list">Back to list</string>
     <string name="device_brightness">Brightness</string>
     <string name="seg_timer">Timer</string>
     <string name="seg_patterns">My Displays</string>

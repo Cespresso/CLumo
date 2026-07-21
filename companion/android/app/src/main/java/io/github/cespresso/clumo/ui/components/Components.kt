@@ -114,8 +114,10 @@ object FaceBits {
 @Composable
 fun connectionFrameColor(state: ConnectionState): Color {
     val connecting = state == ConnectionState.Connecting ||
+        state == ConnectionState.Reconnecting ||
         state == ConnectionState.Bonding ||
-        state == ConnectionState.Connected
+        state == ConnectionState.Connected ||
+        state == ConnectionState.Synchronizing
     if (connecting) {
         val transition = rememberInfiniteTransition(label = "framePulse")
         val color by transition.animateColor(
@@ -139,8 +141,10 @@ fun connectionFrameColor(state: ConnectionState): Color {
 fun connectionLabel(state: ConnectionState): Pair<String, Color> = when (state) {
     ConnectionState.Ready -> stringResource(R.string.state_connected) to ClumoColors.Sage
     ConnectionState.Connecting,
+    ConnectionState.Reconnecting,
     ConnectionState.Bonding,
-    ConnectionState.Connected -> stringResource(R.string.state_connecting) to ClumoColors.Muted
+    ConnectionState.Connected,
+    ConnectionState.Synchronizing -> stringResource(R.string.state_connecting) to ClumoColors.Muted
     ConnectionState.Error -> stringResource(R.string.state_error) to ClumoColors.Coral
     ConnectionState.Disconnected -> stringResource(R.string.state_disconnected) to ClumoColors.MutedLight
 }
@@ -536,6 +540,60 @@ fun NameInputDialog(
                 CoralPillButton(
                     text = stringResource(R.string.dialog_save),
                     onClick = { onConfirm(text) },
+                    fontSize = 14.sp,
+                    verticalPadding = 12.dp,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/** CLumo-styled two-action dialog used for blocking, user-actionable problems. */
+@Composable
+fun ClumoActionDialog(
+    title: String,
+    body: String,
+    confirmText: String,
+    onConfirm: () -> Unit,
+    dismissText: String = stringResource(R.string.dialog_cancel),
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(26.dp))
+                .background(ClumoColors.White)
+                .padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                fontFamily = RoundedFontFamily,
+                color = ClumoColors.Text,
+            )
+            Text(
+                text = body,
+                fontSize = 13.5.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = RoundedFontFamily,
+                color = ClumoColors.Muted,
+                lineHeight = 21.sp,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinePillButton(
+                    text = dismissText,
+                    onClick = onDismiss,
+                    fontSize = 14.sp,
+                    verticalPadding = 12.dp,
+                    modifier = Modifier.weight(1f),
+                )
+                CoralPillButton(
+                    text = confirmText,
+                    onClick = onConfirm,
                     fontSize = 14.sp,
                     verticalPadding = 12.dp,
                     modifier = Modifier.weight(1f),

@@ -1,6 +1,9 @@
 package io.github.cespresso.clumo.ui.devices
 
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -46,11 +49,14 @@ import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.ble.DeviceAdvertisement
 import io.github.cespresso.clumo.data.ble.DeviceConnection
+import io.github.cespresso.clumo.data.ble.ScanEvent
+import io.github.cespresso.clumo.data.ble.ScanFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.BrandCorner
 import io.github.cespresso.clumo.ui.components.CoralPillButton
+import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
@@ -72,6 +78,11 @@ import kotlinx.coroutines.flow.onEach
 
 private const val SCAN_TIMEOUT_MS = 20_000L
 
+private sealed interface PendingBluetoothAction {
+    data object Scan : PendingBluetoothAction
+    data class Connect(val address: String, val name: String?) : PendingBluetoothAction
+}
+
 @Composable
 fun DeviceListScreen(
     service: DeviceHubService,
@@ -87,35 +98,75 @@ fun DeviceListScreen(
 
     var scanning by remember { mutableStateOf(false) }
     val scanResults = remember { mutableStateOf(emptyMap<String, DeviceAdvertisement>()) }
+    var scanFailure by remember { mutableStateOf<ScanFailure?>(null) }
+    var scanFinishedEmpty by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<PendingBluetoothAction?>(null) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         if (results.values.all { it }) {
-            scanResults.value = emptyMap()
-            scanning = true
+            when (val action = pendingAction) {
+                PendingBluetoothAction.Scan -> {
+                    scanResults.value = emptyMap()
+                    scanFailure = null
+                    scanFinishedEmpty = false
+                    scanning = true
+                }
+                is PendingBluetoothAction.Connect -> {
+                    service.registry.connect(action.address, action.name)
+                    onOpenDevice(action.address)
+                }
+                null -> Unit
+            }
+        } else {
+            showPermissionDialog = true
         }
+        pendingAction = null
     }
 
-    fun startScan() {
+    fun runWithBluetoothPermission(action: PendingBluetoothAction) {
         val missing = bluetoothPermissions().filter {
             ContextCompat.checkSelfPermission(context, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isNotEmpty()) {
+            pendingAction = action
             permissionLauncher.launch(missing.toTypedArray())
         } else {
-            scanResults.value = emptyMap()
-            scanning = true
+            when (action) {
+                PendingBluetoothAction.Scan -> {
+                    scanResults.value = emptyMap()
+                    scanFailure = null
+                    scanFinishedEmpty = false
+                    scanning = true
+                }
+                is PendingBluetoothAction.Connect -> {
+                    service.registry.connect(action.address, action.name)
+                    onOpenDevice(action.address)
+                }
+            }
         }
     }
+
+    fun startScan() = runWithBluetoothPermission(PendingBluetoothAction.Scan)
 
     // Scan lifecycle: runs while `scanning` is true, auto-stops after a timeout.
     DisposableEffect(scanning) {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         val job: Job? = if (scanning) {
             service.scanner.scan()
-                .onEach { adv ->
-                    scanResults.value = scanResults.value + (adv.address to adv)
+                .onEach { event ->
+                    when (event) {
+                        is ScanEvent.DeviceFound -> {
+                            val adv = event.advertisement
+                            scanResults.value = scanResults.value + (adv.address to adv)
+                        }
+                        is ScanEvent.Failed -> {
+                            scanFailure = event.reason
+                            scanning = false
+                        }
+                    }
                 }
                 .launchIn(scope)
         } else null
@@ -128,6 +179,7 @@ fun DeviceListScreen(
         if (scanning) {
             delay(SCAN_TIMEOUT_MS)
             scanning = false
+            scanFinishedEmpty = scanResults.value.isEmpty()
         }
     }
 
@@ -190,14 +242,33 @@ fun DeviceListScreen(
                         selectedPatternBits = selectedPatternBits,
                         onTap = {
                             scanning = false
-                            service.registry.connect(device.address, device.name)
-                            onOpenDevice(device.address)
+                            runWithBluetoothPermission(
+                                PendingBluetoothAction.Connect(device.address, device.name)
+                            )
                         },
                     )
                 }
 
-                if (knownDevices.isEmpty() && foundDevices.isEmpty()) {
+                if (knownDevices.isEmpty() && foundDevices.isEmpty() &&
+                    scanFailure == null && !scanFinishedEmpty
+                ) {
                     item { EmptyStateCard() }
+                }
+
+                if (scanFailure != null || scanFinishedEmpty) {
+                    item {
+                        ScanStatusCard(
+                            failure = scanFailure,
+                            empty = scanFinishedEmpty,
+                            onAction = {
+                                if (scanFailure == ScanFailure.BluetoothDisabled) {
+                                    context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                                } else {
+                                    startScan()
+                                }
+                            },
+                        )
+                    }
                 }
 
                 if (scanning) {
@@ -225,8 +296,9 @@ fun DeviceListScreen(
                             advertisement = adv,
                             onConnect = {
                                 scanning = false
-                                service.registry.connect(adv.address, adv.name)
-                                onOpenDevice(adv.address)
+                                runWithBluetoothPermission(
+                                    PendingBluetoothAction.Connect(adv.address, adv.name)
+                                )
                             },
                         )
                     }
@@ -254,6 +326,24 @@ fun DeviceListScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+
+    if (showPermissionDialog) {
+        ClumoActionDialog(
+            title = stringResource(R.string.permission_dialog_title),
+            body = stringResource(R.string.permission_dialog_body),
+            confirmText = stringResource(R.string.action_open_settings),
+            onConfirm = {
+                showPermissionDialog = false
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:${context.packageName}"),
+                    )
+                )
+            },
+            onDismiss = { showPermissionDialog = false },
+        )
     }
 }
 
@@ -359,6 +449,59 @@ private fun EmptyStateCard() {
             textAlign = TextAlign.Center,
             lineHeight = 25.sp,
         )
+    }
+}
+
+@Composable
+private fun ScanStatusCard(
+    failure: ScanFailure?,
+    empty: Boolean,
+    onAction: () -> Unit,
+) {
+    val message = when (failure) {
+        ScanFailure.BluetoothDisabled -> stringResource(R.string.scan_error_bluetooth_off)
+        ScanFailure.PermissionDenied -> stringResource(R.string.scan_error_permission)
+        ScanFailure.BluetoothUnavailable -> stringResource(R.string.scan_error_unavailable)
+        ScanFailure.ScanFailed -> stringResource(R.string.scan_error_generic)
+        null -> if (empty) stringResource(R.string.scan_empty) else ""
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(ClumoColors.ErrorBg)
+            .border(1.5.dp, ClumoColors.ErrorBorder, RoundedCornerShape(20.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.weight(1f),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = RoundedFontFamily,
+            color = ClumoColors.ErrorText,
+        )
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(ClumoColors.Coral)
+                .clickable(onClick = onAction)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = if (failure == ScanFailure.BluetoothDisabled) {
+                    stringResource(R.string.action_open_settings)
+                } else {
+                    stringResource(R.string.action_retry)
+                },
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = RoundedFontFamily,
+                color = ClumoColors.White,
+            )
+        }
     }
 }
 

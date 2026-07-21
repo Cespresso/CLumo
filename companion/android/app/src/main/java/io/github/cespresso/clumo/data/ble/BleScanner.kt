@@ -24,6 +24,18 @@ data class DeviceAdvertisement(
     val rssi: Int,
 )
 
+sealed interface ScanEvent {
+    data class DeviceFound(val advertisement: DeviceAdvertisement) : ScanEvent
+    data class Failed(val reason: ScanFailure) : ScanEvent
+}
+
+enum class ScanFailure {
+    BluetoothUnavailable,
+    BluetoothDisabled,
+    PermissionDenied,
+    ScanFailed,
+}
+
 /**
  * Continuous scan for CLumo devices, filtered by the CLumo service UUID.
  * Emits each advertisement seen; the caller de-duplicates.
@@ -35,11 +47,35 @@ class BleScanner(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    fun scan(): Flow<DeviceAdvertisement> = callbackFlow {
+    fun scan(): Flow<ScanEvent> = callbackFlow {
         val manager = context.getSystemService(BluetoothManager::class.java)
-        val scanner = manager?.adapter?.bluetoothLeScanner
+        val adapter = try {
+            manager?.adapter
+        } catch (_: SecurityException) {
+            trySend(ScanEvent.Failed(ScanFailure.PermissionDenied))
+            close()
+            return@callbackFlow
+        }
+        if (adapter == null) {
+            trySend(ScanEvent.Failed(ScanFailure.BluetoothUnavailable))
+            close()
+            return@callbackFlow
+        }
+        val scanner = try {
+            if (!adapter.isEnabled) {
+                trySend(ScanEvent.Failed(ScanFailure.BluetoothDisabled))
+                close()
+                return@callbackFlow
+            }
+            adapter.bluetoothLeScanner
+        } catch (_: SecurityException) {
+            trySend(ScanEvent.Failed(ScanFailure.PermissionDenied))
+            close()
+            return@callbackFlow
+        }
         if (scanner == null) {
             Log.w(TAG, "BLE scanner not available")
+            trySend(ScanEvent.Failed(ScanFailure.BluetoothUnavailable))
             close()
             return@callbackFlow
         }
@@ -47,16 +83,17 @@ class BleScanner(private val context: Context) {
         val callback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
                 trySend(
-                    DeviceAdvertisement(
+                    ScanEvent.DeviceFound(DeviceAdvertisement(
                         address = result.device.address,
                         name = result.device.name ?: result.scanRecord?.deviceName,
                         rssi = result.rssi,
-                    )
+                    ))
                 )
             }
 
             override fun onScanFailed(errorCode: Int) {
                 Log.w(TAG, "Scan failed: $errorCode")
+                trySend(ScanEvent.Failed(ScanFailure.ScanFailed))
                 close()
             }
         }
@@ -67,7 +104,14 @@ class BleScanner(private val context: Context) {
         val settings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
-        scanner.startScan(filters, settings, callback)
+        try {
+            scanner.startScan(filters, settings, callback)
+        } catch (e: SecurityException) {
+            Log.w(TAG, "Scan permission denied", e)
+            trySend(ScanEvent.Failed(ScanFailure.PermissionDenied))
+            close()
+            return@callbackFlow
+        }
         Log.d(TAG, "Scan started")
 
         awaitClose {

@@ -12,6 +12,7 @@ captures/
 # IDE
 .idea/
 *.iml
+.worktrees/
 
 # macOS
 .DS_Store

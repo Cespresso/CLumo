@@ -457,10 +457,12 @@ fun ClumoSlider(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    onValueChangeFinished: () -> Unit = {},
 ) {
     Slider(
         value = value,
         onValueChange = onValueChange,
+        onValueChangeFinished = onValueChangeFinished,
         valueRange = 0f..100f,
         enabled = enabled,
         modifier = modifier,
@@ -470,6 +472,30 @@ fun ClumoSlider(
             inactiveTrackColor = ClumoColors.ChipBorder,
         ),
     )
+}
+
+@Composable
+fun ClumoToggleSwitch(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(width = 48.dp, height = 28.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (checked) ClumoColors.Sage else ClumoColors.SwitchOff)
+            .clickable { onCheckedChange(!checked) }
+            .padding(3.dp),
+        contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .shadow(2.dp, CircleShape)
+                .clip(CircleShape)
+                .background(ClumoColors.White),
+        )
+    }
 }
 
 // ---------------------------------------------------------------------------

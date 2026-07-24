@@ -98,6 +98,7 @@
     <string name="viz_start">Start</string>
     <string name="viz_stop">Stop</string>
     <string name="viz_sensitivity">Sensitivity</string>
+    <string name="viz_auto_low_volume_boost">Automatic low-volume boost</string>
     <string name="viz_caption">The display above mirrors the device live.</string>
 
     <!-- Pattern editor -->

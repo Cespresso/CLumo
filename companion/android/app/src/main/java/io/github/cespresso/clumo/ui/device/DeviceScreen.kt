@@ -63,6 +63,7 @@ import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.ClumoSlider
+import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.CoralPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
@@ -155,6 +156,8 @@ fun DeviceScreen(
     val scannedName = connection?.deviceName?.collectAsState()?.value
 
     val aliases by service.preferences.aliases.collectAsState(initial = emptyMap())
+    val visualizerSensitivity by service.preferences.visualizerSensitivity.collectAsState(initial = 0.6f)
+    val automaticLowVolumeBoost by service.preferences.automaticLowVolumeBoost.collectAsState(initial = false)
     val patterns by service.patterns.patterns.collectAsState(initial = emptyList())
     val selectedPatternId by service.patterns.selectedId.collectAsState(initial = null)
     val selectedPattern = patterns.firstOrNull { it.id == selectedPatternId }
@@ -494,6 +497,22 @@ fun DeviceScreen(
 
                                 BleUuids.MODE_VISUALIZER -> VisualizerSection(
                                     connection = connection,
+                                    visualizerSensitivity = visualizerSensitivity,
+                                    automaticLowVolumeBoost = automaticLowVolumeBoost,
+                                    onVisualizerSensitivityChange = { sensitivity ->
+                                        connection?.audioVisualizer?.sensitivity = sensitivity
+                                    },
+                                    onVisualizerSensitivityChangeFinished = { sensitivity ->
+                                        scope.launch {
+                                            service.preferences.setVisualizerSensitivity(sensitivity)
+                                        }
+                                    },
+                                    onAutomaticLowVolumeBoostChange = { enabled ->
+                                        connection?.audioVisualizer?.automaticLowVolumeBoost = enabled
+                                        scope.launch {
+                                            service.preferences.setAutomaticLowVolumeBoost(enabled)
+                                        }
+                                    },
                                 )
 
                                 BleUuids.MODE_POMODORO -> PomodoroSection(
@@ -1138,11 +1157,18 @@ private fun AddPatternTile(onClick: () -> Unit) {
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun VisualizerSection(connection: DeviceConnection?) {
+private fun VisualizerSection(
+    connection: DeviceConnection?,
+    visualizerSensitivity: Float,
+    automaticLowVolumeBoost: Boolean,
+    onVisualizerSensitivityChange: (Float) -> Unit,
+    onVisualizerSensitivityChangeFinished: (Float) -> Unit,
+    onAutomaticLowVolumeBoostChange: (Boolean) -> Unit,
+) {
     val context = LocalContext.current
     val vizActive = connection?.audioVisualizer?.isActive?.collectAsState()?.value ?: false
-    var sensitivity by remember {
-        mutableFloatStateOf((connection?.audioVisualizer?.sensitivity ?: 0.6f) * 100f)
+    var sensitivity by remember(visualizerSensitivity) {
+        mutableFloatStateOf(visualizerSensitivity * 100f)
     }
 
     val audioPermissionLauncher = rememberLauncherForActivityResult(
@@ -1219,9 +1245,31 @@ private fun VisualizerSection(connection: DeviceConnection?) {
                 value = sensitivity,
                 onValueChange = {
                     sensitivity = it
-                    connection?.audioVisualizer?.sensitivity = it / 100f
+                    onVisualizerSensitivityChange(it / 100f)
+                },
+                onValueChangeFinished = {
+                    onVisualizerSensitivityChangeFinished(sensitivity / 100f)
                 },
                 modifier = Modifier.weight(1f),
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.viz_auto_low_volume_boost),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                fontFamily = RoundedFontFamily,
+                color = ClumoColors.Muted,
+                modifier = Modifier.weight(1f),
+            )
+            ClumoToggleSwitch(
+                checked = automaticLowVolumeBoost,
+                onCheckedChange = onAutomaticLowVolumeBoostChange,
             )
         }
 

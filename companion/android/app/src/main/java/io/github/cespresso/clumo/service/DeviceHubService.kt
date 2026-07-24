@@ -68,6 +68,7 @@ class DeviceHubService : Service() {
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notif_idle)))
         observeConnections()
+        observeVisualizerPreferences()
         scope.launch { patterns.ensureSeeded() }
     }
 
@@ -124,5 +125,20 @@ class DeviceHubService : Service() {
                 updateNotification(status)
             }
             .launchIn(scope)
+    }
+
+    private fun observeVisualizerPreferences() {
+        combine(
+            registry.connections,
+            preferences.visualizerSensitivity,
+            preferences.automaticLowVolumeBoost,
+        ) { connections, sensitivity, automaticBoost ->
+            Triple(connections.values, sensitivity, automaticBoost)
+        }.onEach { (connections, sensitivity, automaticBoost) ->
+            connections.forEach {
+                it.audioVisualizer.sensitivity = sensitivity
+                it.audioVisualizer.automaticLowVolumeBoost = automaticBoost
+            }
+        }.launchIn(scope)
     }
 }

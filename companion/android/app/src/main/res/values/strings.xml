@@ -98,6 +98,7 @@
     <string name="viz_start">開始</string>
     <string name="viz_stop">停止</string>
     <string name="viz_sensitivity">感度</string>
+    <string name="viz_auto_low_volume_boost">小音量を自動補正</string>
     <string name="viz_caption">上の本体表示がライブミラーです</string>
 
     <!-- Pattern editor -->

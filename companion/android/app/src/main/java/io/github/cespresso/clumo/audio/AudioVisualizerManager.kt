@@ -4,6 +4,41 @@ import android.media.audiofx.Visualizer
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.pow
+import kotlin.math.roundToInt
+
+internal fun audioVisualizerScalingMode(): Int = Visualizer.SCALING_MODE_AS_PLAYED
+
+private const val VISUALIZER_REFERENCE_MAGNITUDE = 50.0
+private const val VISUALIZER_MAX_HEIGHT = 8
+private const val VISUALIZER_MIN_GAIN = 0.8
+private const val VISUALIZER_MAX_GAIN = 16.0
+
+internal fun visualizerGain(sensitivity: Float): Double =
+    VISUALIZER_MIN_GAIN *
+        (VISUALIZER_MAX_GAIN / VISUALIZER_MIN_GAIN)
+            .pow(sensitivity.coerceIn(0f, 1f).toDouble())
+
+internal fun effectiveVisualizerGain(
+    sensitivity: Float,
+    automaticMultiplier: Double,
+    automaticEnabled: Boolean,
+): Double {
+    val base = visualizerGain(sensitivity)
+    return if (automaticEnabled) {
+        (base * automaticMultiplier).coerceAtMost(VISUALIZER_MAX_GAIN)
+    } else {
+        base
+    }
+}
+
+internal fun visualizerBandHeight(averageMagnitude: Float, effectiveGain: Double): Int {
+    val gain = effectiveGain.coerceAtMost(VISUALIZER_MAX_GAIN)
+    val scaled = kotlin.math.ln1p(averageMagnitude * gain) /
+        kotlin.math.ln1p(VISUALIZER_REFERENCE_MAGNITUDE)
+    return (scaled * VISUALIZER_MAX_HEIGHT).roundToInt()
+        .coerceIn(0, VISUALIZER_MAX_HEIGHT)
+}
 
 /**
  * Captures audio playback output using [Visualizer] and converts FFT data
@@ -15,10 +50,11 @@ class AudioVisualizerManager {
         private const val TAG = "AudioVisualizer"
         private const val CAPTURE_SIZE = 128
         private const val NUM_BANDS = 8
-        private const val MAX_HEIGHT = 8
     }
 
     private var visualizer: Visualizer? = null
+    private val automaticGain = AutomaticGainController()
+    private var lastCaptureNanos: Long? = null
 
     private val _columns = MutableStateFlow(IntArray(NUM_BANDS))
     val columns = _columns.asStateFlow()
@@ -30,6 +66,16 @@ class AudioVisualizerManager {
     @Volatile
     var sensitivity: Float = 0.6f
 
+    @Volatile
+    var automaticLowVolumeBoost: Boolean = false
+        set(value) {
+            field = value
+            if (!value) {
+                automaticGain.reset()
+                lastCaptureNanos = null
+            }
+        }
+
     /**
      * Start capturing audio playback output.
      * Requires RECORD_AUDIO and MODIFY_AUDIO_SETTINGS permissions.
@@ -40,6 +86,7 @@ class AudioVisualizerManager {
         return try {
             val viz = Visualizer(0).apply {
                 captureSize = CAPTURE_SIZE
+                scalingMode = audioVisualizerScalingMode()
                 setDataCaptureListener(
                     object : Visualizer.OnDataCaptureListener {
                         override fun onWaveFormDataCapture(
@@ -79,6 +126,8 @@ class AudioVisualizerManager {
             it.release()
         }
         visualizer = null
+        automaticGain.reset()
+        lastCaptureNanos = null
         _isActive.value = false
         _columns.value = IntArray(NUM_BANDS)
     }
@@ -110,9 +159,8 @@ class AudioVisualizerManager {
 
         // Band edges cover ~345Hz-8.3kHz (bin width ~345Hz at 44.1kHz/128).
         val bandEdges = intArrayOf(1, 2, 3, 5, 7, 10, 14, 19, 25)
-        val gain = 0.3f + sensitivity * 1.7f
 
-        val bands = IntArray(NUM_BANDS)
+        val bandMagnitudes = FloatArray(NUM_BANDS)
         for (band in 0 until NUM_BANDS) {
             val from = bandEdges[band]
             val to = bandEdges[band + 1]
@@ -125,11 +173,34 @@ class AudioVisualizerManager {
                 count++
             }
             val avg = if (count > 0) sum / count else 0f
-
-            // Typical magnitudes reach ~80 for loud audio; scale into 0..8.
-            bands[band] = (avg / 50f * gain * MAX_HEIGHT).toInt().coerceIn(0, MAX_HEIGHT)
+            bandMagnitudes[band] = avg
         }
 
-        return bands
+        val frameLevel = kotlin.math.sqrt(
+            bandMagnitudes.sumOf { value -> value.toDouble() * value } / NUM_BANDS
+        )
+        val now = System.nanoTime()
+        val elapsedMs = lastCaptureNanos
+            ?.let { previous -> ((now - previous) / 1_000_000L).coerceAtLeast(0L) }
+            ?: 0L
+        lastCaptureNanos = now
+
+        val update = if (automaticLowVolumeBoost) {
+            automaticGain.update(frameLevel, elapsedMs)
+        } else {
+            AutomaticGainUpdate(multiplier = 1.0, silent = false)
+        }
+        if (automaticLowVolumeBoost && update.silent) return IntArray(NUM_BANDS)
+
+        val effectiveGain = effectiveVisualizerGain(
+            sensitivity = sensitivity,
+            automaticMultiplier = update.multiplier,
+            automaticEnabled = automaticLowVolumeBoost,
+        )
+        return IntArray(NUM_BANDS) { band ->
+            // Compress as-played magnitudes so low volume remains visible without
+            // saturating stronger input immediately.
+            visualizerBandHeight(bandMagnitudes[band], effectiveGain)
+        }
     }
 }

@@ -104,6 +104,7 @@
     <!-- Pattern editor -->
     <string name="editor_new_title">New display</string>
     <string name="editor_save">Save</string>
+    <string name="editor_updating">Updating…</string>
     <string name="editor_clear">Clear</string>
     <string name="editor_invert">Invert</string>
     <string name="editor_live_preview">Preview on device</string>
@@ -114,6 +115,8 @@
     <string name="editor_delete_confirm_title">Delete this display?</string>
     <string name="editor_delete_confirm_body">This can’t be undone.</string>
     <string name="editor_delete_confirm">Delete</string>
+    <string name="editor_operation_error_title">Couldn’t complete the operation</string>
+    <string name="editor_operation_error_body">The data couldn’t be updated. Please try again.</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_save">Save</string>
 

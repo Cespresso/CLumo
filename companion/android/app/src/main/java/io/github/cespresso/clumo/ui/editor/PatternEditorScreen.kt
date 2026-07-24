@@ -1,5 +1,6 @@
 package io.github.cespresso.clumo.ui.editor
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,6 +51,7 @@ import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.CoralPillButton
+import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
@@ -90,6 +92,36 @@ fun PatternEditorScreen(
     var livePreview by remember { mutableStateOf(false) }
     var saveOpen by remember { mutableStateOf(false) }
     var deleteOpen by remember { mutableStateOf(false) }
+    var updating by remember { mutableStateOf(false) }
+    var operationFailed by remember { mutableStateOf(false) }
+    var retryOperation by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
+
+    fun runPersistence(operation: suspend () -> Unit) {
+        if (updating) return
+        retryOperation = operation
+        operationFailed = false
+        updating = true
+        scope.launch {
+            runPatternEditorOperation(
+                persist = operation,
+                onSuccess = {
+                    updating = false
+                    retryOperation = null
+                    onBack()
+                },
+                onFailure = {
+                    updating = false
+                    operationFailed = true
+                },
+            )
+        }
+    }
+
+    // Always own back dispatch so there is no recomposition window in which
+    // the parent handler can remove this screen during persistence.
+    BackHandler {
+        if (!updating) onBack()
+    }
 
     // Stream edits to the device while live preview is on (throttled, change-only).
     LaunchedEffect(livePreview, connection) {
@@ -122,7 +154,7 @@ fun PatternEditorScreen(
                 color = ClumoColors.Muted,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(onClick = onBack)
+                    .clickable(enabled = !updating, onClick = onBack)
                     .padding(horizontal = 10.dp, vertical = 6.dp),
             )
             Text(
@@ -136,12 +168,14 @@ fun PatternEditorScreen(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
-                    .background(ClumoColors.Coral)
-                    .clickable { saveOpen = true }
+                    .background(if (updating) ClumoColors.MutedLight else ClumoColors.Coral)
+                    .clickable(enabled = !updating) { saveOpen = true }
                     .padding(horizontal = 20.dp, vertical = 9.dp),
             ) {
                 Text(
-                    text = stringResource(R.string.editor_save),
+                    text = stringResource(
+                        if (updating) R.string.editor_updating else R.string.editor_save
+                    ),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = RoundedFontFamily,
@@ -253,6 +287,7 @@ fun PatternEditorScreen(
                     verticalPadding = 13.dp,
                     textColor = ClumoColors.Coral,
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = !updating,
                 )
             }
         }
@@ -272,11 +307,9 @@ fun PatternEditorScreen(
                     name = name,
                     bits = FaceBits.toBitsString(cells),
                 )
-                scope.launch {
-                    service.patterns.upsert(pattern)
-                    service.patterns.select(pattern.id)
+                runPersistence {
+                    service.patterns.saveAndSelect(pattern)
                 }
-                onBack()
             },
             onDismiss = { saveOpen = false },
         )
@@ -286,10 +319,24 @@ fun PatternEditorScreen(
         DeleteConfirmDialog(
             onConfirm = {
                 deleteOpen = false
-                scope.launch { service.patterns.remove(existing.id) }
-                onBack()
+                runPersistence { service.patterns.remove(existing.id) }
             },
             onDismiss = { deleteOpen = false },
+        )
+    }
+
+    if (operationFailed) {
+        ClumoActionDialog(
+            title = stringResource(R.string.editor_operation_error_title),
+            body = stringResource(R.string.editor_operation_error_body),
+            confirmText = stringResource(R.string.action_retry),
+            onConfirm = {
+                retryOperation?.let { runPersistence(it) }
+            },
+            onDismiss = {
+                operationFailed = false
+                retryOperation = null
+            },
         )
     }
 }

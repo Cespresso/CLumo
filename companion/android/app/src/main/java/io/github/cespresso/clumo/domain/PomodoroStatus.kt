@@ -1,10 +1,10 @@
 package io.github.cespresso.clumo.domain
 
 /**
- * Decoded TIMER characteristic status:
+ * Decoded POMODORO characteristic status:
  * [state(0 idle / 1 running / 2 paused), phase(0 work / 1 break), remainingSec u16 BE, workMin, breakMin]
  */
-data class TimerStatus(
+data class PomodoroStatus(
     val state: Int,
     val phase: Int,
     val remainingSec: Int,
@@ -25,11 +25,11 @@ data class TimerStatus(
         const val PHASE_WORK = 0
         const val PHASE_BREAK = 1
 
-        val DEFAULT = TimerStatus(STATE_IDLE, PHASE_WORK, 25 * 60, 25, 5)
+        val DEFAULT = PomodoroStatus(STATE_IDLE, PHASE_WORK, 25 * 60, 25, 5)
 
-        fun parse(value: ByteArray): TimerStatus? {
+        fun parse(value: ByteArray): PomodoroStatus? {
             if (value.size < 6) return null
-            return TimerStatus(
+            return PomodoroStatus(
                 state = value[0].toInt() and 0xFF,
                 phase = value[1].toInt() and 0xFF,
                 remainingSec = ((value[2].toInt() and 0xFF) shl 8) or (value[3].toInt() and 0xFF),

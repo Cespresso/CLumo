@@ -63,19 +63,32 @@
     <string name="action_retry">Try again</string>
     <string name="action_back_to_list">Back to list</string>
     <string name="device_brightness">Brightness</string>
+    <string name="seg_pomodoro">Pomodoro</string>
     <string name="seg_timer">Timer</string>
     <string name="seg_patterns">My Displays</string>
     <string name="seg_viz">Visualizer</string>
 
+    <!-- Pomodoro -->
+    <string name="pomodoro_phase_work">Working</string>
+    <string name="pomodoro_phase_break">On break</string>
+    <string name="pomodoro_work_label">Work</string>
+    <string name="pomodoro_break_label">Break</string>
+    <string name="pomodoro_minutes_unit">min</string>
+    <string name="pomodoro_start">Start</string>
+    <string name="pomodoro_pause">Pause</string>
+    <string name="pomodoro_reset">Reset</string>
+
     <!-- Timer -->
-    <string name="timer_phase_work">Working</string>
-    <string name="timer_phase_break">On break</string>
-    <string name="timer_work_label">Work</string>
-    <string name="timer_break_label">Break</string>
-    <string name="timer_minutes_unit">min</string>
+    <string name="timer_state_idle">Ready</string>
+    <string name="timer_state_running">Running</string>
+    <string name="timer_state_paused">Paused</string>
+    <string name="timer_state_completed">Done</string>
+    <string name="timer_minutes_label">Minutes</string>
+    <string name="timer_seconds_label">Seconds</string>
     <string name="timer_start">Start</string>
     <string name="timer_pause">Pause</string>
-    <string name="timer_reset">Reset</string>
+    <string name="timer_resume">Resume</string>
+    <string name="timer_cancel">Cancel</string>
 
     <!-- Patterns -->
     <string name="patterns_add_new">New display</string>

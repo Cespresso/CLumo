@@ -1,21 +1,33 @@
 use esp_idf_hal::delay::FreeRtos;
 use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs};
+use std::time::Instant;
 
-use crate::handlers::timer;
+use crate::handlers::{pomodoro, timer};
 use crate::mode::Mode;
 use crate::utils::bluetooth::{BleCommand, BluetoothManager};
-use crate::utils::button::{Buttons, PressType};
+use crate::utils::button::Buttons;
 use crate::utils::device_id;
 use crate::utils::led::Display;
 
 mod assets;
+mod countdown;
 mod handlers;
 mod mode;
+mod mode_values;
 mod utils;
+mod visualizer_values;
 
-/// How long the mode icon splash stays on screen when switching modes (ms).
-const MODE_SPLASH_MS: u32 = 500;
+/// Blink interval for the disconnected icon during connection setup (ms).
+const CONNECTION_BLINK_MS: u128 = 400;
+
+fn disconnected_icon(bonded: bool) -> &'static [u8; 8] {
+    if bonded {
+        &assets::ICON_DISCONNECTED_BONDED
+    } else {
+        &assets::ICON_DISCONNECTED
+    }
+}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     esp_idf_svc::sys::link_patches();
@@ -33,6 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         peripherals.pins.gpio10.into(),
     )?;
     log::info!("LED matrix initialized");
+    display.show(&assets::ICON_DISCONNECTED);
 
     // Initialize NVS, device identity, and Mode Manager
     let nvs_partition = EspDefaultNvsPartition::take()?;
@@ -42,28 +55,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut mode_manager = mode::ModeManager::new(nvs_mode)?;
     log::info!("Mode system initialized: {}", mode_manager.current().name());
 
-    // Seed the TIMER characteristic with an idle status so reads before the
+    // Seed the POMODORO characteristic with an idle status so reads before the
     // first status push are already valid.
-    let mut last_timer_status = {
-        let nvs_timer = EspNvs::new(nvs_partition.clone(), timer::NVS_NAMESPACE, true)?;
-        let (work_min, break_min) = timer::load_durations(&nvs_timer);
-        timer::idle_status(work_min, break_min)
+    let mut last_pomodoro_status = {
+        let nvs_timer = EspNvs::new(nvs_partition.clone(), pomodoro::NVS_NAMESPACE, true)?;
+        let (work_min, break_min) = pomodoro::load_durations(&nvs_timer);
+        pomodoro::idle_status(work_min, break_min)
     };
+    let mut last_timer_status = timer::idle_status();
 
     // Initialize BLE
-    let ble = BluetoothManager::init(mode_manager.current() as u8, last_timer_status, device_id)?;
+    let ble = BluetoothManager::init(
+        mode_manager.current() as u8,
+        last_pomodoro_status,
+        last_timer_status,
+        device_id,
+    )?;
     log::info!("BLE initialized");
+    let mut ble_bonded = ble.has_bonded_peer();
+    display.show(disconnected_icon(ble_bonded));
 
     // Initialize buttons (red=GPIO3, white=GPIO4)
-    let mut buttons = Buttons::new(
-        peripherals.pins.gpio3.into(),
-        peripherals.pins.gpio4.into(),
-    )?;
+    let mut buttons = Buttons::new(peripherals.pins.gpio3.into(), peripherals.pins.gpio4.into())?;
     log::info!("Buttons initialized (red=GPIO3, white=GPIO4)");
 
     // Create handler for current mode
     let mut handler = handlers::create_handler(mode_manager.current(), nvs_partition.clone())?;
-    display.show(&handler.on_enter());
+    let mut ble_connected = false;
+    let mut client_ready = false;
+    let mut connection_icon_on = true;
+    let mut last_connection_blink = Instant::now();
 
     // Main loop
     loop {
@@ -73,15 +94,42 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Drain BLE commands
         while let Some(cmd) = ble.take_command() {
             match cmd {
+                BleCommand::ConnectionChanged(connected) => {
+                    ble_connected = connected;
+                    client_ready = false;
+                    connection_icon_on = true;
+                    last_connection_blink = Instant::now();
+                    display.show(disconnected_icon(ble_bonded));
+                }
+                BleCommand::BondChanged(bonded) => {
+                    ble_bonded = bonded;
+                    if !client_ready {
+                        display.show(disconnected_icon(ble_bonded));
+                    }
+                }
+                BleCommand::AuthenticationFailed => {
+                    ble_connected = false;
+                    client_ready = false;
+                    display.show(disconnected_icon(ble_bonded));
+                }
+                BleCommand::ClientReady => {
+                    if ble_connected && !client_ready {
+                        client_ready = true;
+                        display.show(&handler.on_enter());
+                    }
+                }
                 BleCommand::SwitchMode(m) => {
                     let new_mode = Mode::from_u8(m);
                     if new_mode == mode_manager.current() {
                         continue;
                     }
-                    if mode_manager.current() == Mode::Timer {
-                        // Leaving Timer mode drops the countdown; report idle.
-                        last_timer_status =
-                            timer::idle_status(last_timer_status[4], last_timer_status[5]);
+                    if mode_manager.current() == Mode::Pomodoro {
+                        // Leaving Pomodoro mode drops the countdown; report idle.
+                        last_pomodoro_status =
+                            pomodoro::idle_status(last_pomodoro_status[4], last_pomodoro_status[5]);
+                        ble.notify_pomodoro_status(&last_pomodoro_status);
+                    } else if mode_manager.current() == Mode::Timer {
+                        last_timer_status = timer::idle_status();
                         ble.notify_timer_status(&last_timer_status);
                     }
                     if let Err(e) = mode_manager.switch_to(new_mode) {
@@ -90,9 +138,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ble.notify_mode_change(mode_manager.current() as u8);
                     handler =
                         handlers::create_handler(mode_manager.current(), nvs_partition.clone())?;
-                    display.show(&mode_manager.current().icon());
-                    FreeRtos::delay_ms(MODE_SPLASH_MS);
-                    display.show(&handler.on_enter());
+                    if client_ready {
+                        display.show(&handler.on_enter());
+                    }
                 }
                 BleCommand::SetDisplayData(data) => {
                     handler.on_ble_data(data);
@@ -102,38 +150,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ble.notify_brightness_change(level);
                     log::info!("Brightness set to {}", level);
                 }
+                BleCommand::Pomodoro(timer_cmd) => {
+                    handler.on_pomodoro_command(timer_cmd);
+                    if mode_manager.current() != Mode::Pomodoro {
+                        // Pomodoro commands are ignored outside Pomodoro mode; restore
+                        // the status value so READ stays accurate.
+                        ble.set_pomodoro_status(&last_pomodoro_status);
+                    }
+                }
                 BleCommand::Timer(timer_cmd) => {
                     handler.on_timer_command(timer_cmd);
                     if mode_manager.current() != Mode::Timer {
-                        // Timer commands are ignored outside Timer mode; restore
-                        // the status value so READ stays accurate.
                         ble.set_timer_status(&last_timer_status);
                     }
                 }
             }
         }
-
-        // White long-press: cycle mode (universal, consumed before mode dispatch)
-        let white_press = if let Some(PressType::Long) = white_press {
-            if mode_manager.current() == Mode::Timer {
-                // Leaving Timer mode drops the countdown; report idle.
-                last_timer_status =
-                    timer::idle_status(last_timer_status[4], last_timer_status[5]);
-                ble.notify_timer_status(&last_timer_status);
-            }
-            let next = mode_manager.current().next();
-            if let Err(e) = mode_manager.switch_to(next) {
-                log::error!("Failed to switch mode: {:?}", e);
-            }
-            ble.notify_mode_change(mode_manager.current() as u8);
-            handler = handlers::create_handler(mode_manager.current(), nvs_partition.clone())?;
-            display.show(&mode_manager.current().icon());
-            FreeRtos::delay_ms(MODE_SPLASH_MS);
-            display.show(&handler.on_enter());
-            None // consume the press
-        } else {
-            white_press
-        };
 
         // Mode-specific button handling
         if let Some(press) = red_press {
@@ -147,11 +179,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Display update
         if let Some(frame) = handler.tick() {
-            display.show(&frame);
+            if client_ready {
+                display.show(&frame);
+            }
         }
 
-        // Timer status: pushed on state/phase changes and once per second
-        // while running (Timer mode only).
+        // Blink the disconnected icon while the BLE link, authentication, and
+        // Android initial GATT synchronization are still in progress.
+        if ble_connected
+            && !client_ready
+            && last_connection_blink.elapsed().as_millis() >= CONNECTION_BLINK_MS
+        {
+            connection_icon_on = !connection_icon_on;
+            last_connection_blink = Instant::now();
+            if connection_icon_on {
+                display.show(disconnected_icon(ble_bonded));
+            } else {
+                display.show(&assets::PATTERN_ALL_OFF);
+            }
+        }
+
+        // Pomodoro status: pushed on state/phase changes and once per second
+        // while running (Pomodoro mode only).
+        if let Some(status) = handler.poll_pomodoro_status() {
+            last_pomodoro_status = status;
+            ble.notify_pomodoro_status(&status);
+        }
         if let Some(status) = handler.poll_timer_status() {
             last_timer_status = status;
             ble.notify_timer_status(&status);

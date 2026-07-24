@@ -55,7 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.domain.ConnectionState
-import io.github.cespresso.clumo.domain.TimerStatus
+import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
@@ -78,15 +79,25 @@ object FaceBits {
     /**
      * Pixel countdown, identical rule to the firmware:
      * lit = ceil(remainingSec * 64 / phaseTotalSec) clamped 0..64,
-     * pixels ON for row-major index < lit.
+     * with remaining pixels occupying the row-major suffix so they turn off
+     * from the top-left toward the bottom-right.
      */
-    fun fromTimer(status: TimerStatus): Long {
-        val total = status.phaseTotalSec
+    fun fromPomodoro(status: PomodoroStatus): Long =
+        fromProgress(status.remainingSec, status.phaseTotalSec)
+
+    fun fromCountdownTimer(status: CountdownTimerStatus): Long =
+        fromProgress(status.remainingSec, status.configuredTotalSec)
+
+    private fun fromProgress(remainingSec: Int, total: Int): Long {
         if (total <= 0) return EMPTY
-        val lit = ((status.remainingSec.toLong() * 64 + total - 1) / total)
+        val lit = ((remainingSec.toLong() * 64 + total - 1) / total)
             .coerceIn(0, 64)
             .toInt()
-        return if (lit >= 64) -1L else (1L shl lit) - 1
+        return when {
+            lit <= 0 -> EMPTY
+            lit >= 64 -> -1L
+            else -> -1L shl (64 - lit)
+        }
     }
 
     fun toBitsString(mask: Long): String = buildString {
@@ -339,7 +350,7 @@ fun DotGrid(
 }
 
 // ---------------------------------------------------------------------------
-// Segmented control (pill with white active thumb)
+// Segmented control (2x2 grid with white active thumb)
 // ---------------------------------------------------------------------------
 
 @Composable
@@ -349,40 +360,48 @@ fun SegmentedControl(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Column(
         modifier = modifier
-            .clip(RoundedCornerShape(999.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(ClumoColors.SegBackground)
             .padding(5.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        items.forEachIndexed { index, label ->
-            val active = index == selectedIndex
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .then(
-                        if (active) {
-                            Modifier.shadow(3.dp, RoundedCornerShape(999.dp))
-                        } else Modifier
-                    )
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(if (active) ClumoColors.White else Color.Transparent)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { onSelect(index) }
-                    .padding(vertical = 10.dp, horizontal = 4.dp),
-                contentAlignment = Alignment.Center,
+        items.chunked(2).forEachIndexed { rowIndex, rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Text(
-                    text = label,
-                    fontSize = 13.5.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = RoundedFontFamily,
-                    color = if (active) ClumoColors.Text else ClumoColors.SegInactiveText,
-                    maxLines = 1,
-                )
+                rowItems.forEachIndexed { columnIndex, label ->
+                    val index = rowIndex * 2 + columnIndex
+                    val active = index == selectedIndex
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .then(
+                                if (active) {
+                                    Modifier.shadow(3.dp, RoundedCornerShape(999.dp))
+                                } else Modifier
+                            )
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(if (active) ClumoColors.White else Color.Transparent)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                            ) { onSelect(index) }
+                            .padding(vertical = 9.dp, horizontal = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontFamily = RoundedFontFamily,
+                            color = if (active) ClumoColors.Text else ClumoColors.SegInactiveText,
+                            maxLines = 1,
+                        )
+                    }
+                }
             }
         }
     }

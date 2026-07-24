@@ -58,8 +58,9 @@ import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
+import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.Pattern
-import io.github.cespresso.clumo.domain.TimerStatus
+import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.ClumoSlider
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
@@ -81,24 +82,49 @@ import kotlinx.coroutines.launch
 
 /**
  * Live mirror of the device LED for the current mode.
- * Timer -> pixel countdown; Display -> selected pattern; Visualizer -> column bars.
+ * Pomodoro/Timer -> pixel countdown; Display -> selected pattern; Visualizer -> column bars.
  */
 @Composable
-fun liveMirrorBits(connection: DeviceConnection?, selectedPatternBits: String?): Long {
+fun liveMirrorBits(
+    connection: DeviceConnection?,
+    selectedPatternBits: String?,
+): Long {
     if (connection == null) return FaceBits.EMPTY
     val state by connection.connectionState.collectAsState()
     val mode by connection.currentMode.collectAsState()
+    val pomodoro by connection.pomodoroStatus.collectAsState()
     val timer by connection.timerStatus.collectAsState()
+    val timerBlinkOn = completionBlink(
+        mode == BleUuids.MODE_TIMER && timer?.isCompleted == true
+    )
     val columns by connection.audioVisualizer.columns.collectAsState()
     val vizActive by connection.audioVisualizer.isActive.collectAsState()
     if (state != ConnectionState.Ready) return FaceBits.EMPTY
     return when (mode) {
-        BleUuids.MODE_TIMER -> timer?.let { FaceBits.fromTimer(it) } ?: FaceBits.EMPTY
+        BleUuids.MODE_POMODORO -> pomodoro?.let { FaceBits.fromPomodoro(it) } ?: FaceBits.EMPTY
+        BleUuids.MODE_TIMER -> timer?.let {
+            if (it.isCompleted && !timerBlinkOn) FaceBits.EMPTY
+            else if (it.isCompleted) -1L
+            else FaceBits.fromCountdownTimer(it)
+        } ?: FaceBits.EMPTY
         BleUuids.MODE_DISPLAY -> selectedPatternBits?.let { FaceBits.fromBitsString(it) }
             ?: FaceBits.EMPTY
         BleUuids.MODE_VISUALIZER -> if (vizActive) FaceBits.fromColumns(columns) else FaceBits.EMPTY
         else -> FaceBits.EMPTY
     }
+}
+
+@Composable
+private fun completionBlink(active: Boolean): Boolean {
+    var visible by remember { mutableStateOf(true) }
+    LaunchedEffect(active) {
+        visible = true
+        while (active) {
+            delay(400)
+            visible = !visible
+        }
+    }
+    return visible
 }
 
 @Composable
@@ -123,6 +149,7 @@ fun DeviceScreen(
     val failure = connection?.connectionFailure?.collectAsState()?.value
     val reconnectAttempt = connection?.reconnectAttempt?.collectAsState()?.value ?: 0
     val currentMode = connection?.currentMode?.collectAsState()?.value
+    val pomodoroStatus = connection?.pomodoroStatus?.collectAsState()?.value
     val timerStatus = connection?.timerStatus?.collectAsState()?.value
     val deviceId = connection?.deviceId?.collectAsState()?.value
     val scannedName = connection?.deviceName?.collectAsState()?.value
@@ -144,7 +171,7 @@ fun DeviceScreen(
     // Sync the segmented selector with the device (mode notifications included).
     var pendingMode by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(currentMode) { if (currentMode != null) pendingMode = null }
-    val effectiveMode = pendingMode ?: currentMode ?: BleUuids.MODE_TIMER
+    val effectiveMode = pendingMode ?: currentMode ?: BleUuids.MODE_POMODORO
 
     // Re-read MODE when entering the screen so the selector starts in sync.
     LaunchedEffect(connection, ready) {
@@ -179,6 +206,9 @@ fun DeviceScreen(
         }
     }
 
+    val timerBlinkOn = completionBlink(
+        effectiveMode == BleUuids.MODE_TIMER && timerStatus?.isCompleted == true
+    )
     val mirrorBits = liveMirrorBits(connection, selectedPattern?.bits)
     val frameColor = connectionFrameColor(state)
     val stateLabel = when (state) {
@@ -426,11 +456,12 @@ fun DeviceScreen(
                         // Mode selector
                         SegmentedControl(
                             items = listOf(
+                                stringResource(R.string.seg_pomodoro),
                                 stringResource(R.string.seg_timer),
                                 stringResource(R.string.seg_patterns),
                                 stringResource(R.string.seg_viz),
                             ),
-                            selectedIndex = effectiveMode.coerceIn(0, 2),
+                            selectedIndex = effectiveMode.coerceIn(0, 3),
                             onSelect = { index ->
                                 if (index != effectiveMode) {
                                     pendingMode = index
@@ -465,10 +496,18 @@ fun DeviceScreen(
                                     connection = connection,
                                 )
 
-                                else -> TimerSection(
+                                BleUuids.MODE_POMODORO -> PomodoroSection(
                                     connection = connection,
-                                    status = timerStatus ?: TimerStatus.DEFAULT,
+                                    status = pomodoroStatus ?: PomodoroStatus.DEFAULT,
                                 )
+
+                                BleUuids.MODE_TIMER -> CountdownTimerSection(
+                                    connection = connection,
+                                    status = timerStatus ?: CountdownTimerStatus.DEFAULT,
+                                    completionBlinkOn = timerBlinkOn,
+                                )
+
+                                else -> Unit
                             }
                         }
                     }
@@ -608,13 +647,13 @@ private fun MenuItem(label: String, color: androidx.compose.ui.graphics.Color, o
 }
 
 // ---------------------------------------------------------------------------
-// Timer
+// Pomodoro
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun TimerSection(
+private fun PomodoroSection(
     connection: DeviceConnection?,
-    status: TimerStatus,
+    status: PomodoroStatus,
 ) {
     var workMin by remember { mutableIntStateOf(status.workMin.coerceIn(1, 99)) }
     var breakMin by remember { mutableIntStateOf(status.breakMin.coerceIn(1, 99)) }
@@ -624,7 +663,7 @@ private fun TimerSection(
     }
 
     fun pushDurations() {
-        connection?.timerSetDurations(workMin, breakMin)
+        connection?.pomodoroSetDurations(workMin, breakMin)
     }
 
     Column(
@@ -648,7 +687,7 @@ private fun TimerSection(
         ) {
             Text(
                 text = stringResource(
-                    if (work) R.string.timer_phase_work else R.string.timer_phase_break
+                    if (work) R.string.pomodoro_phase_work else R.string.pomodoro_phase_break
                 ),
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -673,12 +712,12 @@ private fun TimerSection(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 DurationStepperRow(
-                    label = stringResource(R.string.timer_work_label),
+                    label = stringResource(R.string.pomodoro_work_label),
                     value = workMin,
                     onChange = { workMin = it; pushDurations() },
                 )
                 DurationStepperRow(
-                    label = stringResource(R.string.timer_break_label),
+                    label = stringResource(R.string.pomodoro_break_label),
                     value = breakMin,
                     onChange = { breakMin = it; pushDurations() },
                 )
@@ -691,8 +730,142 @@ private fun TimerSection(
         ) {
             CoralPillButton(
                 text = stringResource(
-                    if (status.isRunning) R.string.timer_pause else R.string.timer_start
+                    if (status.isRunning) R.string.pomodoro_pause else R.string.pomodoro_start
                 ),
+                onClick = {
+                    if (status.isRunning) connection?.pomodoroPause() else connection?.pomodoroStart()
+                },
+                fontSize = 15.sp,
+                verticalPadding = 14.dp,
+                modifier = Modifier.weight(1.4f),
+            )
+            OutlinePillButton(
+                text = stringResource(R.string.pomodoro_reset),
+                onClick = { connection?.pomodoroReset() },
+                fontSize = 15.sp,
+                verticalPadding = 14.dp,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Timer
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun CountdownTimerSection(
+    connection: DeviceConnection?,
+    status: CountdownTimerStatus,
+    completionBlinkOn: Boolean,
+) {
+    var minutes by remember { mutableIntStateOf(status.configuredMin.coerceIn(0, 59)) }
+    var seconds by remember { mutableIntStateOf(status.configuredSec.coerceIn(0, 59)) }
+    LaunchedEffect(status.configuredMin, status.configuredSec) {
+        minutes = status.configuredMin.coerceIn(0, 59)
+        seconds = status.configuredSec.coerceIn(0, 59)
+    }
+
+    val stateLabel = stringResource(
+        when {
+            status.isRunning -> R.string.timer_state_running
+            status.isPaused -> R.string.timer_state_paused
+            status.isCompleted -> R.string.timer_state_completed
+            else -> R.string.timer_state_idle
+        }
+    )
+    val primaryLabel = stringResource(
+        when {
+            status.isRunning -> R.string.timer_pause
+            status.isPaused -> R.string.timer_resume
+            else -> R.string.timer_start
+        }
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(6.dp, RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(28.dp))
+            .background(ClumoColors.White)
+            .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(28.dp))
+            .padding(horizontal = 18.dp, vertical = 22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(if (status.isCompleted) ClumoColors.Coral else ClumoColors.Sage)
+                .padding(horizontal = 18.dp, vertical = 7.dp),
+        ) {
+            Text(
+                text = stateLabel,
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.ExtraBold,
+                fontFamily = RoundedFontFamily,
+                color = ClumoColors.White,
+            )
+        }
+
+        Text(
+            text = status.formatRemaining(),
+            fontSize = 52.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = RoundedFontFamily,
+            color = ClumoColors.Text,
+            modifier = Modifier.alpha(
+                if (status.isCompleted && !completionBlinkOn) 0.12f else 1f
+            ),
+        )
+
+        if (status.isIdle) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                TimerStepperRow(
+                    label = stringResource(R.string.timer_minutes_label),
+                    value = minutes,
+                    decrementEnabled = minutes > 0 && !(minutes == 1 && seconds == 0),
+                    incrementEnabled = minutes < 59,
+                    onDecrement = {
+                        val next = minutes - 1
+                        minutes = next
+                        connection?.timerSetDuration(next, seconds)
+                    },
+                    onIncrement = {
+                        val next = minutes + 1
+                        minutes = next
+                        connection?.timerSetDuration(next, seconds)
+                    },
+                )
+                TimerStepperRow(
+                    label = stringResource(R.string.timer_seconds_label),
+                    value = seconds,
+                    decrementEnabled = seconds > 0 && !(minutes == 0 && seconds == 1),
+                    incrementEnabled = seconds < 59,
+                    onDecrement = {
+                        val next = seconds - 1
+                        seconds = next
+                        connection?.timerSetDuration(minutes, next)
+                    },
+                    onIncrement = {
+                        val next = seconds + 1
+                        seconds = next
+                        connection?.timerSetDuration(minutes, next)
+                    },
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CoralPillButton(
+                text = primaryLabel,
                 onClick = {
                     if (status.isRunning) connection?.timerPause() else connection?.timerStart()
                 },
@@ -701,13 +874,48 @@ private fun TimerSection(
                 modifier = Modifier.weight(1.4f),
             )
             OutlinePillButton(
-                text = stringResource(R.string.timer_reset),
-                onClick = { connection?.timerReset() },
+                text = stringResource(R.string.timer_cancel),
+                onClick = { connection?.timerCancel() },
                 fontSize = 15.sp,
                 verticalPadding = 14.dp,
                 modifier = Modifier.weight(1f),
             )
         }
+    }
+}
+
+@Composable
+private fun TimerStepperRow(
+    label: String,
+    value: Int,
+    decrementEnabled: Boolean,
+    incrementEnabled: Boolean,
+    onDecrement: () -> Unit,
+    onIncrement: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = RoundedFontFamily,
+            color = ClumoColors.Muted,
+            modifier = Modifier.weight(1f),
+        )
+        StepperButton(text = "−", enabled = decrementEnabled, onClick = onDecrement)
+        Text(
+            text = "%02d".format(value),
+            fontSize = 18.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = RoundedFontFamily,
+            color = ClumoColors.Text,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(54.dp),
+        )
+        StepperButton(text = "＋", enabled = incrementEnabled, onClick = onIncrement)
     }
 }
 
@@ -741,7 +949,7 @@ private fun DurationStepperRow(
         )
         StepperButton(text = "＋", enabled = value < 99) { onChange((value + 1).coerceIn(1, 99)) }
         Text(
-            text = stringResource(R.string.timer_minutes_unit),
+            text = stringResource(R.string.pomodoro_minutes_unit),
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = RoundedFontFamily,
@@ -948,7 +1156,7 @@ private fun VisualizerSection(connection: DeviceConnection?) {
     fun toggle() {
         if (connection == null) return
         if (vizActive) {
-            connection.stopAudioVisualizer()
+            connection.stopAudioVisualizer(clearDisplay = true)
             return
         }
         val needed = buildList {

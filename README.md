@@ -24,7 +24,8 @@ Hold the white button to cycle between modes. Your current mode and pet state su
 
 Connects to the **CLumo** Android app over BLE for richer features.
 
-- **Timer** — durations set from the app; remaining time shown as pixels that fade out one by one
+- **Pomodoro** — app-configurable work/break cycles shown as a 64-pixel countdown
+- **Timer** — a one-shot countdown from `00:01` to `59:59`, with start, pause, resume, and cancel controls
 - **My Displays** — draw custom 8x8 patterns in the app and send them to the device
 - **Audio visualizer** — the matrix dances to audio streamed from your phone
 
@@ -40,7 +41,7 @@ Connects to the **CLumo** Android app over BLE for richer features.
 | Path | Contents |
 |---|---|
 | [`standalone/`](standalone/) | Standalone firmware (Rust, no BLE): pet / pomodoro / dice |
-| [`companion/firmware/`](companion/firmware/) | Companion firmware (Rust + BLE): timer / my displays / visualizer |
+| [`companion/firmware/`](companion/firmware/) | Companion firmware (Rust + BLE): pomodoro / timer / my displays / visualizer |
 | [`companion/android/`](companion/android/) | CLumo Android app (Kotlin, Gradle) |
 | [`installer/`](installer/) | Browser-based installer page (ESP Web Tools, served via GitHub Pages) |
 | [`hardware/`](hardware/) | Enclosure 3D models & wiring — coming soon |

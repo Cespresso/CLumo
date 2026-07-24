@@ -20,7 +20,8 @@ import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.audio.AudioVisualizerManager
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
-import io.github.cespresso.clumo.domain.TimerStatus
+import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.PomodoroStatus
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Per-device GATT connection and state for BLE protocol v1.
+ * Per-device GATT connection and state for BLE protocol v2.
  * Owns its coroutine scope, audio visualizer, and reconnect job.
  * One instance per CLumo device; created and disposed by
  * [io.github.cespresso.clumo.data.DeviceRegistry].
@@ -53,6 +54,7 @@ class DeviceConnection(
         private const val CONNECT_TIMEOUT_MS = 12_000L
         private const val BOND_TIMEOUT_MS = 45_000L
         private const val SYNC_TIMEOUT_MS = 12_000L
+        private const val GATT_CACHE_REFRESH_DELAY_MS = 600L
         private const val AUDIO_SEND_INTERVAL_MS = 80L
     }
 
@@ -72,7 +74,10 @@ class DeviceConnection(
     private val _currentMode = MutableStateFlow<Int?>(null)
     val currentMode = _currentMode.asStateFlow()
 
-    private val _timerStatus = MutableStateFlow<TimerStatus?>(null)
+    private val _pomodoroStatus = MutableStateFlow<PomodoroStatus?>(null)
+    val pomodoroStatus = _pomodoroStatus.asStateFlow()
+
+    private val _timerStatus = MutableStateFlow<CountdownTimerStatus?>(null)
     val timerStatus = _timerStatus.asStateFlow()
 
     private val _brightness = MutableStateFlow(0x0F)
@@ -107,6 +112,7 @@ class DeviceConnection(
     private var phaseTimeoutJob: Job? = null
     private var reconnectAttempts = 0
     private var initialSync = false
+    private var gattCacheRefreshAttempted = false
     @Volatile private var userDisconnect = false
 
     private val bondReceiver = object : BroadcastReceiver() {
@@ -159,6 +165,7 @@ class DeviceConnection(
         userDisconnect = false
         reconnectJob?.cancel()
         reconnectAttempts = 0
+        gattCacheRefreshAttempted = false
         _reconnectAttempt.value = 0
         _connectionFailure.value = null
         closeGatt()
@@ -218,6 +225,7 @@ class DeviceConnection(
         _connectionFailure.value = null
         _reconnectAttempt.value = 0
         _currentMode.value = null
+        _pomodoroStatus.value = null
         _timerStatus.value = null
         _deviceId.value = null
     }
@@ -291,6 +299,13 @@ class DeviceConnection(
         Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
             PackageManager.PERMISSION_GRANTED
+
+    private fun refreshGattCache(g: BluetoothGatt): Boolean = runCatching {
+        val refresh = g.javaClass.getMethod("refresh")
+        refresh.invoke(g) as? Boolean == true
+    }.onFailure {
+        Log.w(TAG, "$address: GATT cache refresh failed", it)
+    }.getOrDefault(false)
 
     // --- Queue machinery ---
 
@@ -368,7 +383,9 @@ class DeviceConnection(
         if (!initialSync) return
         val idle = synchronized(queueLock) { !opInFlight && opQueue.isEmpty() }
         if (!idle) return
-        if (_deviceId.value == null || _currentMode.value == null || _timerStatus.value == null) {
+        if (_deviceId.value == null || _currentMode.value == null ||
+            _pomodoroStatus.value == null || _timerStatus.value == null
+        ) {
             fail(ConnectionFailure.SynchronizationFailed, retry = true)
             return
         }
@@ -384,6 +401,9 @@ class DeviceConnection(
     // --- Public actions ---
 
     fun writeMode(mode: Int) {
+        if (shouldStopVisualizerForModeChange(audioVisualizer.isActive.value, mode)) {
+            stopAudioVisualizer(clearDisplay = true)
+        }
         enqueue(GattOp.Write(BleUuids.MODE, byteArrayOf(mode.toByte()), noResponse = false))
     }
 
@@ -401,16 +421,29 @@ class DeviceConnection(
         processQueue()
     }
 
-    fun writeTimerCommand(vararg bytes: Int) {
+    fun writePomodoroCommand(vararg bytes: Int) {
+        enqueue(GattOp.Write(BleUuids.POMODORO, ByteArray(bytes.size) { bytes[it].toByte() }, noResponse = false))
+    }
+
+    fun pomodoroStart() = writePomodoroCommand(BleUuids.POMODORO_CMD_START)
+    fun pomodoroPause() = writePomodoroCommand(BleUuids.POMODORO_CMD_PAUSE)
+    fun pomodoroReset() = writePomodoroCommand(BleUuids.POMODORO_CMD_RESET)
+
+    fun pomodoroSetDurations(workMin: Int, breakMin: Int) =
+        writePomodoroCommand(BleUuids.POMODORO_CMD_SET_DURATIONS, workMin.coerceIn(1, 99), breakMin.coerceIn(1, 99))
+
+    private fun writeTimerCommand(vararg bytes: Int) {
         enqueue(GattOp.Write(BleUuids.TIMER, ByteArray(bytes.size) { bytes[it].toByte() }, noResponse = false))
     }
 
     fun timerStart() = writeTimerCommand(BleUuids.TIMER_CMD_START)
     fun timerPause() = writeTimerCommand(BleUuids.TIMER_CMD_PAUSE)
-    fun timerReset() = writeTimerCommand(BleUuids.TIMER_CMD_RESET)
+    fun timerCancel() = writeTimerCommand(BleUuids.TIMER_CMD_CANCEL)
 
-    fun timerSetDurations(workMin: Int, breakMin: Int) =
-        writeTimerCommand(BleUuids.TIMER_CMD_SET_DURATIONS, workMin.coerceIn(1, 99), breakMin.coerceIn(1, 99))
+    fun timerSetDuration(minutes: Int, seconds: Int) {
+        val payload = BleUuids.timerSetDurationPayloadOrNull(minutes, seconds) ?: return
+        enqueue(GattOp.Write(BleUuids.TIMER, payload, noResponse = false))
+    }
 
     fun writeBrightness(level: Int) {
         val clamped = level.coerceIn(0, 0x0F)
@@ -419,6 +452,7 @@ class DeviceConnection(
     }
 
     fun readMode() = enqueue(GattOp.Read(BleUuids.MODE))
+    fun readPomodoroStatus() = enqueue(GattOp.Read(BleUuids.POMODORO))
     fun readTimerStatus() = enqueue(GattOp.Read(BleUuids.TIMER))
     fun readBrightness() = enqueue(GattOp.Read(BleUuids.BRIGHTNESS))
     fun readDeviceId() = enqueue(GattOp.Read(BleUuids.DEVICE_ID))
@@ -426,6 +460,10 @@ class DeviceConnection(
     // --- Audio visualizer ---
 
     fun startAudioVisualizer(): Boolean {
+        if (!canRunAudioVisualizer(_connectionState.value, _currentMode.value)) {
+            Log.w(TAG, "$address: audio visualizer requires ready Visualizer mode")
+            return false
+        }
         if (!audioVisualizer.start()) {
             Log.w(TAG, "$address: audio visualizer failed to start")
             return false
@@ -434,7 +472,7 @@ class DeviceConnection(
         audioSendJob = scope.launch {
             while (true) {
                 delay(AUDIO_SEND_INTERVAL_MS)
-                if (_connectionState.value != ConnectionState.Ready) continue
+                if (!canRunAudioVisualizer(_connectionState.value, _currentMode.value)) continue
                 val columns = audioVisualizer.columns.value
                 writeDisplay(ByteArray(8) { columns[it].toByte() }, stream = true)
             }
@@ -442,10 +480,13 @@ class DeviceConnection(
         return true
     }
 
-    fun stopAudioVisualizer() {
+    fun stopAudioVisualizer(clearDisplay: Boolean = false) {
         audioSendJob?.cancel()
         audioSendJob = null
         audioVisualizer.stop()
+        if (clearDisplay && canRunAudioVisualizer(_connectionState.value, _currentMode.value)) {
+            writeDisplay(ByteArray(8), stream = true)
+        }
     }
 
     // --- GATT callback ---
@@ -505,41 +546,77 @@ class DeviceConnection(
                 fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
                 return
             }
-            val service = g.getService(BleUuids.SERVICE) ?: run {
-                Log.w(TAG, "$address: CLumo service not found")
-                fail(ConnectionFailure.IncompatibleDevice, retry = false)
-                return
-            }
-            characteristics.clear()
-            listOf(
-                BleUuids.MODE, BleUuids.DISPLAY, BleUuids.TIMER,
-                BleUuids.BRIGHTNESS, BleUuids.DEVICE_ID,
-            ).forEach { uuid ->
-                service.getCharacteristic(uuid)?.let { characteristics[uuid] = it }
-            }
+            val service = g.getService(BleUuids.SERVICE)
             val required = setOf(
-                BleUuids.MODE, BleUuids.DISPLAY, BleUuids.TIMER,
+                BleUuids.MODE, BleUuids.DISPLAY, BleUuids.POMODORO, BleUuids.TIMER,
                 BleUuids.BRIGHTNESS, BleUuids.DEVICE_ID,
             )
-            if (!characteristics.keys.containsAll(required)) {
-                Log.w(TAG, "$address: required CLumo characteristics are missing")
-                fail(ConnectionFailure.IncompatibleDevice, retry = false)
-                return
+            val discovered = service?.characteristics
+                ?.mapTo(mutableSetOf()) { it.uuid }
+                .orEmpty()
+            Log.d(
+                TAG,
+                "$address: discovered CLumo characteristics=" +
+                    discovered.joinToString(),
+            )
+            when (gattCompatibilityAction(discovered, required, gattCacheRefreshAttempted)) {
+                GattCompatibilityAction.ACCEPT -> Unit
+                GattCompatibilityAction.REFRESH_CACHE -> {
+                    gattCacheRefreshAttempted = true
+                    if (!refreshGattCache(g)) {
+                        Log.w(TAG, "$address: required CLumo characteristics are missing")
+                        fail(ConnectionFailure.IncompatibleDevice, retry = false)
+                        return
+                    }
+                    Log.i(TAG, "$address: stale GATT cache cleared; rediscovering services")
+                    startPhaseTimeout(
+                        SYNC_TIMEOUT_MS,
+                        ConnectionFailure.ServiceDiscoveryFailed,
+                        retry = true,
+                    )
+                    scope.launch {
+                        delay(GATT_CACHE_REFRESH_DELAY_MS)
+                        if (g !== gatt) return@launch
+                        val started = runCatching { g.discoverServices() }.getOrDefault(false)
+                        if (!started) {
+                            fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+                        }
+                    }
+                    return
+                }
+                GattCompatibilityAction.REJECT -> {
+                    Log.w(
+                        TAG,
+                        if (service == null) "$address: CLumo service not found"
+                        else "$address: required CLumo characteristics are missing",
+                    )
+                    fail(ConnectionFailure.IncompatibleDevice, retry = false)
+                    return
+                }
+            }
+
+            val compatibleService = service ?: return
+            characteristics.clear()
+            required.forEach { uuid ->
+                compatibleService.getCharacteristic(uuid)?.let { characteristics[uuid] = it }
             }
 
             _connectionState.value = ConnectionState.Synchronizing
             _deviceId.value = null
             _currentMode.value = null
+            _pomodoroStatus.value = null
             _timerStatus.value = null
             initialSync = true
             startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.SynchronizationFailed, retry = true)
 
             // Subscribe to server notifications, then load initial state.
             enqueue(GattOp.Subscribe(BleUuids.MODE))
+            enqueue(GattOp.Subscribe(BleUuids.POMODORO))
             enqueue(GattOp.Subscribe(BleUuids.TIMER))
             enqueue(GattOp.Subscribe(BleUuids.BRIGHTNESS))
             readDeviceId()
             readMode()
+            readPomodoroStatus()
             readTimerStatus()
             readBrightness()
         }
@@ -564,6 +641,7 @@ class DeviceConnection(
                 // The device may not notify on app-initiated changes; re-read to stay in sync.
                 when (char.uuid) {
                     BleUuids.MODE -> readMode()
+                    BleUuids.POMODORO -> readPomodoroStatus()
                     BleUuids.TIMER -> readTimerStatus()
                     else -> Unit
                 }
@@ -582,7 +660,8 @@ class DeviceConnection(
         if (value.isEmpty()) return
         when (uuid) {
             BleUuids.MODE -> _currentMode.value = value[0].toInt() and 0xFF
-            BleUuids.TIMER -> TimerStatus.parse(value)?.let { _timerStatus.value = it }
+            BleUuids.POMODORO -> PomodoroStatus.parse(value)?.let { _pomodoroStatus.value = it }
+            BleUuids.TIMER -> CountdownTimerStatus.parse(value)?.let { _timerStatus.value = it }
             BleUuids.BRIGHTNESS -> _brightness.value = value[0].toInt() and 0xFF
             BleUuids.DEVICE_ID -> _deviceId.value = formatDeviceId(value)
         }

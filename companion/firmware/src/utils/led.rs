@@ -38,6 +38,7 @@ impl<'d> Display<'d> {
         // exit shutdown LAST so the display turns on already configured and
         // blank instead of flashing whatever the registers powered up with.
         spi.write(&[0x0F, 0x00])?; // Display test off
+        spi.write(&[0x0C, 0x00])?; // Enter shutdown explicitly
         spi.write(&[0x09, 0x00])?; // Decode mode: none (matrix mode)
         spi.write(&[0x0B, 0x07])?; // Scan limit: all 8 rows
         spi.write(&[0x0A, 0x0F])?; // Intensity: maximum

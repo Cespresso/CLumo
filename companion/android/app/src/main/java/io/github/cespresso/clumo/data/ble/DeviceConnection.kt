@@ -673,7 +673,11 @@ class DeviceConnection(
             BleUuids.TIMER -> CountdownTimerStatus.parse(value)?.let { _timerStatus.value = it }
             BleUuids.BRIGHTNESS -> _brightness.value = value[0].toInt() and 0xFF
             BleUuids.DEVICE_ID -> _deviceId.value = formatDeviceId(value)
-            BleUuids.BUTTON -> ButtonEvent.parse(value)?.let { _buttonEvents.tryEmit(it) }
+            BleUuids.BUTTON -> ButtonEvent.parse(value)?.let {
+                if (!_buttonEvents.tryEmit(it)) {
+                    Log.w(TAG, "$address: button event dropped, buffer full")
+                }
+            }
         }
     }
 

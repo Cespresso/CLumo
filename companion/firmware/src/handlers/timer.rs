@@ -6,7 +6,6 @@ use crate::countdown::{
     DurationSetting,
 };
 use crate::utils::bluetooth::TimerCommand;
-use crate::utils::button::PressType;
 
 use super::ModeHandler;
 
@@ -114,16 +113,17 @@ impl ModeHandler for TimerHandler {
         progress_frame(self.last_lit)
     }
 
-    fn on_red_button(&mut self, press: PressType) {
-        match press {
-            PressType::Short => match self.timer.state() {
-                CountdownState::Running => self.pause(),
-                CountdownState::Idle | CountdownState::Paused | CountdownState::Completed => {
-                    self.start_resume()
-                }
-            },
-            PressType::Long => self.cancel(),
+    fn on_main_button(&mut self) {
+        match self.timer.state() {
+            CountdownState::Running => self.pause(),
+            CountdownState::Idle | CountdownState::Paused | CountdownState::Completed => {
+                self.start_resume()
+            }
         }
+    }
+
+    fn on_sub_button(&mut self) {
+        self.cancel();
     }
 
     fn on_timer_command(&mut self, cmd: TimerCommand) {

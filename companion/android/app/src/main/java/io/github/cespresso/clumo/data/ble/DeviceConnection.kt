@@ -118,6 +118,7 @@ class DeviceConnection(
     private var reconnectAttempts = 0
     private var initialSync = false
     private var gattCacheRefreshAttempted = false
+    @Volatile private var forceCacheRefresh = false
     @Volatile private var userDisconnect = false
 
     private val bondReceiver = object : BroadcastReceiver() {
@@ -217,6 +218,18 @@ class DeviceConnection(
         startPhaseTimeout(CONNECT_TIMEOUT_MS, ConnectionFailure.ConnectionTimedOut, retry = true)
     }
 
+    /**
+     * Reconnect, re-enumerating the GATT database instead of trusting Android's cached
+     * copy. The manual escape hatch for a cache that outlived a firmware upgrade: the
+     * automatic refresh only fires when a known characteristic is missing, so a cache
+     * that is stale in some other way needs the user to ask for this explicitly.
+     */
+    fun reconnectWithCacheRefresh() {
+        forceCacheRefresh = true
+        disconnect()
+        connect()
+    }
+
     @SuppressLint("MissingPermission")
     fun disconnect() {
         userDisconnect = true
@@ -311,6 +324,25 @@ class DeviceConnection(
     }.onFailure {
         Log.w(TAG, "$address: GATT cache refresh failed", it)
     }.getOrDefault(false)
+
+    /**
+     * Drop Android's cached GATT table and run discovery again. Returns false when the
+     * hidden refresh call is unavailable, leaving the caller to decide whether the stale
+     * cache is survivable.
+     */
+    private fun refreshCacheAndRediscover(g: BluetoothGatt): Boolean {
+        if (!refreshGattCache(g)) return false
+        startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+        scope.launch {
+            delay(GATT_CACHE_REFRESH_DELAY_MS)
+            if (g !== gatt) return@launch
+            val started = runCatching { g.discoverServices() }.getOrDefault(false)
+            if (!started) {
+                fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+            }
+        }
+        return true
+    }
 
     // --- Queue machinery ---
 
@@ -567,37 +599,33 @@ class DeviceConnection(
                 "$address: discovered CLumo characteristics=" +
                     discovered.joinToString(),
             )
+            if (forceCacheRefresh) {
+                forceCacheRefresh = false
+                gattCacheRefreshAttempted = true
+                if (refreshCacheAndRediscover(g)) {
+                    Log.i(TAG, "$address: GATT cache refresh requested; rediscovering services")
+                    return
+                }
+                Log.w(TAG, "$address: requested GATT cache refresh is unavailable on this device")
+            }
+
             when (gattCompatibilityAction(discovered, required, optional, gattCacheRefreshAttempted)) {
                 GattCompatibilityAction.ACCEPT -> Unit
                 GattCompatibilityAction.REFRESH_CACHE -> {
                     gattCacheRefreshAttempted = true
-                    if (!refreshGattCache(g)) {
-                        // A refresh we could not perform is only fatal when something
-                        // required is absent. Firmware that genuinely predates an
-                        // optional characteristic still works without it.
-                        if (!discovered.containsAll(required)) {
-                            Log.w(TAG, "$address: required CLumo characteristics are missing")
-                            fail(ConnectionFailure.IncompatibleDevice, retry = false)
-                            return
-                        }
-                        Log.w(TAG, "$address: could not refresh GATT cache; continuing without optional characteristics")
-                    } else {
+                    if (refreshCacheAndRediscover(g)) {
                         Log.i(TAG, "$address: stale GATT cache cleared; rediscovering services")
-                        startPhaseTimeout(
-                            SYNC_TIMEOUT_MS,
-                            ConnectionFailure.ServiceDiscoveryFailed,
-                            retry = true,
-                        )
-                        scope.launch {
-                            delay(GATT_CACHE_REFRESH_DELAY_MS)
-                            if (g !== gatt) return@launch
-                            val started = runCatching { g.discoverServices() }.getOrDefault(false)
-                            if (!started) {
-                                fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
-                            }
-                        }
                         return
                     }
+                    // A refresh we could not perform is only fatal when something
+                    // required is absent. Firmware that genuinely predates an
+                    // optional characteristic still works without it.
+                    if (!discovered.containsAll(required)) {
+                        Log.w(TAG, "$address: required CLumo characteristics are missing")
+                        fail(ConnectionFailure.IncompatibleDevice, retry = false)
+                        return
+                    }
+                    Log.w(TAG, "$address: GATT cache refresh unavailable; continuing without optional characteristics")
                 }
                 GattCompatibilityAction.REJECT -> {
                     Log.w(

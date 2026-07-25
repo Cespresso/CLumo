@@ -575,6 +575,11 @@ fun DeviceScreen(
                     menuOpen = false
                     onOpenSettings()
                 }
+                MenuItem(stringResource(R.string.device_menu_refresh_gatt), ClumoColors.Text) {
+                    menuOpen = false
+                    service.registry.get(address)?.reconnectWithCacheRefresh()
+                        ?: service.registry.connect(address, scannedName)
+                }
                 MenuItem(stringResource(R.string.device_menu_disconnect), ClumoColors.Coral) {
                     menuOpen = false
                     service.registry.disconnect(address)

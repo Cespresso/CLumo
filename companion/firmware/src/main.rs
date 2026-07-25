@@ -167,24 +167,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Pomodoro and Timer own their state, so they handle their own presses.
-        // Display and Visualizer content lives in the app, so their presses are
-        // forwarded and the app decides what they mean.
-        for (pressed, button) in [(main_pressed, BUTTON_MAIN), (sub_pressed, BUTTON_SUB)] {
+        // Pomodoro and Timer own their state, so they handle their own presses
+        // and keep working while disconnected. Display and Visualizer content
+        // lives in the app, so their presses are forwarded and the app decides
+        // what they mean.
+        // The mode must be read after the BLE command drain: SwitchMode rebuilds
+        // `handler`, so an earlier read could dispatch a press to a handler for a
+        // different mode.
+        let mode = mode_manager.current();
+        for (pressed, is_main) in [(main_pressed, true), (sub_pressed, false)] {
             if !pressed {
                 continue;
             }
-            let mode = mode_manager.current();
-            log::info!("[{}] Button {}", mode.name(), button);
+            log::info!(
+                "[{}] {} button",
+                mode.name(),
+                if is_main { "Main" } else { "Sub" }
+            );
             match mode {
                 Mode::Pomodoro | Mode::Timer => {
-                    if button == BUTTON_MAIN {
+                    if is_main {
                         handler.on_main_button();
                     } else {
                         handler.on_sub_button();
                     }
                 }
-                Mode::Display | Mode::Visualizer => ble.notify_button(mode as u8, button),
+                Mode::Display | Mode::Visualizer => {
+                    if client_ready {
+                        ble.notify_button(mode, if is_main { BUTTON_MAIN } else { BUTTON_SUB });
+                    } else {
+                        log::info!("Button press dropped: no synced client");
+                    }
+                }
             }
         }
 

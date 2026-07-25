@@ -13,6 +13,10 @@ import io.github.cespresso.clumo.data.DeviceRegistry
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.data.ble.BleScanner
+import io.github.cespresso.clumo.data.ble.BleUuids
+import io.github.cespresso.clumo.data.ble.ButtonEvent
+import io.github.cespresso.clumo.data.ble.DeviceConnection
+import io.github.cespresso.clumo.data.steppedVisualizerSensitivity
 import io.github.cespresso.clumo.domain.ConnectionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,9 +24,13 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
@@ -69,6 +77,7 @@ class DeviceHubService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notif_idle)))
         observeConnections()
         observeVisualizerPreferences()
+        observeButtonEvents()
         scope.launch { patterns.ensureSeeded() }
     }
 
@@ -140,5 +149,42 @@ class DeviceHubService : Service() {
                 it.audioVisualizer.automaticLowVolumeBoost = automaticBoost
             }
         }.launchIn(scope)
+    }
+
+    /**
+     * Applies device button presses the firmware forwarded. Runs here rather than in
+     * the UI so cycling and sensitivity keep working while the app is backgrounded.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeButtonEvents() {
+        registry.connections
+            .flatMapLatest { map ->
+                if (map.isEmpty()) {
+                    emptyFlow()
+                } else {
+                    map.values.map { connection ->
+                        connection.buttonEvents.map { connection to it }
+                    }.merge()
+                }
+            }
+            .onEach { (connection, event) -> applyButtonEvent(connection, event) }
+            .launchIn(scope)
+    }
+
+    private suspend fun applyButtonEvent(connection: DeviceConnection, event: ButtonEvent) {
+        when (event.mode) {
+            BleUuids.MODE_DISPLAY -> cycleDisplayPattern(connection, event.isMain)
+            BleUuids.MODE_VISUALIZER -> stepVisualizerSensitivity(event.isMain)
+        }
+    }
+
+    private suspend fun cycleDisplayPattern(connection: DeviceConnection, forward: Boolean) {
+        val next = patterns.cycleSelection(forward) ?: return
+        connection.writeDisplay(next.toRowBytes())
+    }
+
+    private suspend fun stepVisualizerSensitivity(up: Boolean) {
+        val current = preferences.visualizerSensitivity.first()
+        preferences.setVisualizerSensitivity(steppedVisualizerSensitivity(current, up))
     }
 }

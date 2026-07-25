@@ -1,7 +1,9 @@
 package io.github.cespresso.clumo.data.ble
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ButtonEventTest {
@@ -10,31 +12,39 @@ class ButtonEventTest {
     fun decodesDisplayAndVisualizerPresses() {
         assertEquals(
             ButtonEvent(BleUuids.MODE_DISPLAY, BleUuids.BUTTON_MAIN),
-            parseButtonEvent(byteArrayOf(2, 0)),
+            ButtonEvent.parse(byteArrayOf(2, 0)),
         )
         assertEquals(
             ButtonEvent(BleUuids.MODE_VISUALIZER, BleUuids.BUTTON_SUB),
-            parseButtonEvent(byteArrayOf(3, 1)),
+            ButtonEvent.parse(byteArrayOf(3, 1)),
         )
+        assertTrue(ButtonEvent.parse(byteArrayOf(2, 0))!!.isMain)
+        assertFalse(ButtonEvent.parse(byteArrayOf(3, 1))!!.isMain)
     }
 
     @Test
     fun ignoresTruncatedPayloads() {
-        assertNull(parseButtonEvent(byteArrayOf()))
-        assertNull(parseButtonEvent(byteArrayOf(2)))
+        assertNull(ButtonEvent.parse(byteArrayOf()))
+        assertNull(ButtonEvent.parse(byteArrayOf(2)))
     }
 
     @Test
-    fun ignoresUnknownModeOrButton() {
-        assertNull(parseButtonEvent(byteArrayOf(9, 0)))
-        assertNull(parseButtonEvent(byteArrayOf(2, 9)))
+    fun ignoresModesTheFirmwareNeverForwards() {
+        assertNull(ButtonEvent.parse(byteArrayOf(0, 0)))
+        assertNull(ButtonEvent.parse(byteArrayOf(1, 0)))
+        assertNull(ButtonEvent.parse(byteArrayOf(9, 0)))
+    }
+
+    @Test
+    fun ignoresUnknownButton() {
+        assertNull(ButtonEvent.parse(byteArrayOf(2, 9)))
     }
 
     @Test
     fun ignoresTrailingBytes() {
         assertEquals(
             ButtonEvent(BleUuids.MODE_DISPLAY, BleUuids.BUTTON_MAIN),
-            parseButtonEvent(byteArrayOf(2, 0, 7)),
+            ButtonEvent.parse(byteArrayOf(2, 0, 7)),
         )
     }
 }

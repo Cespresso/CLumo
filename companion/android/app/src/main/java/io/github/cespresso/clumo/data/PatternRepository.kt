@@ -39,20 +39,20 @@ internal fun saveAndSelectPattern(
 )
 
 /**
- * The id of the pattern one step after [currentId] in list order, wrapping at both
- * ends. Returns the first pattern when [currentId] is missing from [patterns], and
- * null when there is nothing to select.
+ * The pattern one step after [currentId] in list order, wrapping at both ends.
+ * Returns the first pattern when [currentId] is missing from [patterns], and null
+ * when there is nothing to select.
  */
-internal fun cyclePatternId(
+internal fun cyclePattern(
     patterns: List<Pattern>,
     currentId: String?,
     forward: Boolean,
-): String? {
+): Pattern? {
     if (patterns.isEmpty()) return null
     val currentIndex = patterns.indexOfFirst { it.id == currentId }
-    if (currentIndex < 0) return patterns.first().id
+    if (currentIndex < 0) return patterns.first()
     val step = if (forward) 1 else -1
-    return patterns[(currentIndex + step + patterns.size) % patterns.size].id
+    return patterns[(currentIndex + step + patterns.size) % patterns.size]
 }
 
 /**
@@ -137,6 +137,23 @@ class PatternRepository(private val context: Context) {
 
     suspend fun select(id: String) {
         store.edit { it[KEY_SELECTED] = id }
+    }
+
+    /**
+     * Move the selection one step and return the newly selected pattern, or null if
+     * the selection did not move (no patterns, or only one).
+     */
+    suspend fun cycleSelection(forward: Boolean): Pattern? {
+        var selected: Pattern? = null
+        store.edit { prefs ->
+            val current = decode(prefs[KEY_PATTERNS])
+            val currentId = prefs[KEY_SELECTED]
+            val next = cyclePattern(current, currentId, forward) ?: return@edit
+            if (next.id == currentId) return@edit
+            selected = next
+            prefs[KEY_SELECTED] = next.id
+        }
+        return selected
     }
 
     private fun decode(raw: String?): List<Pattern> {

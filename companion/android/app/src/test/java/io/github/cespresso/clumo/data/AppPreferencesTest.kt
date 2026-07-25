@@ -66,4 +66,13 @@ class AppPreferencesTest {
         assertEquals(0.9f, steppedVisualizerSensitivity(5f, up = false))
         assertEquals(0.7f, steppedVisualizerSensitivity(Float.NaN, up = true))
     }
+
+    @Test
+    fun steppingUpAndDownTraversesTheWholeRangeWithoutDriftingOrStalling() {
+        var value = 0f
+        repeat(10) { value = steppedVisualizerSensitivity(value, up = true) }
+        assertEquals(1f, value)
+        repeat(10) { value = steppedVisualizerSensitivity(value, up = false) }
+        assertEquals(0f, value)
+    }
 }

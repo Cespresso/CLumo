@@ -42,6 +42,9 @@ object BleUuids {
     /** READ: 16-byte stable device identity. */
     val DEVICE_ID: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18589")
 
+    /** NOTIFY: 2 bytes [mode, button] for presses the firmware does not handle itself. */
+    val BUTTON: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce1858b")
+
     val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
     const val MODE_POMODORO = 0
@@ -49,6 +52,9 @@ object BleUuids {
     const val MODE_DISPLAY = 2
     const val MODE_VISUALIZER = 3
     val MODE_ORDER = listOf(MODE_POMODORO, MODE_TIMER, MODE_DISPLAY, MODE_VISUALIZER)
+
+    const val BUTTON_MAIN = 0
+    const val BUTTON_SUB = 1
 
     const val POMODORO_CMD_START = 0x01
     const val POMODORO_CMD_PAUSE = 0x02

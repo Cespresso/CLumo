@@ -25,23 +25,21 @@ impl<'d> Button<'d> {
     /// Poll button state. Returns true once per press, on release.
     pub fn poll(&mut self) -> bool {
         let current = self.pin.is_high();
+        let previous = std::mem::replace(&mut self.last_state, current);
 
         // Press start (HIGH -> LOW)
-        if self.last_state && !current {
+        if previous && !current {
             self.press_start = Some(Instant::now());
-            self.last_state = current;
             return false;
         }
 
         // Press end (LOW -> HIGH)
-        if !self.last_state && current {
-            self.last_state = current;
+        if !previous && current {
             if let Some(start) = self.press_start.take() {
-                return start.elapsed().as_millis() as u64 >= self.debounce_ms as u64;
+                return start.elapsed().as_millis() >= self.debounce_ms as u128;
             }
         }
 
-        self.last_state = current;
         false
     }
 }
@@ -52,6 +50,8 @@ pub struct Buttons<'d> {
 }
 
 impl<'d> Buttons<'d> {
+    /// The 50 ms debounce assumes the main loop's ~50 ms poll cadence; a shorter
+    /// loop period would make the threshold start rejecting real presses.
     pub fn new(red_pin: AnyIOPin, white_pin: AnyIOPin) -> Result<Self, EspError> {
         Ok(Self {
             red: Button::new(red_pin, 50)?,

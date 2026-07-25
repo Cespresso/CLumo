@@ -29,7 +29,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -88,6 +90,9 @@ class DeviceConnection(
 
     private val _deviceName = MutableStateFlow(initialName)
     val deviceName = _deviceName.asStateFlow()
+
+    private val _buttonEvents = MutableSharedFlow<ButtonEvent>(extraBufferCapacity = 8)
+    val buttonEvents = _buttonEvents.asSharedFlow()
 
     val audioVisualizer = AudioVisualizerManager()
 
@@ -600,6 +605,9 @@ class DeviceConnection(
             required.forEach { uuid ->
                 compatibleService.getCharacteristic(uuid)?.let { characteristics[uuid] = it }
             }
+            // Optional so a device on older firmware still connects.
+            val hasButton = compatibleService.getCharacteristic(BleUuids.BUTTON)
+                ?.also { characteristics[BleUuids.BUTTON] = it } != null
 
             _connectionState.value = ConnectionState.Synchronizing
             _deviceId.value = null
@@ -614,6 +622,7 @@ class DeviceConnection(
             enqueue(GattOp.Subscribe(BleUuids.POMODORO))
             enqueue(GattOp.Subscribe(BleUuids.TIMER))
             enqueue(GattOp.Subscribe(BleUuids.BRIGHTNESS))
+            if (hasButton) enqueue(GattOp.Subscribe(BleUuids.BUTTON))
             readDeviceId()
             readMode()
             readPomodoroStatus()
@@ -664,6 +673,7 @@ class DeviceConnection(
             BleUuids.TIMER -> CountdownTimerStatus.parse(value)?.let { _timerStatus.value = it }
             BleUuids.BRIGHTNESS -> _brightness.value = value[0].toInt() and 0xFF
             BleUuids.DEVICE_ID -> _deviceId.value = formatDeviceId(value)
+            BleUuids.BUTTON -> ButtonEvent.parse(value)?.let { _buttonEvents.tryEmit(it) }
         }
     }
 

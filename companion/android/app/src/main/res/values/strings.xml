@@ -43,6 +43,7 @@
     <!-- Device screen -->
     <string name="device_menu_rename">名前を変更</string>
     <string name="device_menu_settings">設定</string>
+    <string name="device_menu_refresh_gatt">デバイス情報を再取得</string>
     <string name="device_menu_disconnect">切断</string>
     <string name="device_error_banner">接続が切れました</string>
     <string name="device_error_retry">再接続</string>
@@ -56,7 +57,7 @@
     <string name="connection_error_pairing">ペアリングできませんでした。AndroidのBluetooth設定を確認して、もう一度お試しください。</string>
     <string name="connection_error_services">CLumoの接続情報を取得できませんでした。</string>
     <string name="connection_error_incompatible">このCLumoのファームウェアには対応していません。ファームウェアを更新してください。</string>
-    <string name="connection_error_sync">CLumoの初期設定を完了できませんでした。</string>
+    <string name="connection_error_sync">CLumoの初期設定を完了できませんでした。メニューの「デバイス情報を再取得」をお試しください。解決しない場合はBluetooth設定でCLumoのペアリングを解除し、再設定してください。</string>
     <string name="permission_dialog_title">Bluetoothの許可が必要です</string>
     <string name="permission_dialog_body">近くのCLumoを探して接続するには、Androidの設定でBluetoothを許可してください。</string>
     <string name="action_open_settings">設定を開く</string>

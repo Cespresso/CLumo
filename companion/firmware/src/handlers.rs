@@ -8,7 +8,6 @@ use esp_idf_svc::nvs::EspDefaultNvsPartition;
 
 use crate::mode::Mode;
 use crate::utils::bluetooth::{PomodoroCommand, TimerCommand};
-use crate::utils::button::PressType;
 
 /// Common interface for mode-specific behavior.
 /// Each mode implements this trait to handle buttons, BLE data, and display updates.
@@ -16,11 +15,11 @@ pub trait ModeHandler {
     /// Called when entering this mode. Returns the initial frame to display.
     fn on_enter(&mut self) -> [u8; 8];
 
-    /// Called on red button press.
-    fn on_red_button(&mut self, _press: PressType) {}
+    /// Called on a main (red) button press.
+    fn on_main_button(&mut self) {}
 
-    /// Called on white button press. No companion mode currently assigns an action.
-    fn on_white_button(&mut self, _press: PressType) {}
+    /// Called on a sub (white) button press.
+    fn on_sub_button(&mut self) {}
 
     /// Called when BLE display data is received.
     fn on_ble_data(&mut self, _data: [u8; 8]) {}

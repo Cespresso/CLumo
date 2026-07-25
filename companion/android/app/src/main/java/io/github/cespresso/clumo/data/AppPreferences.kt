@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import java.io.IOException
+import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -20,6 +21,20 @@ internal fun sanitizeVisualizerSensitivity(value: Float): Float =
 
 internal fun interpretStoredVisualizerSensitivity(value: Float?): Float =
     sanitizeVisualizerSensitivity(value ?: 0.6f)
+
+internal const val VISUALIZER_SENSITIVITY_STEP = 0.1f
+
+/**
+ * [current] moved one step, clamped to `0..1`. The result is rounded to the step
+ * granularity so repeated stepping does not accumulate binary floating-point error.
+ */
+internal fun steppedVisualizerSensitivity(current: Float, up: Boolean): Float {
+    val base = sanitizeVisualizerSensitivity(current)
+    val delta = if (up) VISUALIZER_SENSITIVITY_STEP else -VISUALIZER_SENSITIVITY_STEP
+    val factor = 1f / VISUALIZER_SENSITIVITY_STEP
+    val stepped = ((base + delta) * factor).roundToInt() / factor
+    return sanitizeVisualizerSensitivity(stepped)
+}
 
 /**
  * App-level DataStore preferences: onboarding completion, visualizer settings,

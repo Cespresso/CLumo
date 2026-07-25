@@ -7,7 +7,6 @@ use crate::assets;
 use crate::countdown::progress_frame;
 use crate::utils::animation::{AnimationClip, AnimationPlayer};
 use crate::utils::bluetooth::PomodoroCommand;
-use crate::utils::button::PressType;
 
 use super::ModeHandler;
 
@@ -260,14 +259,15 @@ impl ModeHandler for PomodoroHandler {
         progress_frame(lit)
     }
 
-    fn on_red_button(&mut self, press: PressType) {
-        match press {
-            PressType::Short => match self.state {
-                PomodoroState::Running => self.pause(),
-                PomodoroState::Idle | PomodoroState::Paused => self.start_resume(),
-            },
-            PressType::Long => self.reset(),
+    fn on_main_button(&mut self) {
+        match self.state {
+            PomodoroState::Running => self.pause(),
+            PomodoroState::Idle | PomodoroState::Paused => self.start_resume(),
         }
+    }
+
+    fn on_sub_button(&mut self) {
+        self.reset();
     }
 
     fn on_pomodoro_command(&mut self, cmd: PomodoroCommand) {

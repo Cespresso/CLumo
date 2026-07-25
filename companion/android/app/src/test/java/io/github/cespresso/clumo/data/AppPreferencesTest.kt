@@ -41,4 +41,29 @@ class AppPreferencesTest {
     fun storedNegativeInfinityVisualizerSensitivityUsesDefault() {
         assertEquals(0.6f, interpretStoredVisualizerSensitivity(Float.NEGATIVE_INFINITY))
     }
+
+    @Test
+    fun steppingUpAddsOneTenthWithoutFloatDrift() {
+        assertEquals(0.7f, steppedVisualizerSensitivity(0.6f, up = true))
+        assertEquals(0.8f, steppedVisualizerSensitivity(0.7f, up = true))
+    }
+
+    @Test
+    fun steppingDownSubtractsOneTenthWithoutFloatDrift() {
+        assertEquals(0.5f, steppedVisualizerSensitivity(0.6f, up = false))
+        assertEquals(0.4f, steppedVisualizerSensitivity(0.5f, up = false))
+    }
+
+    @Test
+    fun steppingStopsAtTheRangeBounds() {
+        assertEquals(1f, steppedVisualizerSensitivity(1f, up = true))
+        assertEquals(0f, steppedVisualizerSensitivity(0f, up = false))
+    }
+
+    @Test
+    fun steppingFromAnOutOfRangeValueSanitizesFirst() {
+        assertEquals(0.1f, steppedVisualizerSensitivity(-5f, up = true))
+        assertEquals(0.9f, steppedVisualizerSensitivity(5f, up = false))
+        assertEquals(0.7f, steppedVisualizerSensitivity(Float.NaN, up = true))
+    }
 }

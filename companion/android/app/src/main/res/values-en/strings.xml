@@ -68,6 +68,14 @@
     <string name="seg_timer">Timer</string>
     <string name="seg_patterns">My Displays</string>
     <string name="seg_viz">Visualizer</string>
+    <string name="button_role_pomodoro_main">Start / Pause</string>
+    <string name="button_role_pomodoro_sub">Reset</string>
+    <string name="button_role_timer_main">Start / Pause</string>
+    <string name="button_role_timer_sub">Cancel</string>
+    <string name="button_role_display_main">Next pattern</string>
+    <string name="button_role_display_sub">Previous pattern</string>
+    <string name="button_role_viz_main">Sensitivity up</string>
+    <string name="button_role_viz_sub">Sensitivity down</string>
 
     <!-- Pomodoro -->
     <string name="pomodoro_phase_work">Working</string>

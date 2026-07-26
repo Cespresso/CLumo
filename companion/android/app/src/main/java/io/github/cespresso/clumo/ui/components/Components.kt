@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -39,13 +40,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -257,6 +261,117 @@ fun OutlinePillButton(
             fontWeight = FontWeight.Bold,
             fontFamily = RoundedFontFamily,
         )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// CLumo device: the two physical knobs (main = coral, sub = white) on top of
+// the face. Each knob is a two-tier bump: a wider boss with the cap above it,
+// both in the cap's color like the real hardware.
+// ---------------------------------------------------------------------------
+
+@Composable
+fun ClumoDevice(
+    bits: Long,
+    frameColor: Color,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    litAlpha: Float = 1f,
+    glow: Boolean = true,
+    shadowElevation: Dp = 0.dp,
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        DeviceKnobs(faceSize = size)
+        DeviceFace(
+            bits = bits,
+            frameColor = frameColor,
+            size = size,
+            litAlpha = litAlpha,
+            glow = glow,
+            shadowElevation = shadowElevation,
+        )
+    }
+}
+
+// Knob ratios are fractions of a 168dp frame while DeviceFace's corner and
+// padding defaults are fractions of 188dp. Both scale off the same face size,
+// so they compose correctly; don't "unify" the denominators.
+@Composable
+private fun DeviceKnobs(faceSize: Dp) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(faceSize * 16f / 168f),
+        // Tuck 1dp under the face so no hairline gap opens between them. The face
+        // is the later sibling, so it paints over the overlap.
+        modifier = Modifier.offset(y = 1.dp),
+    ) {
+        DeviceKnob(faceSize = faceSize, color = ClumoColors.Coral)
+        DeviceKnob(
+            faceSize = faceSize,
+            color = ClumoColors.White,
+            outline = ClumoColors.OutlineBorder,
+        )
+    }
+}
+
+/**
+ * One knob as a single 凸 path so the cap and boss share one outline. The tier
+ * step comes from the silhouette and a shading gradient because Compose draws
+ * siblings in declaration order regardless of elevation, so a shadow the cap
+ * casts would be painted over by the boss.
+ */
+@Composable
+private fun DeviceKnob(faceSize: Dp, color: Color, outline: Color? = null) {
+    val capWidth = faceSize * 18f / 168f
+    val capHeight = faceSize * 10f / 168f
+    val bossWidth = faceSize * 28f / 168f
+    val bossHeight = faceSize * 8f / 168f
+    val capCorner = faceSize * 6f / 168f
+    val bossCorner = faceSize * 5f / 168f
+    Canvas(modifier = Modifier.size(width = bossWidth, height = capHeight + bossHeight)) {
+        // Held back from the sides and top so the outline stays inside the canvas.
+        // Applied even when this knob has no outline, so both are the same height.
+        val inset = 0.5.dp.toPx()
+        val capBottom = capHeight.toPx()
+        val capLeft = (size.width - capWidth.toPx()) / 2f
+        val cap = Path().apply {
+            addRoundRect(
+                RoundRect(
+                    // Overlap the boss by a pixel so the union leaves no seam.
+                    rect = Rect(capLeft, inset, capLeft + capWidth.toPx(), capBottom + 1f),
+                    topLeft = CornerRadius(capCorner.toPx()),
+                    topRight = CornerRadius(capCorner.toPx()),
+                    bottomRight = CornerRadius.Zero,
+                    bottomLeft = CornerRadius.Zero,
+                )
+            )
+        }
+        val boss = Path().apply {
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(inset, capBottom, size.width - inset, size.height),
+                    topLeft = CornerRadius(bossCorner.toPx()),
+                    topRight = CornerRadius(bossCorner.toPx()),
+                    bottomRight = CornerRadius.Zero,
+                    bottomLeft = CornerRadius.Zero,
+                )
+            )
+        }
+        val knob = Path().apply { op(cap, boss, PathOperation.Union) }
+        // Light on each tier's top edge, shade at its base: the crease at the
+        // junction is what makes the two tiers read as a step.
+        val junction = capBottom / size.height
+        drawPath(
+            path = knob,
+            brush = Brush.verticalGradient(
+                0f to lerp(color, Color.White, 0.10f),
+                junction * 0.97f to lerp(color, Color.Black, 0.07f),
+                junction to lerp(color, Color.White, 0.14f),
+                1f to lerp(color, Color.Black, 0.09f),
+            ),
+        )
+        if (outline != null) {
+            drawPath(path = knob, color = outline, style = Stroke(width = 1.dp.toPx()))
+        }
     }
 }
 

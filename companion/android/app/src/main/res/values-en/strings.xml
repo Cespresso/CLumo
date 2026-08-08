@@ -77,6 +77,21 @@
     <string name="button_role_viz_main">Sensitivity up</string>
     <string name="button_role_viz_sub">Sensitivity down</string>
 
+    <!-- Mode help -->
+    <string name="mode_help_open">Open %1$s help</string>
+    <string name="mode_help_acknowledge">Got it</string>
+    <string name="mode_help_device_display">Device display</string>
+    <string name="mode_help_coral_button">Coral button</string>
+    <string name="mode_help_white_button">White button</string>
+    <string name="mode_help_pomodoro_summary">Alternates focused work sessions with short breaks.</string>
+    <string name="mode_help_pomodoro_display">The 64 lights turn off gradually from top-left to bottom-right as time runs out.</string>
+    <string name="mode_help_timer_summary">Counts down from the time you set.</string>
+    <string name="mode_help_timer_display">Lights turn off from top-left to bottom-right as time runs out, then blink when the timer finishes.</string>
+    <string name="mode_help_display_summary">Shows your own 8×8 designs on CLumo.</string>
+    <string name="mode_help_display_display">Shows the design selected in the app.</string>
+    <string name="mode_help_visualizer_summary">Animates the lights in time with audio playing on Android.</string>
+    <string name="mode_help_visualizer_display">Shows the sound level as eight moving bars.</string>
+
     <!-- Pomodoro -->
     <string name="pomodoro_phase_work">Working</string>
     <string name="pomodoro_phase_break">On break</string>

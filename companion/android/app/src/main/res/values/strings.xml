@@ -77,6 +77,21 @@
     <string name="button_role_viz_main">感度を上げる</string>
     <string name="button_role_viz_sub">感度を下げる</string>
 
+    <!-- Mode help -->
+    <string name="mode_help_open">%1$sの説明を開く</string>
+    <string name="mode_help_acknowledge">わかった</string>
+    <string name="mode_help_device_display">本体の表示</string>
+    <string name="mode_help_coral_button">コーラルボタン</string>
+    <string name="mode_help_white_button">ホワイトボタン</string>
+    <string name="mode_help_pomodoro_summary">集中する「作業」と短い「休憩」を交互に繰り返すモードです。</string>
+    <string name="mode_help_pomodoro_display">残り時間に合わせて、64個の光が左上から右下へ少しずつ減ります。</string>
+    <string name="mode_help_timer_summary">設定した時間をカウントダウンするモードです。</string>
+    <string name="mode_help_timer_display">残り時間に合わせて光が左上から右下へ減り、終了時に点滅します。</string>
+    <string name="mode_help_display_summary">好きな8×8の絵柄をCLumoに表示するモードです。</string>
+    <string name="mode_help_display_display">アプリで選択した絵柄を表示します。</string>
+    <string name="mode_help_visualizer_summary">Androidで再生中の音に合わせて、光が動くモードです。</string>
+    <string name="mode_help_visualizer_display">音の強さを8列のバーで表現します。</string>
+
     <!-- Pomodoro -->
     <string name="pomodoro_phase_work">作業中</string>
     <string name="pomodoro_phase_break">休憩中</string>

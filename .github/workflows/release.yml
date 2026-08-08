@@ -127,6 +127,8 @@ jobs:
   build-apk:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
+    # 署名材料は android-release Environment（v* タグのみ許可）に限定する
+    environment: android-release
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -140,36 +142,50 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # 署名用 keystore が Secrets にあれば復元して環境変数を渡す。
-      # なければ build.gradle.kts 側の debug 署名フォールバックに任せる。
+      # Environment Secrets から keystore を復元する。
+      # 材料が一つでも欠けていたらここで失敗させる（未署名 APK を公開しないため）。
       - name: Prepare signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SIGNING_CERT_SHA256: ${{ vars.SIGNING_CERT_SHA256 }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/clumo-release.keystore"
-            {
-              echo "CLUMO_KEYSTORE_PATH=$RUNNER_TEMP/clumo-release.keystore"
-              echo "CLUMO_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
-              echo "CLUMO_KEY_ALIAS=$KEY_ALIAS"
-              echo "CLUMO_KEY_PASSWORD=$KEY_PASSWORD"
-            } >> "$GITHUB_ENV"
-          else
-            echo "::warning::署名用 Secrets が未設定のため debug 署名でビルドします"
-          fi
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD SIGNING_CERT_SHA256; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not configured in android-release"
+              exit 1
+            fi
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/clumo-release.keystore"
 
       - name: Build APK (release)
         working-directory: companion/android
+        env:
+          CLUMO_KEYSTORE_PATH: ${{ runner.temp }}/clumo-release.keystore
+          CLUMO_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          CLUMO_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          CLUMO_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           chmod +x ./gradlew
           ./gradlew assembleRelease
 
-      - name: Rename APK
+      # 署名の有効性と証明書指紋が期待値と一致することを確認してから成果物にする
+      - name: Verify APK signature
+        env:
+          CLUMO_SIGNING_CERT_SHA256: ${{ vars.SIGNING_CERT_SHA256 }}
         run: |
-          apk=$(ls companion/android/app/build/outputs/apk/release/*.apk | head -n 1)
+          apk=$(find companion/android/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          apksigner=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+          test -n "$apk" && test -n "$apksigner"
+          "$apksigner" verify --verbose --print-certs "$apk"
+          actual=$("$apksigner" verify --print-certs "$apk" | sed -n 's/^.*certificate SHA-256 digest: //p' | head -n 1 | tr '[:lower:]' '[:upper:]' | tr -d ': ')
+          expected=$(printf '%s' "$CLUMO_SIGNING_CERT_SHA256" | tr '[:lower:]' '[:upper:]' | tr -d ': ')
+          if [ -z "$actual" ] || [ "$actual" != "$expected" ]; then
+            echo "::error::APK signing certificate does not match SIGNING_CERT_SHA256"
+            exit 1
+          fi
           cp "$apk" clumo.apk
           ls -lh clumo.apk
 

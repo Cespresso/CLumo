@@ -1,4 +1,4 @@
-# Hardware — coming soon / 近日公開
+# Hardware (coming soon / 近日公開)
 
 3D-printable enclosure models, a wiring diagram, and a parts list for CLumo will be published here.
 

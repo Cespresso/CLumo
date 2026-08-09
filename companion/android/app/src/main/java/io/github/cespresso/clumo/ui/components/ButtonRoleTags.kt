@@ -19,18 +19,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.ble.BleUuids
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
 /**
  * String resources describing what each physical button does in a mode.
- * `main` is the coral knob, `sub` the white one.
+ * `main` is button A and `sub` is button B; their colors come from the device profile.
  */
 data class ButtonRoleLabels(
     @StringRes val main: Int,
@@ -60,8 +62,14 @@ fun buttonRoleLabels(mode: Int): ButtonRoleLabels = when (mode) {
 /** Two chips telling what the physical main/sub buttons do in [mode]. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ButtonRoleTags(mode: Int, modifier: Modifier = Modifier) {
+fun ButtonRoleTags(
+    mode: Int,
+    modifier: Modifier = Modifier,
+    appearance: DeviceAppearance = DeviceAppearance.DEFAULT,
+) {
     val labels = buttonRoleLabels(mode)
+    val buttonA = appearance.buttonAColor.toComposeColor()
+    val buttonB = appearance.buttonBColor.toComposeColor()
     // Two chips stop fitting side by side as the font scale grows, so this wraps
     // the second one rather than let its label break mid-word. Keep the alignment
     // argument on spacedBy: it centers a wrapped row, and filling the width leaves
@@ -73,17 +81,30 @@ fun ButtonRoleTags(mode: Int, modifier: Modifier = Modifier) {
     ) {
         RoleTag(
             textRes = labels.main,
-            background = ClumoColors.CoralChipBg,
-            textColor = ClumoColors.CoralChipFg,
-            dotColor = ClumoColors.Coral,
+            background = lerp(buttonA, Color.White, 0.82f),
+            textColor = ClumoColors.Text,
+            dotColor = buttonA,
+            dotBorder = if (contentToneFor(appearance.buttonAColor) == ContentTone.Dark) {
+                ClumoColors.Gray
+            } else {
+                null
+            },
         )
         RoleTag(
             textRes = labels.sub,
-            background = ClumoColors.White,
-            textColor = ClumoColors.Muted,
-            dotColor = ClumoColors.White,
-            dotBorder = ClumoColors.Gray,
-            border = ClumoColors.OutlineBorder,
+            background = lerp(buttonB, Color.White, 0.82f),
+            textColor = ClumoColors.Text,
+            dotColor = buttonB,
+            dotBorder = if (contentToneFor(appearance.buttonBColor) == ContentTone.Dark) {
+                ClumoColors.Gray
+            } else {
+                null
+            },
+            border = if (contentToneFor(appearance.buttonBColor) == ContentTone.Dark) {
+                ClumoColors.OutlineBorder
+            } else {
+                null
+            },
         )
     }
 }

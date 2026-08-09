@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.HubViewModel
+import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceScreen
 import io.github.cespresso.clumo.ui.device.DeviceScreen
 import io.github.cespresso.clumo.ui.devices.DeviceListScreen
 import io.github.cespresso.clumo.ui.editor.PatternEditorScreen
@@ -35,6 +36,7 @@ sealed interface Screen {
     data object DeviceList : Screen
     data class Device(val address: String) : Screen
     data class Editor(val address: String?, val patternId: String?) : Screen
+    data class Appearance(val deviceId: String) : Screen
     data object Settings : Screen
     data object Licenses : Screen
 }
@@ -105,6 +107,7 @@ private fun AppRoot(service: DeviceHubService) {
             address = current.address,
             onBack = { pop() },
             onOpenSettings = { push(Screen.Settings) },
+            onOpenAppearance = { deviceId -> push(Screen.Appearance(deviceId)) },
             onOpenEditor = { patternId ->
                 push(Screen.Editor(address = current.address, patternId = patternId))
             },
@@ -114,6 +117,12 @@ private fun AppRoot(service: DeviceHubService) {
             service = service,
             address = current.address,
             patternId = current.patternId,
+            onBack = { pop() },
+        )
+
+        is Screen.Appearance -> DeviceAppearanceScreen(
+            service = service,
+            deviceId = current.deviceId,
             onBack = { pop() },
         )
 

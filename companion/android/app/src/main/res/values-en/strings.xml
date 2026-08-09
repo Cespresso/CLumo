@@ -42,6 +42,7 @@
 
     <!-- Device screen -->
     <string name="device_menu_rename">Rename</string>
+    <string name="device_menu_appearance">Appearance settings</string>
     <string name="device_menu_settings">Settings</string>
     <string name="device_menu_refresh_gatt">Refresh device info</string>
     <string name="device_menu_disconnect">Disconnect</string>
@@ -131,6 +132,39 @@
 
     <!-- Rename dialog -->
     <string name="rename_title">Rename</string>
+
+    <!-- Device appearance -->
+    <string name="appearance_title">Appearance settings</string>
+    <string name="appearance_preview_label">Appearance of %1$s</string>
+    <string name="appearance_enclosure">Enclosure</string>
+    <string name="appearance_button_a">Button A</string>
+    <string name="appearance_button_b">Button B</string>
+    <string name="appearance_led">LED</string>
+    <string name="appearance_reset">Reset to default colors</string>
+    <string name="appearance_save_error">Couldn’t save the color. Please try again.</string>
+    <string name="appearance_custom_color">Choose a custom color</string>
+    <string name="appearance_swatch_description">%1$s, %2$s</string>
+    <string name="appearance_selected">selected</string>
+    <string name="appearance_picker_title">%1$s color</string>
+    <string name="appearance_hex_label">Hex color</string>
+    <string name="appearance_hex_error">Enter a color in #RRGGBB format</string>
+    <string name="appearance_use_color">Use this color</string>
+    <string name="appearance_preset_sage">Sage</string>
+    <string name="appearance_preset_coral">Coral</string>
+    <string name="appearance_preset_mist_blue">Mist Blue</string>
+    <string name="appearance_preset_lavender">Lavender</string>
+    <string name="appearance_preset_mustard">Mustard</string>
+    <string name="appearance_preset_dusty_rose">Dusty Rose</string>
+    <string name="appearance_preset_sand">Sand</string>
+    <string name="appearance_preset_stone">Stone</string>
+    <string name="appearance_preset_white">White</string>
+    <string name="appearance_preset_red">Red</string>
+    <string name="appearance_preset_blue">Blue</string>
+    <string name="appearance_preset_green">Green</string>
+    <string name="appearance_preset_orange">Orange</string>
+    <string name="appearance_preset_yellow">Yellow</string>
+    <string name="appearance_preset_purple">Purple</string>
+    <string name="appearance_preset_warm_white">Warm White</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

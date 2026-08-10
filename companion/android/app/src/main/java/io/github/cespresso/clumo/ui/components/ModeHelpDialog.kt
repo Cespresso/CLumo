@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.ble.BleUuids
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.delay
@@ -136,7 +137,11 @@ fun ModeHelpHeader(
 }
 
 @Composable
-fun ModeHelpDialog(mode: Int, onDismiss: () -> Unit) {
+fun ModeHelpDialog(
+    mode: Int,
+    appearance: DeviceAppearance,
+    onDismiss: () -> Unit,
+) {
     val content = modeHelpContent(mode) ?: return
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -149,7 +154,7 @@ fun ModeHelpDialog(mode: Int, onDismiss: () -> Unit) {
                 .padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            ModeHelpPreview(mode = mode)
+            ModeHelpPreview(mode = mode, appearance = appearance)
             Text(
                 text = stringResource(content.title),
                 modifier = Modifier
@@ -180,16 +185,17 @@ fun ModeHelpDialog(mode: Int, onDismiss: () -> Unit) {
                 description = stringResource(content.displayDescription),
             )
             HelpDetailRow(
-                markerColor = ClumoColors.Coral,
-                markerBackground = ClumoColors.CoralChipBg,
-                heading = stringResource(R.string.mode_help_coral_button),
+                markerColor = appearance.buttonAColor.toComposeColor(),
+                markerBackground = ClumoColors.Panel,
+                markerBorder = ClumoColors.OutlineBorder,
+                heading = stringResource(R.string.appearance_button_a),
                 description = stringResource(content.mainButtonDescription),
             )
             HelpDetailRow(
-                markerColor = ClumoColors.White,
+                markerColor = appearance.buttonBColor.toComposeColor(),
                 markerBackground = ClumoColors.Panel,
                 markerBorder = ClumoColors.OutlineBorder,
-                heading = stringResource(R.string.mode_help_white_button),
+                heading = stringResource(R.string.appearance_button_b),
                 description = stringResource(content.subButtonDescription),
             )
             CoralPillButton(
@@ -280,7 +286,7 @@ private fun HelpDetailRow(
 }
 
 @Composable
-private fun ModeHelpPreview(mode: Int) {
+private fun ModeHelpPreview(mode: Int, appearance: DeviceAppearance) {
     var tick by remember(mode) { mutableIntStateOf(0) }
     LaunchedEffect(mode) {
         while (true) {
@@ -290,8 +296,8 @@ private fun ModeHelpPreview(mode: Int) {
     }
     ClumoDevice(
         bits = demoBits(mode, tick),
-        frameColor = ClumoColors.Sage,
         size = 116.dp,
+        appearance = appearance,
         glow = true,
         shadowElevation = 8.dp,
     )

@@ -1,7 +1,6 @@
 package io.github.cespresso.clumo.ui.components
 
 import androidx.compose.animation.animateColor
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -57,9 +56,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
@@ -124,33 +125,6 @@ object FaceBits {
 // ---------------------------------------------------------------------------
 // Connection-state visuals
 // ---------------------------------------------------------------------------
-
-/** Frame color for a device face; pulses gray<->sage while connecting. */
-@Composable
-fun connectionFrameColor(state: ConnectionState): Color {
-    val connecting = state == ConnectionState.Connecting ||
-        state == ConnectionState.Reconnecting ||
-        state == ConnectionState.Bonding ||
-        state == ConnectionState.Connected ||
-        state == ConnectionState.Synchronizing
-    if (connecting) {
-        val transition = rememberInfiniteTransition(label = "framePulse")
-        val color by transition.animateColor(
-            initialValue = ClumoColors.Gray,
-            targetValue = ClumoColors.Sage,
-            animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
-            label = "framePulseColor",
-        )
-        return color
-    }
-    val target = when (state) {
-        ConnectionState.Ready -> ClumoColors.Sage
-        ConnectionState.Error -> ClumoColors.Coral
-        else -> ClumoColors.Gray
-    }
-    val color by animateColorAsState(target, label = "frameColor")
-    return color
-}
 
 @Composable
 fun connectionLabel(state: ConnectionState): Pair<String, Color> = when (state) {
@@ -265,30 +239,88 @@ fun OutlinePillButton(
 }
 
 // ---------------------------------------------------------------------------
-// CLumo device: the two physical knobs (main = coral, sub = white) on top of
-// the face. Each knob is a two-tier bump: a wider boss with the cap above it,
-// both in the cap's color like the real hardware.
+// CLumo device: two independently colored physical knobs on top of the face.
+// Each knob is a two-tier bump: a wider boss with the cap above it, both in the
+// cap's color like the real hardware.
 // ---------------------------------------------------------------------------
 
 @Composable
 fun ClumoDevice(
     bits: Long,
-    frameColor: Color,
     size: Dp,
     modifier: Modifier = Modifier,
+    appearance: DeviceAppearance = DeviceAppearance.DEFAULT,
+    connectionState: ConnectionState? = null,
     litAlpha: Float = 1f,
     glow: Boolean = true,
     shadowElevation: Dp = 0.dp,
 ) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        DeviceKnobs(faceSize = size)
-        DeviceFace(
-            bits = bits,
-            frameColor = frameColor,
-            size = size,
-            litAlpha = litAlpha,
-            glow = glow,
-            shadowElevation = shadowElevation,
+    Box(modifier = modifier) {
+        ConnectionRingCanvas(
+            state = connectionState,
+            size = size + 8.dp,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .offset(y = (-4).dp)
+                .zIndex(DeviceVisualLayer.ConnectionRing.zIndex),
+        )
+        Column(
+            modifier = Modifier.zIndex(DeviceVisualLayer.PhysicalDevice.zIndex),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            DeviceKnobs(faceSize = size, appearance = appearance)
+            Box(
+                modifier = Modifier
+                    .size(size + 8.dp)
+                    .offset(y = (-4).dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                DeviceFace(
+                    bits = bits,
+                    frameColor = appearance.enclosureColor.toComposeColor(),
+                    ledColor = appearance.ledColor.toComposeColor(),
+                    size = size,
+                    frameOutline = if (
+                        contentToneFor(appearance.enclosureColor) == ContentTone.Dark
+                    ) {
+                        ClumoColors.OutlineBorder
+                    } else {
+                        null
+                    },
+                    litAlpha = litAlpha,
+                    glow = glow,
+                    shadowElevation = shadowElevation,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConnectionRingCanvas(
+    state: ConnectionState?,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
+    val ring = state?.let(::connectionRingFor) ?: ConnectionRing.None
+    if (ring == ConnectionRing.None) return
+    val ringColor = if (ring == ConnectionRing.Pulse) {
+        val transition = rememberInfiniteTransition(label = "connectionRingPulse")
+        val color by transition.animateColor(
+            initialValue = ClumoColors.Gray,
+            targetValue = ClumoColors.Sage,
+            animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+            label = "connectionRingColor",
+        )
+        color
+    } else {
+        ClumoColors.Coral
+    }
+    Canvas(modifier = modifier.size(size)) {
+        drawRoundRect(
+            color = ringColor,
+            cornerRadius = CornerRadius(size.toPx() * 42f / 188f),
+            style = Stroke(width = 3.dp.toPx()),
         )
     }
 }
@@ -297,18 +329,30 @@ fun ClumoDevice(
 // padding defaults are fractions of 188dp. Both scale off the same face size,
 // so they compose correctly; don't "unify" the denominators.
 @Composable
-private fun DeviceKnobs(faceSize: Dp) {
+private fun DeviceKnobs(faceSize: Dp, appearance: DeviceAppearance) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(faceSize * 16f / 168f),
         // Tuck 1dp under the face so no hairline gap opens between them. The face
         // is the later sibling, so it paints over the overlap.
         modifier = Modifier.offset(y = 1.dp),
     ) {
-        DeviceKnob(faceSize = faceSize, color = ClumoColors.Coral)
         DeviceKnob(
             faceSize = faceSize,
-            color = ClumoColors.White,
-            outline = ClumoColors.OutlineBorder,
+            color = appearance.buttonAColor.toComposeColor(),
+            outline = if (contentToneFor(appearance.buttonAColor) == ContentTone.Dark) {
+                ClumoColors.OutlineBorder
+            } else {
+                null
+            },
+        )
+        DeviceKnob(
+            faceSize = faceSize,
+            color = appearance.buttonBColor.toComposeColor(),
+            outline = if (contentToneFor(appearance.buttonBColor) == ContentTone.Dark) {
+                ClumoColors.OutlineBorder
+            } else {
+                null
+            },
         )
     }
 }
@@ -385,6 +429,8 @@ fun DeviceFace(
     frameColor: Color,
     size: Dp,
     modifier: Modifier = Modifier,
+    ledColor: Color = ClumoColors.LitDot,
+    frameOutline: Color? = null,
     frameCorner: Dp = size * 42f / 188f,
     framePadding: Dp = size * 23f / 188f,
     innerCorner: Dp = size * 21f / 188f,
@@ -403,6 +449,13 @@ fun DeviceFace(
             .size(size)
             .clip(RoundedCornerShape(frameCorner))
             .background(frameColor)
+            .then(
+                if (frameOutline != null) {
+                    Modifier.border(1.dp, frameOutline, RoundedCornerShape(frameCorner))
+                } else {
+                    Modifier
+                }
+            )
             .padding(framePadding),
     ) {
         Box(
@@ -412,7 +465,7 @@ fun DeviceFace(
                 .background(ClumoColors.Panel)
                 .padding(gridPadding),
         ) {
-            DotGrid(bits = bits, litAlpha = litAlpha, glow = glow)
+            DotGrid(bits = bits, ledColor = ledColor, litAlpha = litAlpha, glow = glow)
         }
     }
 }
@@ -421,6 +474,7 @@ fun DeviceFace(
 fun DotGrid(
     bits: Long,
     modifier: Modifier = Modifier,
+    ledColor: Color = ClumoColors.LitDot,
     litAlpha: Float = 1f,
     glow: Boolean = true,
 ) {
@@ -437,8 +491,8 @@ fun DotGrid(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ClumoColors.LitDot.copy(alpha = 0.55f * litAlpha),
-                                    ClumoColors.LitDot.copy(alpha = 0f),
+                                    ledColor.copy(alpha = 0.55f * litAlpha),
+                                    ledColor.copy(alpha = 0f),
                                 ),
                                 center = center,
                                 radius = dotRadius * 2.1f,
@@ -448,7 +502,7 @@ fun DotGrid(
                         )
                     }
                     drawCircle(
-                        color = ClumoColors.LitDot.copy(alpha = litAlpha),
+                        color = ledColor.copy(alpha = litAlpha),
                         radius = dotRadius,
                         center = center,
                     )

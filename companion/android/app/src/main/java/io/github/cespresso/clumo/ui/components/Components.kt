@@ -14,6 +14,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -50,6 +51,9 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -237,6 +241,48 @@ fun OutlinePillButton(
             fontWeight = FontWeight.Bold,
             fontFamily = RoundedFontFamily,
         )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Help affordance: circular "?" that opens an explanatory dialog
+// ---------------------------------------------------------------------------
+
+/**
+ * The tap target is a full 48.dp even though the ring is 30.dp, so the badge
+ * stays reachable when it sits beside a heading.
+ */
+@Composable
+fun HelpBadge(
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = LocalClumoAccents.current.accent
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .clip(CircleShape)
+            .semantics { contentDescription = description }
+            .clickable(role = Role.Button, onClickLabel = description, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(ClumoColors.White)
+                .border(1.5.dp, accent, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "?",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.ExtraBold,
+                fontFamily = RoundedFontFamily,
+                color = accent,
+            )
+        }
     }
 }
 
@@ -724,44 +770,29 @@ fun NameInputDialog(
     onDismiss: () -> Unit,
 ) {
     var text by remember { mutableStateOf(initialValue) }
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(26.dp))
-                .background(ClumoColors.White)
-                .padding(22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(
-                text = title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = RoundedFontFamily,
-                color = ClumoColors.Text,
+    DialogCard(onDismiss = onDismiss) {
+        DialogTitle(title)
+        ClumoTextField(
+            value = text,
+            onValueChange = { text = it },
+            placeholder = placeholder,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinePillButton(
+                text = stringResource(R.string.dialog_cancel),
+                onClick = onDismiss,
+                fontSize = 14.sp,
+                verticalPadding = 12.dp,
+                modifier = Modifier.weight(1f),
             )
-            ClumoTextField(
-                value = text,
-                onValueChange = { text = it },
-                placeholder = placeholder,
-                modifier = Modifier.fillMaxWidth(),
+            CtaPillButton(
+                text = stringResource(R.string.dialog_save),
+                onClick = { onConfirm(text) },
+                fontSize = 14.sp,
+                verticalPadding = 12.dp,
+                modifier = Modifier.weight(1f),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinePillButton(
-                    text = stringResource(R.string.dialog_cancel),
-                    onClick = onDismiss,
-                    fontSize = 14.sp,
-                    verticalPadding = 12.dp,
-                    modifier = Modifier.weight(1f),
-                )
-                CtaPillButton(
-                    text = stringResource(R.string.dialog_save),
-                    onClick = { onConfirm(text) },
-                    fontSize = 14.sp,
-                    verticalPadding = 12.dp,
-                    modifier = Modifier.weight(1f),
-                )
-            }
         }
     }
 }
@@ -776,6 +807,55 @@ fun ClumoActionDialog(
     dismissText: String = stringResource(R.string.dialog_cancel),
     onDismiss: () -> Unit,
 ) {
+    DialogCard(onDismiss = onDismiss) {
+        DialogTitle(title)
+        DialogBody(body)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OutlinePillButton(
+                text = dismissText,
+                onClick = onDismiss,
+                fontSize = 14.sp,
+                verticalPadding = 12.dp,
+                modifier = Modifier.weight(1f),
+            )
+            CtaPillButton(
+                text = confirmText,
+                onClick = onConfirm,
+                fontSize = 14.sp,
+                verticalPadding = 12.dp,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+/** CLumo-styled single-action dialog for explaining a feature. */
+@Composable
+fun ClumoInfoDialog(
+    title: String,
+    body: String,
+    onDismiss: () -> Unit,
+    acknowledgeText: String = stringResource(R.string.dialog_acknowledge),
+) {
+    DialogCard(onDismiss = onDismiss) {
+        DialogTitle(title)
+        DialogBody(body)
+        CtaPillButton(
+            text = acknowledgeText,
+            onClick = onDismiss,
+            fontSize = 14.sp,
+            verticalPadding = 12.dp,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** Squircle white card shared by every CLumo dialog. */
+@Composable
+private fun DialogCard(
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
@@ -784,40 +864,32 @@ fun ClumoActionDialog(
                 .background(ClumoColors.White)
                 .padding(22.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(
-                text = title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = RoundedFontFamily,
-                color = ClumoColors.Text,
-            )
-            Text(
-                text = body,
-                fontSize = 13.5.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = RoundedFontFamily,
-                color = ClumoColors.Muted,
-                lineHeight = 21.sp,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinePillButton(
-                    text = dismissText,
-                    onClick = onDismiss,
-                    fontSize = 14.sp,
-                    verticalPadding = 12.dp,
-                    modifier = Modifier.weight(1f),
-                )
-                CtaPillButton(
-                    text = confirmText,
-                    onClick = onConfirm,
-                    fontSize = 14.sp,
-                    verticalPadding = 12.dp,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
+            content = content,
+        )
     }
+}
+
+@Composable
+private fun DialogTitle(text: String) {
+    Text(
+        text = text,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.ExtraBold,
+        fontFamily = RoundedFontFamily,
+        color = ClumoColors.Text,
+    )
+}
+
+@Composable
+private fun DialogBody(text: String) {
+    Text(
+        text = text,
+        fontSize = 13.5.sp,
+        fontWeight = FontWeight.Medium,
+        fontFamily = RoundedFontFamily,
+        color = ClumoColors.Muted,
+        lineHeight = 21.sp,
+    )
 }
 
 // ---------------------------------------------------------------------------

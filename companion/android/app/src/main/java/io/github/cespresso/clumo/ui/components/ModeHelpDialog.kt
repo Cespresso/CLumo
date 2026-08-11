@@ -3,7 +3,6 @@ package io.github.cespresso.clumo.ui.components
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,9 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -109,31 +106,7 @@ fun ModeHelpHeader(
             fontFamily = RoundedFontFamily,
             color = ClumoColors.Text,
         )
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .semantics { contentDescription = helpLabel }
-                .clickable(role = Role.Button, onClickLabel = helpLabel, onClick = onHelpClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(CircleShape)
-                    .background(ClumoColors.White)
-                    .border(1.5.dp, LocalClumoAccents.current.accent, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "?",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = RoundedFontFamily,
-                    color = LocalClumoAccents.current.accent,
-                )
-            }
-        }
+        HelpBadge(description = helpLabel, onClick = onHelpClick)
     }
 }
 
@@ -200,7 +173,7 @@ fun ModeHelpDialog(
                 description = stringResource(content.subButtonDescription),
             )
             CtaPillButton(
-                text = stringResource(R.string.mode_help_acknowledge),
+                text = stringResource(R.string.dialog_acknowledge),
                 onClick = onDismiss,
                 fontSize = 14.sp,
                 verticalPadding = 12.dp,

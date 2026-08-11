@@ -13,10 +13,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -63,6 +68,7 @@ import io.github.cespresso.clumo.ui.components.BrandCorner
 import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
+import io.github.cespresso.clumo.ui.components.ClumoNavigationBarSpacer
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
 import io.github.cespresso.clumo.ui.appearance.resolveAppearance
@@ -84,6 +90,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 private const val SCAN_TIMEOUT_MS = 20_000L
+private val LIST_ITEM_GAP = 16.dp
+private val LIST_OVERLAY_CLEARANCE = 120.dp
 
 private sealed interface PendingBluetoothAction {
     data object Scan : PendingBluetoothAction
@@ -205,6 +213,11 @@ fun DeviceListScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                        ),
+                    )
                     .padding(start = 22.dp, end = 22.dp, top = 16.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -237,11 +250,20 @@ fun DeviceListScreen(
             }
 
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+                    ),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                    start = 22.dp, end = 22.dp, top = 8.dp, bottom = 120.dp,
+                    start = 22.dp,
+                    end = 22.dp,
+                    top = 8.dp,
+                    // The trailing spacer is a lazy item too, so the arrangement gap before it
+                    // already counts toward the clearance below the last card.
+                    bottom = LIST_OVERLAY_CLEARANCE - LIST_ITEM_GAP,
                 ),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(LIST_ITEM_GAP),
             ) {
                 items(knownDevices, key = { it.id }) { device ->
                     val connection = activeConnections[device.address]
@@ -320,6 +342,8 @@ fun DeviceListScreen(
                     }
                     item { PasskeyHint() }
                 }
+
+                item { ClumoNavigationBarSpacer(visualSpacing = 0.dp) }
             }
         }
 
@@ -333,6 +357,11 @@ fun DeviceListScreen(
                         0f to ClumoColors.Background.copy(alpha = 0f),
                         0.45f to ClumoColors.Background,
                     )
+                )
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(
+                        WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                    ),
                 )
                 .padding(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 26.dp),
         ) {

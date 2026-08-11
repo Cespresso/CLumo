@@ -17,12 +17,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -269,6 +274,11 @@ fun DeviceScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                        ),
+                    )
                     .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -313,7 +323,13 @@ fun DeviceScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                        ),
+                    )
+                    .padding(bottom = 40.dp),
             ) {
                 if (state == ConnectionState.Bonding) {
                     Row(
@@ -533,7 +549,7 @@ fun DeviceScreen(
                                     }
                                 )
                                 .fillMaxWidth()
-                                .padding(start = 22.dp, end = 22.dp, top = 2.dp, bottom = 40.dp),
+                                .padding(start = 22.dp, end = 22.dp, top = 2.dp),
                         ) {
                             when (effectiveMode) {
                                 BleUuids.MODE_DISPLAY -> PatternsSection(
@@ -613,6 +629,11 @@ fun DeviceScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Top + WindowInsetsSides.End,
+                        ),
+                    )
                     .offset(x = (-16).dp, y = 52.dp)
                     .widthIn(min = 176.dp)
                     .shadow(14.dp, RoundedCornerShape(20.dp))

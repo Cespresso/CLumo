@@ -33,6 +33,7 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
@@ -61,6 +62,10 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         getByName("release") {
             signingConfig = signingConfigs.findByName("release")
         }
@@ -80,5 +85,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // Android's org.json classes are method stubs in local JVM tests.
     testImplementation("org.json:json:20180813")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

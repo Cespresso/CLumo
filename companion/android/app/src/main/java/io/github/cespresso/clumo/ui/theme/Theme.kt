@@ -1,10 +1,14 @@
 package io.github.cespresso.clumo.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -88,14 +92,43 @@ private val clumoColorScheme = lightColorScheme(
     surfaceVariant = ClumoColors.Panel,
     onSurfaceVariant = ClumoColors.Muted,
     outline = ClumoColors.OutlineBorder,
+    error = ClumoColors.ErrorText,
+    onError = ClumoColors.White,
+    errorContainer = ClumoColors.ErrorBg,
+    onErrorContainer = ClumoColors.ErrorText,
 )
 
 @Composable
-fun ClumoTheme(content: @Composable () -> Unit) {
-    // The design is a single warm light look regardless of the system theme.
-    MaterialTheme(
-        colorScheme = clumoColorScheme,
-        typography = clumoTypography,
-        content = content,
+private fun animatedAccents(target: ClumoAccents): ClumoAccents {
+    val spec = tween<Color>(durationMillis = 450)
+    return ClumoAccents(
+        accent = animateColorAsState(target.accent, spec, label = "accent").value,
+        onAccent = animateColorAsState(target.onAccent, spec, label = "onAccent").value,
+        cta = animateColorAsState(target.cta, spec, label = "cta").value,
+        onCta = animateColorAsState(target.onCta, spec, label = "onCta").value,
+        knob = animateColorAsState(target.knob, spec, label = "knob").value,
+        led = animateColorAsState(target.led, spec, label = "led").value,
     )
+}
+
+@Composable
+fun ClumoTheme(
+    appearance: DeviceAppearance = DeviceAppearance.DEFAULT,
+    content: @Composable () -> Unit,
+) {
+    // The design is a single warm light look regardless of the system theme;
+    // only the accent roles follow the primary device's appearance.
+    val accents = animatedAccents(accentSpecFor(appearance).toClumoAccents())
+    CompositionLocalProvider(LocalClumoAccents provides accents) {
+        MaterialTheme(
+            colorScheme = clumoColorScheme.copy(
+                primary = accents.accent,
+                onPrimary = accents.onAccent,
+                secondary = accents.cta,
+                onSecondary = accents.onCta,
+            ),
+            typography = clumoTypography,
+            content = content,
+        )
+    }
 }

@@ -15,9 +15,11 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.HubViewModel
 import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceScreen
+import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.device.DeviceScreen
 import io.github.cespresso.clumo.ui.devices.DeviceListScreen
 import io.github.cespresso.clumo.ui.editor.PatternEditorScreen
@@ -46,9 +48,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ClumoTheme {
-                val viewModel: HubViewModel = viewModel()
-                val service by viewModel.service.collectAsState()
+            val viewModel: HubViewModel = viewModel()
+            val service by viewModel.service.collectAsState()
+            ClumoTheme(appearance = primaryDeviceAppearance(service)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -59,6 +61,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+/** DEFAULT until the service binds and preferences load. */
+@Composable
+private fun primaryDeviceAppearance(service: DeviceHubService?): DeviceAppearance {
+    if (service == null) return DeviceAppearance.DEFAULT
+    val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
+    val primaryId by service.preferences.primaryDeviceId.collectAsState(initial = null)
+    return resolveAppearance(primaryId, appearances)
 }
 
 @Composable

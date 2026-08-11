@@ -63,6 +63,7 @@ import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
 // ---------------------------------------------------------------------------
@@ -128,7 +129,7 @@ object FaceBits {
 
 @Composable
 fun connectionLabel(state: ConnectionState): Pair<String, Color> = when (state) {
-    ConnectionState.Ready -> stringResource(R.string.state_connected) to ClumoColors.Sage
+    ConnectionState.Ready -> stringResource(R.string.state_connected) to LocalClumoAccents.current.accent
     ConnectionState.Connecting,
     ConnectionState.Reconnecting,
     ConnectionState.Bonding,
@@ -147,7 +148,7 @@ fun BrandCorner(
     size: Dp,
     stroke: Dp,
     modifier: Modifier = Modifier,
-    color: Color = ClumoColors.Sage,
+    color: Color = LocalClumoAccents.current.accent,
 ) {
     Canvas(modifier = modifier.size(size)) {
         val sw = stroke.toPx()
@@ -182,7 +183,7 @@ fun BrandCorner(
 // ---------------------------------------------------------------------------
 
 @Composable
-fun CoralPillButton(
+fun CtaPillButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -190,18 +191,19 @@ fun CoralPillButton(
     verticalPadding: Dp = 16.dp,
     enabled: Boolean = true,
 ) {
+    val accents = LocalClumoAccents.current
     Box(
         modifier = modifier
-            .shadow(8.dp, RoundedCornerShape(999.dp), ambientColor = ClumoColors.Coral, spotColor = ClumoColors.Coral)
+            .shadow(8.dp, RoundedCornerShape(999.dp), ambientColor = accents.cta, spotColor = accents.cta)
             .clip(RoundedCornerShape(999.dp))
-            .background(ClumoColors.Coral)
+            .background(accents.cta)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp, vertical = verticalPadding),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
-            color = ClumoColors.White,
+            color = accents.onCta,
             fontSize = fontSize,
             fontWeight = FontWeight.Bold,
             fontFamily = RoundedFontFamily,
@@ -308,7 +310,7 @@ private fun ConnectionRingCanvas(
         val transition = rememberInfiniteTransition(label = "connectionRingPulse")
         val color by transition.animateColor(
             initialValue = ClumoColors.Gray,
-            targetValue = ClumoColors.Sage,
+            targetValue = LocalClumoAccents.current.accent,
             animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
             label = "connectionRingColor",
         )
@@ -429,7 +431,7 @@ fun DeviceFace(
     frameColor: Color,
     size: Dp,
     modifier: Modifier = Modifier,
-    ledColor: Color = ClumoColors.LitDot,
+    ledColor: Color = LocalClumoAccents.current.led,
     frameOutline: Color? = null,
     frameCorner: Dp = size * 42f / 188f,
     framePadding: Dp = size * 23f / 188f,
@@ -474,7 +476,7 @@ fun DeviceFace(
 fun DotGrid(
     bits: Long,
     modifier: Modifier = Modifier,
-    ledColor: Color = ClumoColors.LitDot,
+    ledColor: Color = LocalClumoAccents.current.led,
     litAlpha: Float = 1f,
     glow: Boolean = true,
 ) {
@@ -553,7 +555,7 @@ fun SegmentedControl(
                                 } else Modifier
                             )
                             .clip(RoundedCornerShape(999.dp))
-                            .background(if (active) ClumoColors.White else Color.Transparent)
+                            .background(if (active) LocalClumoAccents.current.knob else Color.Transparent)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -602,7 +604,7 @@ fun ScanningIndicator(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .size(10.dp)
                     .clip(CircleShape)
-                    .background(ClumoColors.Sage.copy(alpha = alpha)),
+                    .background(LocalClumoAccents.current.accent.copy(alpha = alpha)),
             )
         }
         Text(
@@ -636,8 +638,8 @@ fun ClumoSlider(
         enabled = enabled,
         modifier = modifier,
         colors = SliderDefaults.colors(
-            thumbColor = ClumoColors.Sage,
-            activeTrackColor = ClumoColors.Sage,
+            thumbColor = LocalClumoAccents.current.accent,
+            activeTrackColor = LocalClumoAccents.current.accent,
             inactiveTrackColor = ClumoColors.ChipBorder,
         ),
     )
@@ -648,11 +650,12 @@ fun ClumoToggleSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
+    val accents = LocalClumoAccents.current
     Box(
         modifier = Modifier
             .size(width = 48.dp, height = 28.dp)
             .clip(RoundedCornerShape(999.dp))
-            .background(if (checked) ClumoColors.Sage else ClumoColors.SwitchOff)
+            .background(if (checked) accents.accent else ClumoColors.SwitchOff)
             .clickable { onCheckedChange(!checked) }
             .padding(3.dp),
         contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
@@ -662,7 +665,7 @@ fun ClumoToggleSwitch(
                 .size(22.dp)
                 .shadow(2.dp, CircleShape)
                 .clip(CircleShape)
-                .background(ClumoColors.White),
+                .background(accents.knob),
         )
     }
 }
@@ -751,7 +754,7 @@ fun NameInputDialog(
                     verticalPadding = 12.dp,
                     modifier = Modifier.weight(1f),
                 )
-                CoralPillButton(
+                CtaPillButton(
                     text = stringResource(R.string.dialog_save),
                     onClick = { onConfirm(text) },
                     fontSize = 14.sp,
@@ -805,7 +808,7 @@ fun ClumoActionDialog(
                     verticalPadding = 12.dp,
                     modifier = Modifier.weight(1f),
                 )
-                CoralPillButton(
+                CtaPillButton(
                     text = confirmText,
                     onClick = onConfirm,
                     fontSize = 14.sp,

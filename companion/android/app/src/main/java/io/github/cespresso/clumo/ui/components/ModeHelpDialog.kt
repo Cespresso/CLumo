@@ -41,6 +41,7 @@ import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.delay
 
@@ -121,7 +122,7 @@ fun ModeHelpHeader(
                     .size(30.dp)
                     .clip(CircleShape)
                     .background(ClumoColors.White)
-                    .border(1.5.dp, ClumoColors.Sage, CircleShape),
+                    .border(1.5.dp, LocalClumoAccents.current.accent, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
@@ -129,7 +130,7 @@ fun ModeHelpHeader(
                     fontSize = 15.sp,
                     fontWeight = FontWeight.ExtraBold,
                     fontFamily = RoundedFontFamily,
-                    color = ClumoColors.Sage,
+                    color = LocalClumoAccents.current.accent,
                 )
             }
         }
@@ -180,7 +181,7 @@ fun ModeHelpDialog(
             HelpDetailRow(
                 marker = "▦",
                 markerBackground = ClumoColors.Panel,
-                markerColor = ClumoColors.Sage,
+                markerColor = LocalClumoAccents.current.accent,
                 heading = stringResource(R.string.mode_help_device_display),
                 description = stringResource(content.displayDescription),
             )
@@ -198,7 +199,7 @@ fun ModeHelpDialog(
                 heading = stringResource(R.string.appearance_button_b),
                 description = stringResource(content.subButtonDescription),
             )
-            CoralPillButton(
+            CtaPillButton(
                 text = stringResource(R.string.mode_help_acknowledge),
                 onClick = onDismiss,
                 fontSize = 14.sp,

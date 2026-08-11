@@ -29,6 +29,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +39,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -56,7 +60,7 @@ import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.BrandCorner
-import io.github.cespresso.clumo.ui.components.CoralPillButton
+import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.FaceBits
@@ -67,6 +71,7 @@ import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.device.liveMirrorBits
 import io.github.cespresso.clumo.ui.onboarding.bluetoothPermissions
 import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -76,6 +81,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 
 private const val SCAN_TIMEOUT_MS = 20_000L
 
@@ -95,6 +101,8 @@ fun DeviceListScreen(
     val activeConnections by service.registry.connections.collectAsState()
     val aliases by service.preferences.aliases.collectAsState(initial = emptyMap())
     val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
+    val primaryDeviceId by service.preferences.primaryDeviceId.collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
     val patterns by service.patterns.patterns.collectAsState(initial = emptyList())
     val selectedPatternId by service.patterns.selectedId.collectAsState(initial = null)
 
@@ -243,6 +251,11 @@ fun DeviceListScreen(
                         appearance = resolveAppearance(device.id, appearances),
                         connection = connection,
                         selectedPatternBits = selectedPatternBits,
+                        isPrimary = device.id == primaryDeviceId,
+                        onTogglePrimary = {
+                            val next = if (device.id == primaryDeviceId) null else device.id
+                            scope.launch { service.preferences.setPrimaryDeviceId(next) }
+                        },
                         onTap = {
                             scanning = false
                             runWithBluetoothPermission(
@@ -323,7 +336,7 @@ fun DeviceListScreen(
                 )
                 .padding(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 26.dp),
         ) {
-            CoralPillButton(
+            CtaPillButton(
                 text = stringResource(R.string.list_scan_button),
                 onClick = { if (!scanning) startScan() },
                 modifier = Modifier.fillMaxWidth(),
@@ -357,6 +370,8 @@ private fun KnownDeviceCard(
     appearance: DeviceAppearance,
     connection: DeviceConnection?,
     selectedPatternBits: String?,
+    isPrimary: Boolean,
+    onTogglePrimary: () -> Unit,
     onTap: () -> Unit,
 ) {
     val state = connection?.connectionState?.collectAsState()?.value ?: ConnectionState.Disconnected
@@ -400,6 +415,25 @@ private fun KnownDeviceCard(
                 fontFamily = RoundedFontFamily,
                 color = labelColor,
                 modifier = Modifier.padding(top = 5.dp),
+            )
+        }
+        val toggleLabel = stringResource(
+            if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary
+        )
+        val primaryStateLabel = stringResource(R.string.device_primary_marker)
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .clickable(role = Role.Button, onClickLabel = toggleLabel, onClick = onTogglePrimary)
+                .semantics { if (isPrimary) stateDescription = primaryStateLabel },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = if (isPrimary) "★" else "☆",
+                fontSize = 18.sp,
+                fontFamily = RoundedFontFamily,
+                color = if (isPrimary) LocalClumoAccents.current.accent else ClumoColors.Chevron,
             )
         }
         Text(
@@ -483,10 +517,11 @@ private fun ScanStatusCard(
             fontFamily = RoundedFontFamily,
             color = ClumoColors.ErrorText,
         )
+        val accents = LocalClumoAccents.current
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
-                .background(ClumoColors.Coral)
+                .background(accents.cta)
                 .clickable(onClick = onAction)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
         ) {
@@ -499,7 +534,7 @@ private fun ScanStatusCard(
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = RoundedFontFamily,
-                color = ClumoColors.White,
+                color = accents.onCta,
             )
         }
     }
@@ -543,10 +578,11 @@ private fun FoundDeviceRow(
             color = ClumoColors.Text,
             modifier = Modifier.weight(1f),
         )
+        val accents = LocalClumoAccents.current
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
-                .background(ClumoColors.Coral)
+                .background(accents.cta)
                 .clickable(onClick = onConnect)
                 .padding(horizontal = 20.dp, vertical = 9.dp),
         ) {
@@ -555,7 +591,7 @@ private fun FoundDeviceRow(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = RoundedFontFamily,
-                color = ClumoColors.White,
+                color = accents.onCta,
             )
         }
     }
@@ -569,12 +605,13 @@ private fun PasskeyHint() {
             .padding(horizontal = 6.dp, vertical = 2.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        val accents = LocalClumoAccents.current
         Box(
             modifier = Modifier
                 .padding(top = 2.dp)
                 .size(16.dp)
                 .clip(CircleShape)
-                .background(ClumoColors.Sage),
+                .background(accents.accent),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -582,7 +619,7 @@ private fun PasskeyHint() {
                 fontSize = 11.sp,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = RoundedFontFamily,
-                color = ClumoColors.White,
+                color = accents.onAccent,
             )
         }
         Text(

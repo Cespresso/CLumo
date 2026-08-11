@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.BuildConfig
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
 private const val GITHUB_URL = "https://github.com/Cespresso/CLumo"
@@ -253,7 +254,7 @@ fun LicensesScreen(onBack: () -> Unit) {
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = RoundedFontFamily,
-                            color = ClumoColors.Sage,
+                            color = LocalClumoAccents.current.accent,
                         )
                     }
                 }

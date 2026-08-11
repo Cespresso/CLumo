@@ -70,7 +70,7 @@ import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
-import io.github.cespresso.clumo.ui.components.CoralPillButton
+import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.ModeHelpDialog
@@ -83,6 +83,7 @@ import io.github.cespresso.clumo.ui.components.contentToneFor
 import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
@@ -167,6 +168,7 @@ fun DeviceScreen(
 
     val aliases by service.preferences.aliases.collectAsState(initial = emptyMap())
     val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
+    val primaryDeviceId by service.preferences.primaryDeviceId.collectAsState(initial = null)
     val visualizerSensitivity by service.preferences.visualizerSensitivity.collectAsState(initial = 0.6f)
     val automaticLowVolumeBoost by service.preferences.automaticLowVolumeBoost.collectAsState(initial = false)
     val patterns by service.patterns.patterns.collectAsState(initial = emptyList())
@@ -236,7 +238,7 @@ fun DeviceScreen(
         ConnectionState.Disconnected -> stringResource(R.string.state_disconnected)
     }
     val stateLabelColor = when (state) {
-        ConnectionState.Ready -> ClumoColors.Sage
+        ConnectionState.Ready -> LocalClumoAccents.current.accent
         ConnectionState.Error -> ClumoColors.Coral
         else -> ClumoColors.Muted
     }
@@ -330,7 +332,7 @@ fun DeviceScreen(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.ExtraBold,
                             fontFamily = RoundedFontFamily,
-                            color = ClumoColors.Sage,
+                            color = LocalClumoAccents.current.accent,
                         )
                         Text(
                             text = stringResource(R.string.connection_pairing_hint),
@@ -374,10 +376,11 @@ fun DeviceScreen(
                             modifier = Modifier.weight(1f),
                         )
                         if (state == ConnectionState.Error) {
+                            val accents = LocalClumoAccents.current
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(999.dp))
-                                    .background(ClumoColors.Coral)
+                                    .background(accents.cta)
                                     .clickable {
                                         when (failure) {
                                             ConnectionFailure.PermissionDenied -> settingsLauncher.launch(
@@ -403,7 +406,7 @@ fun DeviceScreen(
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = RoundedFontFamily,
-                                    color = ClumoColors.White,
+                                    color = accents.onCta,
                                 )
                             }
                         }
@@ -630,6 +633,21 @@ fun DeviceScreen(
                     menuOpen = false
                     stableId?.let(onOpenAppearance)
                 }
+                val isPrimary = stableId != null && stableId == primaryDeviceId
+                MenuItem(
+                    label = stringResource(
+                        if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary
+                    ),
+                    color = ClumoColors.Text,
+                    enabled = stableId != null,
+                ) {
+                    menuOpen = false
+                    stableId?.let { id ->
+                        scope.launch {
+                            service.preferences.setPrimaryDeviceId(if (isPrimary) null else id)
+                        }
+                    }
+                }
                 MenuItem(stringResource(R.string.device_menu_settings), ClumoColors.Text) {
                     menuOpen = false
                     onOpenSettings()
@@ -775,10 +793,11 @@ private fun PomodoroSection(
     ) {
         // Phase chip
         val work = status.isWorkPhase
+        val accents = LocalClumoAccents.current
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
-                .background(if (work) ClumoColors.Sage else ClumoColors.BreakChipBg)
+                .background(if (work) accents.accent else ClumoColors.BreakChipBg)
                 .padding(horizontal = 18.dp, vertical = 7.dp),
         ) {
             Text(
@@ -788,7 +807,7 @@ private fun PomodoroSection(
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = RoundedFontFamily,
-                color = if (work) ClumoColors.White else ClumoColors.BreakChipFg,
+                color = if (work) accents.onAccent else ClumoColors.BreakChipFg,
             )
         }
 
@@ -824,7 +843,7 @@ private fun PomodoroSection(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            CoralPillButton(
+            CtaPillButton(
                 text = stringResource(
                     if (status.isRunning) R.string.pomodoro_pause else R.string.pomodoro_start
                 ),
@@ -890,10 +909,11 @@ private fun CountdownTimerSection(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
+        val accents = LocalClumoAccents.current
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(999.dp))
-                .background(if (status.isCompleted) ClumoColors.Coral else ClumoColors.Sage)
+                .background(if (status.isCompleted) ClumoColors.Coral else accents.accent)
                 .padding(horizontal = 18.dp, vertical = 7.dp),
         ) {
             Text(
@@ -901,7 +921,7 @@ private fun CountdownTimerSection(
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = RoundedFontFamily,
-                color = ClumoColors.White,
+                color = if (status.isCompleted) ClumoColors.White else accents.onAccent,
             )
         }
 
@@ -960,7 +980,7 @@ private fun CountdownTimerSection(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            CoralPillButton(
+            CtaPillButton(
                 text = primaryLabel,
                 onClick = {
                     if (status.isRunning) connection?.timerPause() else connection?.timerStart()
@@ -1171,6 +1191,7 @@ private fun PatternTile(
                 glow = false,
             )
             if (selected) {
+                val accents = LocalClumoAccents.current
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
@@ -1178,7 +1199,7 @@ private fun PatternTile(
                         .size(24.dp)
                         .shadow(3.dp, CircleShape)
                         .clip(CircleShape)
-                        .background(ClumoColors.Sage),
+                        .background(accents.accent),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -1186,7 +1207,7 @@ private fun PatternTile(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.ExtraBold,
                         fontFamily = RoundedFontFamily,
-                        color = ClumoColors.White,
+                        color = accents.onAccent,
                     )
                 }
             }
@@ -1308,7 +1329,7 @@ private fun VisualizerSection(
                 modifier = Modifier.fillMaxWidth(),
             )
         } else {
-            CoralPillButton(
+            CtaPillButton(
                 text = stringResource(R.string.viz_start),
                 onClick = { toggle() },
                 fontSize = 16.sp,

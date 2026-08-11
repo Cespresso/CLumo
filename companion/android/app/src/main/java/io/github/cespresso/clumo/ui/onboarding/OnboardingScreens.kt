@@ -39,10 +39,11 @@ import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.BrandCorner
-import io.github.cespresso.clumo.ui.components.CoralPillButton
+import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.launch
 
@@ -101,7 +102,7 @@ fun OnboardingWelcomeScreen(onStart: () -> Unit) {
             modifier = Modifier.padding(top = 10.dp),
         )
         Spacer(modifier = Modifier.weight(1f))
-        CoralPillButton(
+        CtaPillButton(
             text = stringResource(R.string.ob1_cta),
             onClick = onStart,
             modifier = Modifier.fillMaxWidth(),
@@ -147,25 +148,26 @@ fun OnboardingBluetoothScreen(
         Spacer(modifier = Modifier.weight(1f))
 
         // Device face inside two soft signal rings.
+        val accents = LocalClumoAccents.current
         Box(
             modifier = Modifier.size(250.dp),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawCircle(
-                    color = ClumoColors.Sage.copy(alpha = 0.25f),
+                    color = accents.accent.copy(alpha = 0.25f),
                     radius = size.minDimension / 2f - 1.dp.toPx(),
                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
                 )
                 drawCircle(
-                    color = ClumoColors.Sage.copy(alpha = 0.45f),
+                    color = accents.accent.copy(alpha = 0.45f),
                     radius = size.minDimension * 190f / 250f / 2f,
                     style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.dp.toPx()),
                 )
             }
             DeviceFace(
                 bits = BT_FACE_BITS,
-                frameColor = ClumoColors.Sage,
+                frameColor = accents.accent,
                 size = 118.dp,
                 frameCorner = 28.dp,
                 framePadding = 15.dp,
@@ -207,7 +209,7 @@ fun OnboardingBluetoothScreen(
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        CoralPillButton(
+        CtaPillButton(
             text = stringResource(R.string.ob2_allow),
             onClick = { permissionLauncher.launch(bluetoothPermissions()) },
             modifier = Modifier.fillMaxWidth(),

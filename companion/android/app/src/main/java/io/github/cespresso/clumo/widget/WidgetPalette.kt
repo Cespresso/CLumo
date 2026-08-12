@@ -17,12 +17,6 @@ internal object WidgetPalette {
     val Muted = ClumoColors.Muted
     val NeutralButton = ClumoColors.SegBackground
 
-    val OffDotArgb = ClumoColors.OffDot.toArgb()
-    val PlaceholderStrokeArgb = ClumoColors.DashedBorder.toArgb()
-
-    /** The enclosure is tinted, so a dot unlit against it needs a lighter off than the card. */
-    const val OffDotOnEnclosureArgb: Int = 0x33FFFFFF
-
     val RingFailed = ClumoColors.Coral
     val RingIdle = ClumoColors.OutlineBorder
     val EnclosureOffline = Color(0xFF9AA79A)

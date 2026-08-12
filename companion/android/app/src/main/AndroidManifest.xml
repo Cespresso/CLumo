@@ -48,5 +48,27 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="Maintains the Bluetooth LE connection to the CLumo desk device and streams display data." />
         </service>
+
+        <receiver
+            android:name=".widget.ClumoControlWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/clumo_control_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.ClumoPresenceWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/clumo_presence_widget_info" />
+        </receiver>
     </application>
 </manifest>

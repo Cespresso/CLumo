@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.BuildConfig
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
+import io.github.cespresso.clumo.ui.components.ScreenHeader
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
@@ -85,42 +86,6 @@ fun SettingsScreen(
                 )
             }
         }
-    }
-}
-
-@Composable
-fun ScreenHeader(title: String, onBack: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                ),
-            )
-            .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = "‹",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Muted,
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .clickable(onClick = onBack)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-        )
-        Text(
-            text = title,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Text,
-            modifier = Modifier.weight(1f),
-        )
     }
 }
 

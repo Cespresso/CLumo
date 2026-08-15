@@ -10,7 +10,7 @@ import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.domain.mirrorBitsFor
-import io.github.cespresso.clumo.ui.appearance.resolveAppearance
+import io.github.cespresso.clumo.domain.resolveAppearance
 
 /** The connection line under the device figure. Resolved to a string by the screen. */
 enum class DeviceStateLabel {

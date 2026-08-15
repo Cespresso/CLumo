@@ -65,10 +65,11 @@ import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.RgbColor
+import io.github.cespresso.clumo.domain.resolveAppearance
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
+import io.github.cespresso.clumo.ui.components.ScreenHeader
 import io.github.cespresso.clumo.ui.components.toComposeColor
-import io.github.cespresso.clumo.ui.settings.ScreenHeader
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.launch

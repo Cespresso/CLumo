@@ -22,7 +22,7 @@ import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceScreen
-import io.github.cespresso.clumo.ui.appearance.resolveAppearance
+import io.github.cespresso.clumo.domain.resolveAppearance
 import io.github.cespresso.clumo.ui.device.DeviceScreen
 import io.github.cespresso.clumo.ui.devices.DeviceListScreen
 import io.github.cespresso.clumo.ui.editor.PatternEditorScreen

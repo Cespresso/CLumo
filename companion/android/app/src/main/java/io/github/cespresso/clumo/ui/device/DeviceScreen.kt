@@ -43,12 +43,12 @@ import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.data.DeviceRegistry
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
-import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
@@ -57,6 +57,7 @@ import io.github.cespresso.clumo.ui.components.ModeHelpDialog
 import io.github.cespresso.clumo.ui.components.ModeHelpHeader
 import io.github.cespresso.clumo.ui.components.NameInputDialog
 import io.github.cespresso.clumo.ui.components.SegmentedControl
+import io.github.cespresso.clumo.ui.components.completionBlink
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.delay
@@ -133,7 +134,7 @@ fun DeviceScreen(
     }
 
     val timerBlinkOn = completionBlink(
-        effectiveMode == BleUuids.MODE_TIMER && timerStatus?.isCompleted == true
+        effectiveMode == DeviceMode.TIMER && timerStatus?.isCompleted == true
     )
     val columns = connection?.audioVisualizer?.columns?.collectAsState()?.value ?: IntArray(0)
     val visualizerActive = connection?.audioVisualizer?.isActive?.collectAsState()?.value ?: false
@@ -186,7 +187,7 @@ fun DeviceScreen(
 
     // While in Display mode, keep the device showing the selected pattern.
     LaunchedEffect(ready, effectiveMode, selectedPattern?.bits, connection) {
-        if (ready && effectiveMode == BleUuids.MODE_DISPLAY && selectedPattern != null) {
+        if (ready && effectiveMode == DeviceMode.DISPLAY && selectedPattern != null) {
             connection?.writeDisplay(selectedPattern.toRowBytes())
         }
     }
@@ -340,7 +341,7 @@ fun DeviceScreen(
                     ) {
                         Box {
                             when (effectiveMode) {
-                                BleUuids.MODE_DISPLAY -> PatternsSection(
+                                DeviceMode.DISPLAY -> PatternsSection(
                                     patterns = patterns,
                                     selectedId = selectedPatternId,
                                     appearance = appearance,
@@ -353,7 +354,7 @@ fun DeviceScreen(
                                     },
                                 )
 
-                                BleUuids.MODE_VISUALIZER -> VisualizerSection(
+                                DeviceMode.VISUALIZER -> VisualizerSection(
                                     connection = connection,
                                     visualizerSensitivity = visualizerSensitivity,
                                     automaticLowVolumeBoost = automaticLowVolumeBoost,
@@ -373,12 +374,12 @@ fun DeviceScreen(
                                     },
                                 )
 
-                                BleUuids.MODE_POMODORO -> PomodoroSection(
+                                DeviceMode.POMODORO -> PomodoroSection(
                                     connection = connection,
                                     status = pomodoroStatus ?: PomodoroStatus.DEFAULT,
                                 )
 
-                                BleUuids.MODE_TIMER -> CountdownTimerSection(
+                                DeviceMode.TIMER -> CountdownTimerSection(
                                     connection = connection,
                                     status = timerStatus ?: CountdownTimerStatus.DEFAULT,
                                     completionBlinkOn = timerBlinkOn,

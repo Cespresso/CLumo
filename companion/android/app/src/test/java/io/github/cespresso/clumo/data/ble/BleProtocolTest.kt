@@ -1,5 +1,6 @@
 package io.github.cespresso.clumo.data.ble
 
+import io.github.cespresso.clumo.domain.DeviceMode
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -8,11 +9,11 @@ import org.junit.Test
 class BleProtocolTest {
     @Test
     fun exposesModesInDisplayOrder() {
-        assertEquals(listOf(0, 1, 2, 3), BleUuids.MODE_ORDER)
-        assertEquals(0, BleUuids.MODE_POMODORO)
-        assertEquals(1, BleUuids.MODE_TIMER)
-        assertEquals(2, BleUuids.MODE_DISPLAY)
-        assertEquals(3, BleUuids.MODE_VISUALIZER)
+        assertEquals(listOf(0, 1, 2, 3), DeviceMode.ORDER)
+        assertEquals(0, DeviceMode.POMODORO)
+        assertEquals(1, DeviceMode.TIMER)
+        assertEquals(2, DeviceMode.DISPLAY)
+        assertEquals(3, DeviceMode.VISUALIZER)
     }
 
     @Test

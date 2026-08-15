@@ -35,9 +35,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
@@ -52,7 +52,7 @@ private data class ModeHelpContent(
 )
 
 private fun modeHelpContent(mode: Int): ModeHelpContent? = when (mode) {
-    BleUuids.MODE_POMODORO -> ModeHelpContent(
+    DeviceMode.POMODORO -> ModeHelpContent(
         title = R.string.seg_pomodoro,
         summary = R.string.mode_help_pomodoro_summary,
         displayDescription = R.string.mode_help_pomodoro_display,
@@ -60,7 +60,7 @@ private fun modeHelpContent(mode: Int): ModeHelpContent? = when (mode) {
         subButtonDescription = R.string.button_role_pomodoro_sub,
     )
 
-    BleUuids.MODE_TIMER -> ModeHelpContent(
+    DeviceMode.TIMER -> ModeHelpContent(
         title = R.string.seg_timer,
         summary = R.string.mode_help_timer_summary,
         displayDescription = R.string.mode_help_timer_display,
@@ -68,7 +68,7 @@ private fun modeHelpContent(mode: Int): ModeHelpContent? = when (mode) {
         subButtonDescription = R.string.button_role_timer_sub,
     )
 
-    BleUuids.MODE_DISPLAY -> ModeHelpContent(
+    DeviceMode.DISPLAY -> ModeHelpContent(
         title = R.string.seg_patterns,
         summary = R.string.mode_help_display_summary,
         displayDescription = R.string.mode_help_display_display,
@@ -76,7 +76,7 @@ private fun modeHelpContent(mode: Int): ModeHelpContent? = when (mode) {
         subButtonDescription = R.string.button_role_display_sub,
     )
 
-    BleUuids.MODE_VISUALIZER -> ModeHelpContent(
+    DeviceMode.VISUALIZER -> ModeHelpContent(
         title = R.string.seg_viz,
         summary = R.string.mode_help_visualizer_summary,
         displayDescription = R.string.mode_help_visualizer_display,
@@ -279,23 +279,23 @@ private fun ModeHelpPreview(mode: Int, appearance: DeviceAppearance) {
 }
 
 private fun demoBits(mode: Int, tick: Int): Long = when (mode) {
-    BleUuids.MODE_POMODORO -> countdownDemoBits(
+    DeviceMode.POMODORO -> countdownDemoBits(
         tick = tick,
         blinkTicks = POMODORO_BLINK_TICKS,
         blinkFrames = POMODORO_BLINK_FRAMES,
     )
 
-    BleUuids.MODE_TIMER -> countdownDemoBits(
+    DeviceMode.TIMER -> countdownDemoBits(
         tick = tick,
         blinkTicks = TIMER_BLINK_TICKS,
         blinkFrames = TIMER_DEMO_BLINK_FRAMES,
     )
 
-    BleUuids.MODE_DISPLAY -> {
+    DeviceMode.DISPLAY -> {
         if ((tick / DISPLAY_FRAME_TICKS) % 2 == 0) HEART_BITS else SMILE_BITS
     }
 
-    BleUuids.MODE_VISUALIZER -> {
+    DeviceMode.VISUALIZER -> {
         FaceBits.fromColumns(VISUALIZER_FRAMES[(tick / VISUALIZER_FRAME_TICKS) % VISUALIZER_FRAMES.size])
     }
 

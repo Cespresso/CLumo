@@ -58,12 +58,6 @@ object BleUuids {
 
     val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
-    const val MODE_POMODORO = 0
-    const val MODE_TIMER = 1
-    const val MODE_DISPLAY = 2
-    const val MODE_VISUALIZER = 3
-    val MODE_ORDER = listOf(MODE_POMODORO, MODE_TIMER, MODE_DISPLAY, MODE_VISUALIZER)
-
     const val BUTTON_MAIN = 0
     const val BUTTON_SUB = 1
 

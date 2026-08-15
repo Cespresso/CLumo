@@ -1,4 +1,4 @@
-package io.github.cespresso.clumo.ui.device
+package io.github.cespresso.clumo.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -7,10 +7,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.domain.ConnectionState
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
+import io.github.cespresso.clumo.domain.mirrorBitsFor
 import kotlinx.coroutines.delay
 
 /** Collects what the mirror needs from a live link and applies [mirrorBitsFor]. */
@@ -25,7 +26,7 @@ fun liveMirrorBits(
     val pomodoro by connection.pomodoroStatus.collectAsState()
     val timer by connection.timerStatus.collectAsState()
     val timerBlinkOn = completionBlink(
-        mode == BleUuids.MODE_TIMER && timer?.isCompleted == true
+        mode == DeviceMode.TIMER && timer?.isCompleted == true
     )
     val columns by connection.audioVisualizer.columns.collectAsState()
     val vizActive by connection.audioVisualizer.isActive.collectAsState()

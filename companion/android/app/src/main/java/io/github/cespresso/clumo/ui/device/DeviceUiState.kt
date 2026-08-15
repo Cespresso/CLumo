@@ -1,14 +1,15 @@
 package io.github.cespresso.clumo.ui.device
 
-import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
+import io.github.cespresso.clumo.domain.mirrorBitsFor
 import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 
 /** The connection line under the device figure. Resolved to a string by the screen. */
@@ -90,7 +91,7 @@ data class DeviceUiState(
  * a completed timer should be blinking.
  */
 fun effectiveModeOf(pendingMode: Int?, currentMode: Int?): Int =
-    pendingMode ?: currentMode ?: BleUuids.MODE_POMODORO
+    pendingMode ?: currentMode ?: DeviceMode.POMODORO
 
 object DeviceUiStateFactory {
 
@@ -223,32 +224,4 @@ object DeviceUiStateFactory {
 
         else -> DeviceFailureAction.Retry
     }
-}
-
-/**
- * Live mirror of the device LED for the current mode.
- * Pomodoro/Timer -> pixel countdown; Display -> selected pattern; Visualizer -> column bars.
- */
-fun mirrorBitsFor(
-    mode: Int?,
-    pomodoro: PomodoroStatus?,
-    timer: CountdownTimerStatus?,
-    selectedPatternBits: String?,
-    columns: IntArray,
-    visualizerActive: Boolean,
-    timerBlinkOn: Boolean,
-): Long = when (mode) {
-    BleUuids.MODE_POMODORO -> pomodoro?.let { FaceBits.fromPomodoro(it) } ?: FaceBits.EMPTY
-    BleUuids.MODE_TIMER -> timer?.let {
-        when {
-            // A finished timer blinks the whole face rather than showing an empty one.
-            it.isCompleted && !timerBlinkOn -> FaceBits.EMPTY
-            it.isCompleted -> -1L
-            else -> FaceBits.fromCountdownTimer(it)
-        }
-    } ?: FaceBits.EMPTY
-
-    BleUuids.MODE_DISPLAY -> selectedPatternBits?.let { FaceBits.fromBitsString(it) } ?: FaceBits.EMPTY
-    BleUuids.MODE_VISUALIZER -> if (visualizerActive) FaceBits.fromColumns(columns) else FaceBits.EMPTY
-    else -> FaceBits.EMPTY
 }

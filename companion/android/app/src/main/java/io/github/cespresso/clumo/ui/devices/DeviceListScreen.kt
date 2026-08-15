@@ -83,7 +83,7 @@ import io.github.cespresso.clumo.ui.components.HelpBadge
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
 import io.github.cespresso.clumo.ui.components.connectionLabel
 import io.github.cespresso.clumo.ui.components.dashedBorder
-import io.github.cespresso.clumo.ui.device.liveMirrorBits
+import io.github.cespresso.clumo.ui.components.liveMirrorBits
 import io.github.cespresso.clumo.ui.onboarding.bluetoothPermissions
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily

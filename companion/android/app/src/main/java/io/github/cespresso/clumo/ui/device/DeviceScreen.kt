@@ -1,39 +1,24 @@
 package io.github.cespresso.clumo.ui.device
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,7 +26,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,97 +33,36 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.data.DeviceRegistry
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.data.ble.BleUuids
-import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.design.ClumoColors
-import io.github.cespresso.clumo.design.ContentTone
-import io.github.cespresso.clumo.design.contentToneFor
 import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
-import io.github.cespresso.clumo.domain.DeviceAppearance
-import io.github.cespresso.clumo.domain.FaceBits
-import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.PomodoroStatus
-import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.ClumoSlider
-import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
-import io.github.cespresso.clumo.ui.components.CtaPillButton
-import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.ModeHelpDialog
 import io.github.cespresso.clumo.ui.components.ModeHelpHeader
 import io.github.cespresso.clumo.ui.components.NameInputDialog
-import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.components.SegmentedControl
-import io.github.cespresso.clumo.ui.components.dashedBorder
-import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-
-/** Collects what the mirror needs from a live link and applies [mirrorBitsFor]. */
-@Composable
-fun liveMirrorBits(
-    connection: DeviceConnection?,
-    selectedPatternBits: String?,
-): Long {
-    if (connection == null) return FaceBits.EMPTY
-    val state by connection.connectionState.collectAsState()
-    val mode by connection.currentMode.collectAsState()
-    val pomodoro by connection.pomodoroStatus.collectAsState()
-    val timer by connection.timerStatus.collectAsState()
-    val timerBlinkOn = completionBlink(
-        mode == BleUuids.MODE_TIMER && timer?.isCompleted == true
-    )
-    val columns by connection.audioVisualizer.columns.collectAsState()
-    val vizActive by connection.audioVisualizer.isActive.collectAsState()
-    if (state != ConnectionState.Ready) return FaceBits.EMPTY
-    return mirrorBitsFor(
-        mode = mode,
-        pomodoro = pomodoro,
-        timer = timer,
-        selectedPatternBits = selectedPatternBits,
-        columns = columns,
-        visualizerActive = vizActive,
-        timerBlinkOn = timerBlinkOn,
-    )
-}
-
-@Composable
-private fun completionBlink(active: Boolean): Boolean {
-    var visible by remember { mutableStateOf(true) }
-    LaunchedEffect(active) {
-        visible = true
-        while (active) {
-            delay(400)
-            visible = !visible
-        }
-    }
-    return visible
-}
 
 @Composable
 fun DeviceScreen(
@@ -290,55 +213,11 @@ fun DeviceScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                        ),
-                    )
-                    .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = "‹",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = RoundedFontFamily,
-                    color = ClumoColors.Muted,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable(onClick = onBack)
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                )
-                Text(
-                    text = displayName,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = RoundedFontFamily,
-                    color = ClumoColors.Text,
-                    modifier = Modifier.weight(1f),
-                )
-                Column(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { menuOpen = !menuOpen }
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.5.dp),
-                ) {
-                    repeat(3) {
-                        Box(
-                            modifier = Modifier
-                                .size(4.5.dp)
-                                .clip(CircleShape)
-                                .background(ClumoColors.Muted),
-                        )
-                    }
-                }
-            }
+            DeviceTopBar(
+                title = displayName,
+                onBack = onBack,
+                onToggleMenu = { menuOpen = !menuOpen },
+            )
 
             Column(
                 modifier = Modifier
@@ -352,84 +231,17 @@ fun DeviceScreen(
                     .padding(bottom = 40.dp),
             ) {
                 if (state == ConnectionState.Bonding) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 22.dp, vertical = 6.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(ClumoColors.White)
-                            .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(18.dp))
-                            .padding(horizontal = 14.dp, vertical = 11.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "i",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontFamily = RoundedFontFamily,
-                            color = LocalClumoAccents.current.accent,
-                        )
-                        Text(
-                            text = stringResource(R.string.connection_pairing_hint),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = RoundedFontFamily,
-                            color = ClumoColors.Text,
-                        )
-                    }
+                    PairingHintBanner()
                 }
 
-                // Automatic reconnect progress and terminal connection failures.
                 if (state == ConnectionState.Error || state == ConnectionState.Reconnecting) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 22.dp, vertical = 6.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(ClumoColors.ErrorBg)
-                            .border(1.5.dp, ClumoColors.ErrorBorder, RoundedCornerShape(18.dp))
-                            .padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(ClumoColors.Coral),
-                        )
-                        Text(
-                            text = if (state == ConnectionState.Reconnecting) {
-                                stringResource(R.string.connection_reconnecting_banner, reconnectAttempt)
-                            } else {
-                                failureMessage
-                            },
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = RoundedFontFamily,
-                            color = ClumoColors.ErrorText,
-                            modifier = Modifier.weight(1f),
-                        )
-                        if (state == ConnectionState.Error) {
-                            val accents = LocalClumoAccents.current
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(accents.cta)
-                                    .clickable { runFailureAction(ui.bannerAction) }
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                            ) {
-                                Text(
-                                    text = ui.bannerAction.label(),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = RoundedFontFamily,
-                                    color = accents.onCta,
-                                )
-                            }
-                        }
-                    }
+                    ConnectionTroubleBanner(
+                        reconnecting = state == ConnectionState.Reconnecting,
+                        reconnectAttempt = reconnectAttempt,
+                        failureMessage = failureMessage,
+                        action = ui.bannerAction.takeIf { state == ConnectionState.Error },
+                        onAction = { runFailureAction(ui.bannerAction) },
+                    )
                 }
 
                 // Device face: the live LED mirror
@@ -458,17 +270,8 @@ fun DeviceScreen(
                 }
 
                 Column {
-                    // Device controls: dimmed and non-interactive while disconnected.
-                    Box {
-                        Column(
-                            modifier = Modifier
-                                .alpha(if (ready) 1f else 0.45f)
-                                .then(
-                                    if (ready) Modifier else Modifier.clearAndSetSemantics {
-                                        disabled()
-                                    }
-                                ),
-                        ) {
+                    ReadyGate(ready) {
+                        Column {
                             // Brightness
                             Row(
                                 modifier = Modifier
@@ -520,18 +323,6 @@ fun DeviceScreen(
                                     .padding(horizontal = 22.dp, vertical = 8.dp),
                             )
                         }
-                        if (!ready) {
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {},
-                                    )
-                                    .clearAndSetSemantics {},
-                            )
-                        }
                     }
 
                     ModeHelpHeader(
@@ -540,20 +331,14 @@ fun DeviceScreen(
                         modifier = Modifier.padding(horizontal = 22.dp, vertical = 2.dp),
                     )
 
-                    // Mode-specific controls remain unavailable while disconnected.
-                    Box {
-                        // Function area
-                        Box(
-                            modifier = Modifier
-                                .alpha(if (ready) 1f else 0.45f)
-                                .then(
-                                    if (ready) Modifier else Modifier.clearAndSetSemantics {
-                                        disabled()
-                                    }
-                                )
-                                .fillMaxWidth()
-                                .padding(start = 22.dp, end = 22.dp, top = 2.dp),
-                        ) {
+                    // The mode-specific controls
+                    ReadyGate(
+                        ready = ready,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 22.dp, end = 22.dp, top = 2.dp),
+                    ) {
+                        Box {
                             when (effectiveMode) {
                                 BleUuids.MODE_DISPLAY -> PatternsSection(
                                     patterns = patterns,
@@ -602,92 +387,36 @@ fun DeviceScreen(
                                 else -> Unit
                             }
                         }
-                        if (!ready) {
-                            Box(
-                                modifier = Modifier
-                                    .matchParentSize()
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {},
-                                    )
-                                    .clearAndSetSemantics {},
-                            )
-                        }
                     }
                 }
             }
         }
 
-        // 3-dot menu
         if (menuOpen) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { menuOpen = false },
-            )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Top + WindowInsetsSides.End,
-                        ),
-                    )
-                    .offset(x = (-16).dp, y = 52.dp)
-                    .widthIn(min = 176.dp)
-                    .width(IntrinsicSize.Max)
-                    .shadow(14.dp, RoundedCornerShape(20.dp))
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(ClumoColors.White)
-                    .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(20.dp))
-                    .padding(8.dp),
-            ) {
-                MenuItem(stringResource(R.string.device_menu_rename), ClumoColors.Text) {
-                    menuOpen = false
-                    renameOpen = true
-                }
-                MenuItem(
-                    label = stringResource(R.string.device_menu_appearance),
-                    color = ClumoColors.Text,
-                    enabled = stableId != null,
-                ) {
-                    menuOpen = false
-                    stableId?.let(onOpenAppearance)
-                }
-                val isPrimary = stableId != null && stableId == primaryDeviceId
-                MenuItem(
-                    label = stringResource(
-                        if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary
-                    ),
-                    color = ClumoColors.Text,
-                    enabled = stableId != null,
-                ) {
-                    menuOpen = false
+            DeviceMenu(
+                // The entries that write something per-device need an id to write it against.
+                identified = stableId != null,
+                isPrimary = ui.isPrimary,
+                onDismiss = { menuOpen = false },
+                onRename = { renameOpen = true },
+                onAppearance = { stableId?.let(onOpenAppearance) },
+                onTogglePrimary = {
                     stableId?.let { id ->
                         scope.launch {
-                            preferences.setPrimaryDeviceId(if (isPrimary) null else id)
+                            preferences.setPrimaryDeviceId(if (ui.isPrimary) null else id)
                         }
                     }
-                }
-                MenuItem(stringResource(R.string.device_menu_settings), ClumoColors.Text) {
-                    menuOpen = false
-                    onOpenSettings()
-                }
-                MenuItem(stringResource(R.string.device_menu_refresh_gatt), ClumoColors.Text) {
-                    menuOpen = false
+                },
+                onSettings = onOpenSettings,
+                onRefreshGatt = {
                     registry.get(address)?.reconnectWithCacheRefresh()
                         ?: registry.connect(address, scannedName)
-                }
-                MenuItem(stringResource(R.string.device_menu_disconnect), ClumoColors.Coral) {
-                    menuOpen = false
+                },
+                onDisconnect = {
                     registry.disconnect(address)
                     onBack()
-                }
-            }
+                },
+            )
         }
     }
 
@@ -725,705 +454,4 @@ fun DeviceScreen(
             onDismiss = { renameOpen = false },
         )
     }
-}
-
-@Composable
-private fun MenuItem(
-    label: String,
-    color: androidx.compose.ui.graphics.Color,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = RoundedFontFamily,
-            color = if (enabled) color else ClumoColors.MutedLight,
-        )
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Pomodoro
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun PomodoroSection(
-    connection: DeviceConnection?,
-    status: PomodoroStatus,
-) {
-    var workMin by remember { mutableIntStateOf(status.workMin.coerceIn(1, 99)) }
-    var breakMin by remember { mutableIntStateOf(status.breakMin.coerceIn(1, 99)) }
-    LaunchedEffect(status.workMin, status.breakMin) {
-        workMin = status.workMin.coerceIn(1, 99)
-        breakMin = status.breakMin.coerceIn(1, 99)
-    }
-
-    fun pushDurations() {
-        connection?.pomodoroSetDurations(workMin, breakMin)
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(28.dp))
-            .clip(RoundedCornerShape(28.dp))
-            .background(ClumoColors.White)
-            .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(28.dp))
-            .padding(horizontal = 18.dp, vertical = 22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        // Phase chip
-        val work = status.isWorkPhase
-        val accents = LocalClumoAccents.current
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .background(if (work) accents.accent else ClumoColors.BreakChipBg)
-                .padding(horizontal = 18.dp, vertical = 7.dp),
-        ) {
-            Text(
-                text = stringResource(
-                    if (work) R.string.pomodoro_phase_work else R.string.pomodoro_phase_break
-                ),
-                fontSize = 12.5.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = RoundedFontFamily,
-                color = if (work) accents.onAccent else ClumoColors.BreakChipFg,
-            )
-        }
-
-        // Remaining time
-        Text(
-            text = "%02d:%02d".format(status.remainingSec / 60, status.remainingSec % 60),
-            fontSize = 52.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Text,
-        )
-
-        // Duration steppers (visible while idle)
-        if (status.isIdle) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                DurationStepperRow(
-                    label = stringResource(R.string.pomodoro_work_label),
-                    value = workMin,
-                    onChange = { workMin = it; pushDurations() },
-                )
-                DurationStepperRow(
-                    label = stringResource(R.string.pomodoro_break_label),
-                    value = breakMin,
-                    onChange = { breakMin = it; pushDurations() },
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            CtaPillButton(
-                text = stringResource(
-                    if (status.isRunning) R.string.pomodoro_pause else R.string.pomodoro_start
-                ),
-                onClick = {
-                    if (status.isRunning) connection?.pomodoroPause() else connection?.pomodoroStart()
-                },
-                fontSize = 15.sp,
-                verticalPadding = 14.dp,
-                modifier = Modifier.weight(1.4f),
-            )
-            OutlinePillButton(
-                text = stringResource(R.string.pomodoro_reset),
-                onClick = { connection?.pomodoroReset() },
-                fontSize = 15.sp,
-                verticalPadding = 14.dp,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Timer
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun CountdownTimerSection(
-    connection: DeviceConnection?,
-    status: CountdownTimerStatus,
-    completionBlinkOn: Boolean,
-) {
-    var minutes by remember { mutableIntStateOf(status.configuredMin.coerceIn(0, 59)) }
-    var seconds by remember { mutableIntStateOf(status.configuredSec.coerceIn(0, 59)) }
-    LaunchedEffect(status.configuredMin, status.configuredSec) {
-        minutes = status.configuredMin.coerceIn(0, 59)
-        seconds = status.configuredSec.coerceIn(0, 59)
-    }
-
-    val stateLabel = stringResource(
-        when {
-            status.isRunning -> R.string.timer_state_running
-            status.isPaused -> R.string.timer_state_paused
-            status.isCompleted -> R.string.timer_state_completed
-            else -> R.string.timer_state_idle
-        }
-    )
-    val primaryLabel = stringResource(
-        when {
-            status.isRunning -> R.string.timer_pause
-            status.isPaused -> R.string.timer_resume
-            else -> R.string.timer_start
-        }
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(28.dp))
-            .clip(RoundedCornerShape(28.dp))
-            .background(ClumoColors.White)
-            .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(28.dp))
-            .padding(horizontal = 18.dp, vertical = 22.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
-        val accents = LocalClumoAccents.current
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(999.dp))
-                .background(if (status.isCompleted) ClumoColors.Coral else accents.accent)
-                .padding(horizontal = 18.dp, vertical = 7.dp),
-        ) {
-            Text(
-                text = stateLabel,
-                fontSize = 12.5.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = RoundedFontFamily,
-                color = if (status.isCompleted) ClumoColors.White else accents.onAccent,
-            )
-        }
-
-        Text(
-            text = status.formatRemaining(),
-            fontSize = 52.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Text,
-            modifier = Modifier.alpha(
-                if (status.isCompleted && !completionBlinkOn) 0.12f else 1f
-            ),
-        )
-
-        if (status.isIdle) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                TimerStepperRow(
-                    label = stringResource(R.string.timer_minutes_label),
-                    value = minutes,
-                    decrementEnabled = minutes > 0 && !(minutes == 1 && seconds == 0),
-                    incrementEnabled = minutes < 59,
-                    onDecrement = {
-                        val next = minutes - 1
-                        minutes = next
-                        connection?.timerSetDuration(next, seconds)
-                    },
-                    onIncrement = {
-                        val next = minutes + 1
-                        minutes = next
-                        connection?.timerSetDuration(next, seconds)
-                    },
-                )
-                TimerStepperRow(
-                    label = stringResource(R.string.timer_seconds_label),
-                    value = seconds,
-                    decrementEnabled = seconds > 0 && !(minutes == 0 && seconds == 1),
-                    incrementEnabled = seconds < 59,
-                    onDecrement = {
-                        val next = seconds - 1
-                        seconds = next
-                        connection?.timerSetDuration(minutes, next)
-                    },
-                    onIncrement = {
-                        val next = seconds + 1
-                        seconds = next
-                        connection?.timerSetDuration(minutes, next)
-                    },
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            CtaPillButton(
-                text = primaryLabel,
-                onClick = {
-                    if (status.isRunning) connection?.timerPause() else connection?.timerStart()
-                },
-                fontSize = 15.sp,
-                verticalPadding = 14.dp,
-                modifier = Modifier.weight(1.4f),
-            )
-            OutlinePillButton(
-                text = stringResource(R.string.timer_cancel),
-                onClick = { connection?.timerCancel() },
-                fontSize = 15.sp,
-                verticalPadding = 14.dp,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-@Composable
-private fun TimerStepperRow(
-    label: String,
-    value: Int,
-    decrementEnabled: Boolean,
-    incrementEnabled: Boolean,
-    onDecrement: () -> Unit,
-    onIncrement: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Muted,
-            modifier = Modifier.weight(1f),
-        )
-        StepperButton(text = "−", enabled = decrementEnabled, onClick = onDecrement)
-        Text(
-            text = "%02d".format(value),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Text,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(54.dp),
-        )
-        StepperButton(text = "＋", enabled = incrementEnabled, onClick = onIncrement)
-    }
-}
-
-@Composable
-private fun DurationStepperRow(
-    label: String,
-    value: Int,
-    onChange: (Int) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Muted,
-            modifier = Modifier.weight(1f),
-        )
-        StepperButton(text = "−", enabled = value > 1) { onChange((value - 1).coerceIn(1, 99)) }
-        Text(
-            text = "$value",
-            fontSize = 18.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Text,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(44.dp),
-        )
-        StepperButton(text = "＋", enabled = value < 99) { onChange((value + 1).coerceIn(1, 99)) }
-        Text(
-            text = stringResource(R.string.pomodoro_minutes_unit),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Muted,
-            modifier = Modifier.padding(start = 8.dp),
-        )
-    }
-}
-
-@Composable
-private fun StepperButton(text: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .clip(CircleShape)
-            .background(ClumoColors.White)
-            .border(1.5.dp, ClumoColors.OutlineBorder, CircleShape)
-            .clickable(enabled = enabled, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.4f),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Text,
-        )
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Patterns
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun PatternsSection(
-    patterns: List<Pattern>,
-    selectedId: String?,
-    appearance: DeviceAppearance,
-    onSelect: (Pattern) -> Unit,
-    onAddNew: () -> Unit,
-    onEditSelected: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // 3-column grid of saved patterns plus the "add new" tile.
-        val tiles: List<Pattern?> = patterns + listOf<Pattern?>(null)
-        tiles.chunked(3).forEach { rowItems ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                rowItems.forEach { pattern ->
-                    Box(modifier = Modifier.weight(1f)) {
-                        if (pattern == null) {
-                            AddPatternTile(onClick = onAddNew)
-                        } else {
-                            PatternTile(
-                                pattern = pattern,
-                                selected = pattern.id == selectedId,
-                                appearance = appearance,
-                                onClick = { onSelect(pattern) },
-                            )
-                        }
-                    }
-                }
-                repeat(3 - rowItems.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-
-        OutlinePillButton(
-            text = stringResource(R.string.patterns_edit_selected),
-            onClick = onEditSelected,
-            fontSize = 14.sp,
-            verticalPadding = 13.dp,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 4.dp),
-            enabled = selectedId != null,
-        )
-    }
-}
-
-@Composable
-private fun PatternTile(
-    pattern: Pattern,
-    selected: Boolean,
-    appearance: DeviceAppearance,
-    onClick: () -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(7.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            ),
-    ) {
-        Box {
-            DeviceFace(
-                bits = FaceBits.fromBitsString(pattern.bits),
-                frameColor = appearance.enclosureColor.toComposeColor(),
-                ledColor = appearance.ledColor.toComposeColor(),
-                frameOutline = when {
-                    selected -> ClumoColors.Text
-                    contentToneFor(appearance.enclosureColor) == ContentTone.Dark -> {
-                        ClumoColors.OutlineBorder
-                    }
-                    else -> null
-                },
-                size = 96.dp,
-                frameCorner = 22.dp,
-                framePadding = 12.dp,
-                innerCorner = 11.dp,
-                gridPadding = 7.dp,
-                glow = false,
-            )
-            if (selected) {
-                val accents = LocalClumoAccents.current
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 5.dp, y = (-5).dp)
-                        .size(24.dp)
-                        .shadow(3.dp, CircleShape)
-                        .clip(CircleShape)
-                        .background(accents.accent),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "✓",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontFamily = RoundedFontFamily,
-                        color = accents.onAccent,
-                    )
-                }
-            }
-        }
-        Text(
-            text = pattern.name,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = RoundedFontFamily,
-            color = if (selected) ClumoColors.Text else ClumoColors.Muted,
-            maxLines = 1,
-        )
-    }
-}
-
-@Composable
-private fun AddPatternTile(onClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(7.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick,
-            ),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(96.dp)
-                .dashedBorder(ClumoColors.Chevron, 2.5.dp, 22.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "＋",
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Medium,
-                fontFamily = RoundedFontFamily,
-                color = ClumoColors.MutedLight,
-            )
-        }
-        Text(
-            text = stringResource(R.string.patterns_add_new),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Muted,
-            maxLines = 1,
-        )
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Visualizer
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun VisualizerSection(
-    connection: DeviceConnection?,
-    visualizerSensitivity: Float,
-    automaticLowVolumeBoost: Boolean,
-    onVisualizerSensitivityChange: (Float) -> Unit,
-    onVisualizerSensitivityChangeFinished: (Float) -> Unit,
-    onAutomaticLowVolumeBoostChange: (Boolean) -> Unit,
-) {
-    val context = LocalContext.current
-    val vizActive = connection?.audioVisualizer?.isActive?.collectAsState()?.value ?: false
-    var sensitivity by remember(visualizerSensitivity) {
-        mutableFloatStateOf(visualizerSensitivity * 100f)
-    }
-
-    val audioPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        if (results[Manifest.permission.RECORD_AUDIO] == true) {
-            connection?.startAudioVisualizer()
-        }
-    }
-
-    fun toggle() {
-        if (connection == null) return
-        if (vizActive) {
-            connection.stopAudioVisualizer(clearDisplay = true)
-            return
-        }
-        val needed = buildList {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.RECORD_AUDIO)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-            ) add(Manifest.permission.POST_NOTIFICATIONS)
-        }
-        if (needed.isNotEmpty()) {
-            audioPermissionLauncher.launch(needed.toTypedArray())
-        } else {
-            connection.startAudioVisualizer()
-        }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(28.dp))
-            .clip(RoundedCornerShape(28.dp))
-            .background(ClumoColors.White)
-            .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(28.dp))
-            .padding(horizontal = 20.dp, vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
-    ) {
-        if (vizActive) {
-            OutlinePillButton(
-                text = stringResource(R.string.viz_stop),
-                onClick = { toggle() },
-                fontSize = 16.sp,
-                verticalPadding = 17.dp,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            CtaPillButton(
-                text = stringResource(R.string.viz_start),
-                onClick = { toggle() },
-                fontSize = 16.sp,
-                verticalPadding = 17.dp,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.viz_sensitivity),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = RoundedFontFamily,
-                color = ClumoColors.Muted,
-            )
-            ClumoSlider(
-                value = sensitivity,
-                onValueChange = {
-                    sensitivity = it
-                    onVisualizerSensitivityChange(it / 100f)
-                },
-                onValueChangeFinished = {
-                    onVisualizerSensitivityChangeFinished(sensitivity / 100f)
-                },
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.viz_auto_low_volume_boost),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = RoundedFontFamily,
-                color = ClumoColors.Muted,
-                modifier = Modifier.weight(1f),
-            )
-            ClumoToggleSwitch(
-                checked = automaticLowVolumeBoost,
-                onCheckedChange = onAutomaticLowVolumeBoostChange,
-            )
-        }
-
-        Text(
-            text = stringResource(R.string.viz_caption),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Caption,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
-
-// ---------------------------------------------------------------------------
-// Wording
-//
-// DeviceUiState names what to say; these resolve it. Keeping the strings here
-// is what lets the rules above be plain unit tests.
-// ---------------------------------------------------------------------------
-
-@Composable
-private fun DeviceStateLabel.text(reconnectAttempt: Int): String = when (this) {
-    DeviceStateLabel.Connecting -> stringResource(R.string.state_connecting)
-    DeviceStateLabel.Reconnecting -> stringResource(R.string.state_reconnecting, reconnectAttempt)
-    DeviceStateLabel.Pairing -> stringResource(R.string.state_pairing)
-    DeviceStateLabel.Discovering -> stringResource(R.string.state_discovering)
-    DeviceStateLabel.Synchronizing -> stringResource(R.string.state_synchronizing)
-    DeviceStateLabel.Connected -> stringResource(R.string.state_connected)
-    DeviceStateLabel.Error -> stringResource(R.string.state_error)
-    DeviceStateLabel.Disconnected -> stringResource(R.string.state_disconnected)
-}
-
-@Composable
-private fun DeviceFailureMessage.text(): String = when (this) {
-    DeviceFailureMessage.Unavailable -> stringResource(R.string.connection_error_unavailable)
-    DeviceFailureMessage.BluetoothOff -> stringResource(R.string.connection_error_bluetooth_off)
-    DeviceFailureMessage.Permission -> stringResource(R.string.connection_error_permission)
-    DeviceFailureMessage.Timeout -> stringResource(R.string.connection_error_timeout)
-    DeviceFailureMessage.Pairing -> stringResource(R.string.connection_error_pairing)
-    DeviceFailureMessage.Services -> stringResource(R.string.connection_error_services)
-    DeviceFailureMessage.Incompatible -> stringResource(R.string.connection_error_incompatible)
-    DeviceFailureMessage.Sync -> stringResource(R.string.connection_error_sync)
-    DeviceFailureMessage.Lost -> stringResource(R.string.device_error_banner)
-}
-
-@Composable
-private fun DeviceFailureAction.label(): String = when (this) {
-    // Both settings destinations read the same on the button; only where they land differs.
-    DeviceFailureAction.OpenAppSettings,
-    DeviceFailureAction.OpenBluetoothSettings,
-    -> stringResource(R.string.action_open_settings)
-
-    DeviceFailureAction.BackToList -> stringResource(R.string.action_back_to_list)
-    DeviceFailureAction.Retry -> stringResource(R.string.device_error_retry)
 }

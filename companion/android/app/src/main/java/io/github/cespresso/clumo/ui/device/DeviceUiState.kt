@@ -1,6 +1,7 @@
 package io.github.cespresso.clumo.ui.device
 
 import io.github.cespresso.clumo.data.ble.BleUuids
+import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
@@ -177,9 +178,7 @@ object DeviceUiStateFactory {
                     timerBlinkOn = timerBlinkOn,
                 )
             },
-            // A face at zero brightness still has to be visible on screen; the device is dark,
-            // the drawing of it is merely dim.
-            litAlpha = 0.4f + (brightnessUi / 100f) * 0.6f,
+            litAlpha = Brightness.litAlphaForPercent(brightnessUi),
         )
     }
 

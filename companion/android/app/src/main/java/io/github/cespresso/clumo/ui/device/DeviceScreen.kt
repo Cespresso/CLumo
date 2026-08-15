@@ -71,6 +71,7 @@ import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.design.ContentTone
 import io.github.cespresso.clumo.design.contentToneFor
+import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
@@ -94,7 +95,6 @@ import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
-import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -188,22 +188,23 @@ fun DeviceScreen(
     LaunchedEffect(currentMode) { if (currentMode != null) pendingMode = null }
     val effectiveMode = effectiveModeOf(pendingMode, currentMode)
 
-    // Brightness: UI 0..100, quantized to 0..15, written only when the
-    // quantized value changes (throttled ~100ms).
-    val deviceBrightness = connection?.brightness?.collectAsState()?.value ?: 15
-    var brightnessUi by remember { mutableFloatStateOf(deviceBrightness / 15f * 100f) }
+    // Brightness: the slider runs 0..100, the device takes 0..15, and a level is written only
+    // once it has held still for ~100ms.
+    val deviceBrightness = connection?.brightness?.collectAsState()?.value ?: Brightness.MAX_LEVEL
+    var brightnessUi by remember { mutableFloatStateOf(Brightness.toPercent(deviceBrightness)) }
     var brightnessDragging by remember { mutableStateOf(false) }
     LaunchedEffect(deviceBrightness) {
-        if (!brightnessDragging) brightnessUi = deviceBrightness / 15f * 100f
+        // Adopt the device's value, but never yank the slider out from under a finger.
+        if (!brightnessDragging) brightnessUi = Brightness.toPercent(deviceBrightness)
     }
     LaunchedEffect(connection) {
         if (connection == null) return@LaunchedEffect
-        snapshotFlow { (brightnessUi / 100f * 15f).roundToInt().coerceIn(0, 15) }
+        snapshotFlow { Brightness.toLevel(brightnessUi) }
             .distinctUntilChanged()
-            .collectLatest { quantized ->
+            .collectLatest { level ->
                 delay(100)
-                if (quantized != connection.brightness.value) {
-                    connection.writeBrightness(quantized)
+                if (Brightness.shouldWrite(level, connection.brightness.value)) {
+                    connection.writeBrightness(level)
                 }
             }
     }

@@ -67,6 +67,7 @@ import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.data.ble.ScanEvent
 import io.github.cespresso.clumo.data.ble.ScanFailure
 import io.github.cespresso.clumo.design.ClumoColors
+import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
@@ -435,8 +436,8 @@ private fun KnownDeviceCard(
     val state = connection?.connectionState?.collectAsState()?.value ?: ConnectionState.Disconnected
     val (label, labelColor) = connectionLabel(state)
     val bits = liveMirrorBits(connection, selectedPatternBits)
-    val brightness = connection?.brightness?.collectAsState()?.value ?: 15
-    val litAlpha = 0.4f + (brightness / 15f) * 0.6f
+    val brightness = connection?.brightness?.collectAsState()?.value ?: Brightness.MAX_LEVEL
+    val litAlpha = Brightness.litAlpha(brightness)
 
     Row(
         modifier = Modifier

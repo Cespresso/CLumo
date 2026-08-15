@@ -100,10 +100,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-/**
- * Live mirror of the device LED for the current mode.
- * Pomodoro/Timer -> pixel countdown; Display -> selected pattern; Visualizer -> column bars.
- */
+/** Collects what the mirror needs from a live link and applies [mirrorBitsFor]. */
 @Composable
 fun liveMirrorBits(
     connection: DeviceConnection?,
@@ -120,18 +117,15 @@ fun liveMirrorBits(
     val columns by connection.audioVisualizer.columns.collectAsState()
     val vizActive by connection.audioVisualizer.isActive.collectAsState()
     if (state != ConnectionState.Ready) return FaceBits.EMPTY
-    return when (mode) {
-        BleUuids.MODE_POMODORO -> pomodoro?.let { FaceBits.fromPomodoro(it) } ?: FaceBits.EMPTY
-        BleUuids.MODE_TIMER -> timer?.let {
-            if (it.isCompleted && !timerBlinkOn) FaceBits.EMPTY
-            else if (it.isCompleted) -1L
-            else FaceBits.fromCountdownTimer(it)
-        } ?: FaceBits.EMPTY
-        BleUuids.MODE_DISPLAY -> selectedPatternBits?.let { FaceBits.fromBitsString(it) }
-            ?: FaceBits.EMPTY
-        BleUuids.MODE_VISUALIZER -> if (vizActive) FaceBits.fromColumns(columns) else FaceBits.EMPTY
-        else -> FaceBits.EMPTY
-    }
+    return mirrorBitsFor(
+        mode = mode,
+        pomodoro = pomodoro,
+        timer = timer,
+        selectedPatternBits = selectedPatternBits,
+        columns = columns,
+        visualizerActive = vizActive,
+        timerBlinkOn = timerBlinkOn,
+    )
 }
 
 @Composable
@@ -188,24 +182,11 @@ fun DeviceScreen(
     val selectedPattern = patterns.firstOrNull { it.id == selectedPatternId }
 
     val knownDevice = repository.getByAddress(address)
-    val stableId = deviceId ?: knownDevice?.id
-    val appearance = resolveAppearance(stableId, appearances)
-    val displayName = stableId?.let { aliases[it] }
-        ?: scannedName
-        ?: knownDevice?.fallbackName
-        ?: "CLumo"
-
-    val ready = state == ConnectionState.Ready
 
     // Sync the segmented selector with the device (mode notifications included).
     var pendingMode by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(currentMode) { if (currentMode != null) pendingMode = null }
-    val effectiveMode = pendingMode ?: currentMode ?: BleUuids.MODE_POMODORO
-
-    // Re-read MODE when entering the screen so the selector starts in sync.
-    LaunchedEffect(connection, ready) {
-        if (ready) connection?.readMode()
-    }
+    val effectiveMode = effectiveModeOf(pendingMode, currentMode)
 
     // Brightness: UI 0..100, quantized to 0..15, written only when the
     // quantized value changes (throttled ~100ms).
@@ -226,7 +207,58 @@ fun DeviceScreen(
                 }
             }
     }
-    val litAlpha = 0.4f + (brightnessUi / 100f) * 0.6f
+
+    val timerBlinkOn = completionBlink(
+        effectiveMode == BleUuids.MODE_TIMER && timerStatus?.isCompleted == true
+    )
+    val columns = connection?.audioVisualizer?.columns?.collectAsState()?.value ?: IntArray(0)
+    val visualizerActive = connection?.audioVisualizer?.isActive?.collectAsState()?.value ?: false
+
+    var dismissedDialogFailure by remember { mutableStateOf<ConnectionFailure?>(null) }
+    LaunchedEffect(failure) {
+        if (failure == null) dismissedDialogFailure = null
+    }
+
+    val ui = DeviceUiStateFactory.create(
+        connected = connection != null,
+        state = state,
+        failure = failure,
+        reconnectAttempt = reconnectAttempt,
+        currentMode = currentMode,
+        pendingMode = pendingMode,
+        pomodoro = pomodoroStatus,
+        timer = timerStatus,
+        deviceId = deviceId,
+        scannedName = scannedName,
+        knownDevice = knownDevice,
+        aliases = aliases,
+        appearances = appearances,
+        primaryDeviceId = primaryDeviceId,
+        selectedPatternBits = selectedPattern?.bits,
+        brightnessUi = brightnessUi,
+        columns = columns,
+        visualizerActive = visualizerActive,
+        timerBlinkOn = timerBlinkOn,
+        dismissedDialogFailure = dismissedDialogFailure,
+    )
+    val ready = ui.ready
+    val stableId = ui.stableId
+    val appearance = ui.appearance
+    val displayName = ui.displayName
+    val mirrorBits = ui.mirrorBits
+    val litAlpha = ui.litAlpha
+    val stateLabel = ui.stateLabel.text(ui.reconnectAttempt)
+    val stateLabelColor = when (ui.stateTone) {
+        DeviceStateTone.Accent -> LocalClumoAccents.current.accent
+        DeviceStateTone.Error -> ClumoColors.Coral
+        DeviceStateTone.Muted -> ClumoColors.Muted
+    }
+    val failureMessage = ui.failureMessage.text()
+
+    // Re-read MODE when entering the screen so the selector starts in sync.
+    LaunchedEffect(connection, ready) {
+        if (ready) connection?.readMode()
+    }
 
     // While in Display mode, keep the device showing the selected pattern.
     LaunchedEffect(ready, effectiveMode, selectedPattern?.bits, connection) {
@@ -235,45 +267,25 @@ fun DeviceScreen(
         }
     }
 
-    val timerBlinkOn = completionBlink(
-        effectiveMode == BleUuids.MODE_TIMER && timerStatus?.isCompleted == true
-    )
-    val mirrorBits = liveMirrorBits(connection, selectedPattern?.bits)
-    val stateLabel = when (state) {
-        ConnectionState.Connecting -> stringResource(R.string.state_connecting)
-        ConnectionState.Reconnecting -> stringResource(R.string.state_reconnecting, reconnectAttempt)
-        ConnectionState.Bonding -> stringResource(R.string.state_pairing)
-        ConnectionState.Connected -> stringResource(R.string.state_discovering)
-        ConnectionState.Synchronizing -> stringResource(R.string.state_synchronizing)
-        ConnectionState.Ready -> stringResource(R.string.state_connected)
-        ConnectionState.Error -> stringResource(R.string.state_error)
-        ConnectionState.Disconnected -> stringResource(R.string.state_disconnected)
-    }
-    val stateLabelColor = when (state) {
-        ConnectionState.Ready -> LocalClumoAccents.current.accent
-        ConnectionState.Error -> ClumoColors.Coral
-        else -> ClumoColors.Muted
-    }
-    val failureMessage = when (failure) {
-        ConnectionFailure.BluetoothUnavailable -> stringResource(R.string.connection_error_unavailable)
-        ConnectionFailure.BluetoothDisabled -> stringResource(R.string.connection_error_bluetooth_off)
-        ConnectionFailure.PermissionDenied -> stringResource(R.string.connection_error_permission)
-        ConnectionFailure.ConnectionTimedOut -> stringResource(R.string.connection_error_timeout)
-        ConnectionFailure.PairingFailed -> stringResource(R.string.connection_error_pairing)
-        ConnectionFailure.ServiceDiscoveryFailed -> stringResource(R.string.connection_error_services)
-        ConnectionFailure.IncompatibleDevice -> stringResource(R.string.connection_error_incompatible)
-        ConnectionFailure.SynchronizationFailed -> stringResource(R.string.connection_error_sync)
-        ConnectionFailure.ConnectionLost -> stringResource(R.string.device_error_banner)
-        null -> stringResource(R.string.device_error_banner)
+    fun runFailureAction(action: DeviceFailureAction) {
+        when (action) {
+            DeviceFailureAction.OpenAppSettings -> settingsLauncher.launch(
+                Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:${context.packageName}"),
+                )
+            )
+            DeviceFailureAction.OpenBluetoothSettings -> settingsLauncher.launch(
+                Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+            )
+            DeviceFailureAction.BackToList -> onBack()
+            DeviceFailureAction.Retry -> registry.connect(address, scannedName)
+        }
     }
 
     var menuOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
     var modeHelpOpen by remember { mutableStateOf(false) }
-    var dismissedDialogFailure by remember { mutableStateOf<ConnectionFailure?>(null) }
-    LaunchedEffect(failure) {
-        if (failure == null) dismissedDialogFailure = null
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -404,28 +416,11 @@ fun DeviceScreen(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(accents.cta)
-                                    .clickable {
-                                        when (failure) {
-                                            ConnectionFailure.PermissionDenied -> settingsLauncher.launch(
-                                                Intent(
-                                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                                    Uri.parse("package:${context.packageName}"),
-                                                )
-                                            )
-                                            ConnectionFailure.BluetoothDisabled -> settingsLauncher.launch(
-                                                Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
-                                            )
-                                            else -> registry.connect(address, scannedName)
-                                        }
-                                    }
+                                    .clickable { runFailureAction(ui.bannerAction) }
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                             ) {
                                 Text(
-                                    text = when (failure) {
-                                        ConnectionFailure.PermissionDenied,
-                                        ConnectionFailure.BluetoothDisabled -> stringResource(R.string.action_open_settings)
-                                        else -> stringResource(R.string.device_error_retry)
-                                    },
+                                    text = ui.bannerAction.label(),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = RoundedFontFamily,
@@ -703,50 +698,16 @@ fun DeviceScreen(
         )
     }
 
-    val blockingFailure = failure?.takeIf {
-        it == ConnectionFailure.BluetoothUnavailable ||
-            it == ConnectionFailure.PermissionDenied ||
-            it == ConnectionFailure.BluetoothDisabled ||
-            it == ConnectionFailure.PairingFailed ||
-            it == ConnectionFailure.IncompatibleDevice
-    }
-    if (state == ConnectionState.Error &&
-        blockingFailure != null &&
-        dismissedDialogFailure != blockingFailure
-    ) {
-        val confirmText = when (blockingFailure) {
-            ConnectionFailure.PermissionDenied,
-            ConnectionFailure.BluetoothDisabled,
-            ConnectionFailure.PairingFailed -> stringResource(R.string.action_open_settings)
-            ConnectionFailure.BluetoothUnavailable,
-            ConnectionFailure.IncompatibleDevice -> stringResource(R.string.action_back_to_list)
-            else -> stringResource(R.string.action_retry)
-        }
+    ui.dialog?.let { dialog ->
         ClumoActionDialog(
             title = stringResource(R.string.connection_dialog_title),
-            body = failureMessage,
-            confirmText = confirmText,
+            body = dialog.message.text(),
+            confirmText = dialog.confirm.label(),
             onConfirm = {
-                dismissedDialogFailure = blockingFailure
-                when (blockingFailure) {
-                    ConnectionFailure.PermissionDenied -> settingsLauncher.launch(
-                        Intent(
-                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.parse("package:${context.packageName}"),
-                        )
-                    )
-                    ConnectionFailure.BluetoothDisabled -> settingsLauncher.launch(
-                        Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
-                    )
-                    ConnectionFailure.PairingFailed -> settingsLauncher.launch(
-                        Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
-                    )
-                    ConnectionFailure.BluetoothUnavailable,
-                    ConnectionFailure.IncompatibleDevice -> onBack()
-                    else -> registry.connect(address, scannedName)
-                }
+                dismissedDialogFailure = dialog.failure
+                runFailureAction(dialog.confirm)
             },
-            onDismiss = { dismissedDialogFailure = blockingFailure },
+            onDismiss = { dismissedDialogFailure = dialog.failure },
         )
     }
 
@@ -1421,4 +1382,47 @@ private fun VisualizerSection(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+// ---------------------------------------------------------------------------
+// Wording
+//
+// DeviceUiState names what to say; these resolve it. Keeping the strings here
+// is what lets the rules above be plain unit tests.
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun DeviceStateLabel.text(reconnectAttempt: Int): String = when (this) {
+    DeviceStateLabel.Connecting -> stringResource(R.string.state_connecting)
+    DeviceStateLabel.Reconnecting -> stringResource(R.string.state_reconnecting, reconnectAttempt)
+    DeviceStateLabel.Pairing -> stringResource(R.string.state_pairing)
+    DeviceStateLabel.Discovering -> stringResource(R.string.state_discovering)
+    DeviceStateLabel.Synchronizing -> stringResource(R.string.state_synchronizing)
+    DeviceStateLabel.Connected -> stringResource(R.string.state_connected)
+    DeviceStateLabel.Error -> stringResource(R.string.state_error)
+    DeviceStateLabel.Disconnected -> stringResource(R.string.state_disconnected)
+}
+
+@Composable
+private fun DeviceFailureMessage.text(): String = when (this) {
+    DeviceFailureMessage.Unavailable -> stringResource(R.string.connection_error_unavailable)
+    DeviceFailureMessage.BluetoothOff -> stringResource(R.string.connection_error_bluetooth_off)
+    DeviceFailureMessage.Permission -> stringResource(R.string.connection_error_permission)
+    DeviceFailureMessage.Timeout -> stringResource(R.string.connection_error_timeout)
+    DeviceFailureMessage.Pairing -> stringResource(R.string.connection_error_pairing)
+    DeviceFailureMessage.Services -> stringResource(R.string.connection_error_services)
+    DeviceFailureMessage.Incompatible -> stringResource(R.string.connection_error_incompatible)
+    DeviceFailureMessage.Sync -> stringResource(R.string.connection_error_sync)
+    DeviceFailureMessage.Lost -> stringResource(R.string.device_error_banner)
+}
+
+@Composable
+private fun DeviceFailureAction.label(): String = when (this) {
+    // Both settings destinations read the same on the button; only where they land differs.
+    DeviceFailureAction.OpenAppSettings,
+    DeviceFailureAction.OpenBluetoothSettings,
+    -> stringResource(R.string.action_open_settings)
+
+    DeviceFailureAction.BackToList -> stringResource(R.string.action_back_to_list)
+    DeviceFailureAction.Retry -> stringResource(R.string.device_error_retry)
 }

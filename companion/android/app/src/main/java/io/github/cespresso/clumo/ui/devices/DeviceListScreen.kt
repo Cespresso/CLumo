@@ -72,6 +72,7 @@ import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.resolveAppearance
 import io.github.cespresso.clumo.ui.components.BrandCorner
@@ -291,7 +292,11 @@ fun DeviceListScreen(
                     val connection = activeConnections[device.address]
                     KnownDeviceCard(
                         device = device,
-                        alias = aliases[device.id],
+                        name = DeviceNaming.displayName(
+                            deviceId = device.id,
+                            aliases = aliases,
+                            fallbackName = device.fallbackName,
+                        ),
                         appearance = resolveAppearance(device.id, appearances),
                         connection = connection,
                         selectedPatternBits = selectedPatternBits,
@@ -425,7 +430,7 @@ fun DeviceListScreen(
 @Composable
 private fun KnownDeviceCard(
     device: Device,
-    alias: String?,
+    name: String,
     appearance: DeviceAppearance,
     connection: DeviceConnection?,
     selectedPatternBits: String?,
@@ -461,7 +466,7 @@ private fun KnownDeviceCard(
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = alias ?: device.fallbackName,
+                text = name,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = RoundedFontFamily,

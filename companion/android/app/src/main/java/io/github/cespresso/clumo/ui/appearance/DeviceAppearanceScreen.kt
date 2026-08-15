@@ -63,6 +63,7 @@ import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.RgbColor
 import io.github.cespresso.clumo.domain.resolveAppearance
@@ -88,7 +89,11 @@ fun DeviceAppearanceScreen(
     val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
     val aliases by preferences.aliases.collectAsState(initial = emptyMap())
     val persisted = resolveAppearance(deviceId, appearances)
-    val deviceName = aliases[deviceId] ?: repository.get(deviceId)?.fallbackName ?: "CLumo"
+    val deviceName = DeviceNaming.displayName(
+        deviceId = deviceId,
+        aliases = aliases,
+        fallbackName = repository.get(deviceId)?.fallbackName,
+    )
     var appearance by remember(deviceId) { mutableStateOf(persisted) }
     var saveFailed by remember(deviceId) { mutableStateOf(false) }
     var editingPart by remember { mutableStateOf<AppearancePart?>(null) }

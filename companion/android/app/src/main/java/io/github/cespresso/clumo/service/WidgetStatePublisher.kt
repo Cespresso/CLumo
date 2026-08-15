@@ -20,6 +20,7 @@ import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.resolvePrimaryTarget
 import io.github.cespresso.clumo.widget.HEARTBEAT_INTERVAL_MS
@@ -221,7 +222,11 @@ class WidgetStatePublisher(
                     patternName = live.pattern.name,
                     patternBits = live.pattern.bits,
                     alias = target?.let {
-                        live.identity.aliases[it.id] ?: it.fallbackName
+                        DeviceNaming.displayName(
+                            deviceId = it.id,
+                            aliases = live.identity.aliases,
+                            fallbackName = it.fallbackName,
+                        )
                     }.orEmpty(),
                     appearance = target?.let { live.identity.appearances[it.id] }
                         ?: DeviceAppearance.DEFAULT,

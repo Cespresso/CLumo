@@ -1,6 +1,6 @@
 package io.github.cespresso.clumo.widget
 
-import io.github.cespresso.clumo.ui.components.FaceBits
+import io.github.cespresso.clumo.domain.FaceBits
 
 /** How usable the link to the primary device is right now. */
 enum class WidgetLink {

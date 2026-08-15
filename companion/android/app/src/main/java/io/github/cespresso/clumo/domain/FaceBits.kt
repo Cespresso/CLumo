@@ -1,7 +1,4 @@
-package io.github.cespresso.clumo.ui.components
-
-import io.github.cespresso.clumo.domain.CountdownTimerStatus
-import io.github.cespresso.clumo.domain.PomodoroStatus
+package io.github.cespresso.clumo.domain
 
 /** 8x8 face bitmask helpers (bit i = row-major cell i, row 0 = top, bit set = lit). */
 object FaceBits {

@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Layering rules the compiler cannot state. They encode drift that actually happened here, so
+ * Layering rules the compiler cannot state. Both encode drift that actually happened here, so
  * a failure means the shape is sliding back, not that the rule is inconvenient.
  */
 class ArchitectureTest {
@@ -35,6 +35,24 @@ class ArchitectureTest {
             .filter { it.readText().contains("service.DeviceHubService") }
         assertEquals(
             "These screens reach the hub service instead of taking what they use",
+            emptyList<String>(),
+            offenders.map { it.name }.sorted(),
+        )
+    }
+
+    /**
+     * The widgets draw with Canvas and Glance, the app draws with Compose. What they share is
+     * device rules and design tokens, and both belong under the layers below. Reaching into the
+     * screen package for them made the widget depend on how a screen happens to be built.
+     * MainActivity is the composition root, so assembling screens is its job.
+     */
+    @Test
+    fun onlyTheUiLayerDependsOnTheUiLayer() {
+        val offenders = sources
+            .filterNot { it.isUnder("ui") || it.name == "MainActivity.kt" }
+            .filter { it.readText().contains("import io.github.cespresso.clumo.ui.") }
+        assertEquals(
+            "These files reach into the screen package for something that belongs below it",
             emptyList<String>(),
             offenders.map { it.name }.sorted(),
         )

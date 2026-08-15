@@ -1,9 +1,9 @@
 package io.github.cespresso.clumo.widget
 
+import io.github.cespresso.clumo.design.ContentTone
+import io.github.cespresso.clumo.design.accentContentToneFor
+import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.RgbColor
-import io.github.cespresso.clumo.ui.components.ContentTone
-import io.github.cespresso.clumo.ui.components.FaceBits
-import io.github.cespresso.clumo.ui.theme.accentContentToneFor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

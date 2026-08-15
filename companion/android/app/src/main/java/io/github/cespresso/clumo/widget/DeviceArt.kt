@@ -10,13 +10,13 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.RectF
 import android.graphics.Shader
-import androidx.core.graphics.ColorUtils
-import io.github.cespresso.clumo.domain.RgbColor
-import io.github.cespresso.clumo.ui.components.ContentTone
-import io.github.cespresso.clumo.ui.components.FaceBits
-import io.github.cespresso.clumo.ui.components.contentToneFor
-import io.github.cespresso.clumo.ui.theme.ClumoColors
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.graphics.ColorUtils
+import io.github.cespresso.clumo.design.ClumoColors
+import io.github.cespresso.clumo.design.ContentTone
+import io.github.cespresso.clumo.design.contentToneFor
+import io.github.cespresso.clumo.domain.FaceBits
+import io.github.cespresso.clumo.domain.RgbColor
 
 // The app's knob ratios are fractions of a 168dp frame while its face ratios are fractions of
 // 188dp. Both scale off the same face size, so they compose correctly. The denominators are

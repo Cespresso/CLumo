@@ -1,16 +1,16 @@
 package io.github.cespresso.clumo.widget
 
+import androidx.compose.ui.graphics.toArgb
 import io.github.cespresso.clumo.data.ble.BleUuids
+import io.github.cespresso.clumo.design.ClumoColors
+import io.github.cespresso.clumo.design.ContentTone
+import io.github.cespresso.clumo.design.accentContentToneFor
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
-import androidx.compose.ui.graphics.toArgb
-import io.github.cespresso.clumo.ui.components.ContentTone
-import io.github.cespresso.clumo.ui.components.FaceBits
-import io.github.cespresso.clumo.ui.theme.ClumoColors
-import io.github.cespresso.clumo.ui.theme.accentContentToneFor
 
 /** A condition a widget cannot recover from on its own. */
 enum class WidgetBlock {

@@ -23,14 +23,14 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,6 +62,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.R
+import io.github.cespresso.clumo.data.AppPreferences
+import io.github.cespresso.clumo.data.DeviceRegistry
+import io.github.cespresso.clumo.data.DeviceRepository
+import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.domain.ConnectionFailure
@@ -70,12 +74,12 @@ import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.PomodoroStatus
-import io.github.cespresso.clumo.service.DeviceHubService
-import io.github.cespresso.clumo.ui.components.ClumoSlider
 import io.github.cespresso.clumo.ui.appearance.resolveAppearance
-import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
+import io.github.cespresso.clumo.ui.components.ClumoSlider
+import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
+import io.github.cespresso.clumo.ui.components.ContentTone
 import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
@@ -84,7 +88,6 @@ import io.github.cespresso.clumo.ui.components.ModeHelpHeader
 import io.github.cespresso.clumo.ui.components.NameInputDialog
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.components.SegmentedControl
-import io.github.cespresso.clumo.ui.components.ContentTone
 import io.github.cespresso.clumo.ui.components.contentToneFor
 import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.components.toComposeColor
@@ -146,7 +149,10 @@ private fun completionBlink(active: Boolean): Boolean {
 
 @Composable
 fun DeviceScreen(
-    service: DeviceHubService,
+    registry: DeviceRegistry,
+    repository: DeviceRepository,
+    preferences: AppPreferences,
+    patternRepository: PatternRepository,
     address: String,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -155,7 +161,7 @@ fun DeviceScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val connections by service.registry.connections.collectAsState()
+    val connections by registry.connections.collectAsState()
     val connection = connections[address]
     val settingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -172,16 +178,16 @@ fun DeviceScreen(
     val deviceId = connection?.deviceId?.collectAsState()?.value
     val scannedName = connection?.deviceName?.collectAsState()?.value
 
-    val aliases by service.preferences.aliases.collectAsState(initial = emptyMap())
-    val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
-    val primaryDeviceId by service.preferences.primaryDeviceId.collectAsState(initial = null)
-    val visualizerSensitivity by service.preferences.visualizerSensitivity.collectAsState(initial = 0.6f)
-    val automaticLowVolumeBoost by service.preferences.automaticLowVolumeBoost.collectAsState(initial = false)
-    val patterns by service.patterns.patterns.collectAsState(initial = emptyList())
-    val selectedPatternId by service.patterns.selectedId.collectAsState(initial = null)
+    val aliases by preferences.aliases.collectAsState(initial = emptyMap())
+    val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
+    val primaryDeviceId by preferences.primaryDeviceId.collectAsState(initial = null)
+    val visualizerSensitivity by preferences.visualizerSensitivity.collectAsState(initial = 0.6f)
+    val automaticLowVolumeBoost by preferences.automaticLowVolumeBoost.collectAsState(initial = false)
+    val patterns by patternRepository.patterns.collectAsState(initial = emptyList())
+    val selectedPatternId by patternRepository.selectedId.collectAsState(initial = null)
     val selectedPattern = patterns.firstOrNull { it.id == selectedPatternId }
 
-    val knownDevice = service.repository.getByAddress(address)
+    val knownDevice = repository.getByAddress(address)
     val stableId = deviceId ?: knownDevice?.id
     val appearance = resolveAppearance(stableId, appearances)
     val displayName = stableId?.let { aliases[it] }
@@ -409,7 +415,7 @@ fun DeviceScreen(
                                             ConnectionFailure.BluetoothDisabled -> settingsLauncher.launch(
                                                 Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
                                             )
-                                            else -> service.registry.connect(address, scannedName)
+                                            else -> registry.connect(address, scannedName)
                                         }
                                     }
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -558,7 +564,7 @@ fun DeviceScreen(
                                     selectedId = selectedPatternId,
                                     appearance = appearance,
                                     onSelect = { pattern ->
-                                        scope.launch { service.patterns.select(pattern.id) }
+                                        scope.launch { patternRepository.select(pattern.id) }
                                     },
                                     onAddNew = { onOpenEditor(null) },
                                     onEditSelected = {
@@ -575,13 +581,13 @@ fun DeviceScreen(
                                     },
                                     onVisualizerSensitivityChangeFinished = { sensitivity ->
                                         scope.launch {
-                                            service.preferences.setVisualizerSensitivity(sensitivity)
+                                            preferences.setVisualizerSensitivity(sensitivity)
                                         }
                                     },
                                     onAutomaticLowVolumeBoostChange = { enabled ->
                                         connection?.audioVisualizer?.automaticLowVolumeBoost = enabled
                                         scope.launch {
-                                            service.preferences.setAutomaticLowVolumeBoost(enabled)
+                                            preferences.setAutomaticLowVolumeBoost(enabled)
                                         }
                                     },
                                 )
@@ -667,7 +673,7 @@ fun DeviceScreen(
                     menuOpen = false
                     stableId?.let { id ->
                         scope.launch {
-                            service.preferences.setPrimaryDeviceId(if (isPrimary) null else id)
+                            preferences.setPrimaryDeviceId(if (isPrimary) null else id)
                         }
                     }
                 }
@@ -677,12 +683,12 @@ fun DeviceScreen(
                 }
                 MenuItem(stringResource(R.string.device_menu_refresh_gatt), ClumoColors.Text) {
                     menuOpen = false
-                    service.registry.get(address)?.reconnectWithCacheRefresh()
-                        ?: service.registry.connect(address, scannedName)
+                    registry.get(address)?.reconnectWithCacheRefresh()
+                        ?: registry.connect(address, scannedName)
                 }
                 MenuItem(stringResource(R.string.device_menu_disconnect), ClumoColors.Coral) {
                     menuOpen = false
-                    service.registry.disconnect(address)
+                    registry.disconnect(address)
                     onBack()
                 }
             }
@@ -737,7 +743,7 @@ fun DeviceScreen(
                     )
                     ConnectionFailure.BluetoothUnavailable,
                     ConnectionFailure.IncompatibleDevice -> onBack()
-                    else -> service.registry.connect(address, scannedName)
+                    else -> registry.connect(address, scannedName)
                 }
             },
             onDismiss = { dismissedDialogFailure = blockingFailure },
@@ -752,7 +758,7 @@ fun DeviceScreen(
             onConfirm = { name ->
                 renameOpen = false
                 val id = stableId ?: return@NameInputDialog
-                scope.launch { service.preferences.setAlias(id, name) }
+                scope.launch { preferences.setAlias(id, name) }
             },
             onDismiss = { renameOpen = false },
         )

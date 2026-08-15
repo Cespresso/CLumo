@@ -59,9 +59,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import io.github.cespresso.clumo.R
+import io.github.cespresso.clumo.data.AppPreferences
+import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.RgbColor
-import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
@@ -77,15 +78,16 @@ private const val PREVIEW_BITS =
 
 @Composable
 fun DeviceAppearanceScreen(
-    service: DeviceHubService,
+    repository: DeviceRepository,
+    preferences: AppPreferences,
     deviceId: String,
     onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
-    val aliases by service.preferences.aliases.collectAsState(initial = emptyMap())
+    val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
+    val aliases by preferences.aliases.collectAsState(initial = emptyMap())
     val persisted = resolveAppearance(deviceId, appearances)
-    val deviceName = aliases[deviceId] ?: service.repository.get(deviceId)?.fallbackName ?: "CLumo"
+    val deviceName = aliases[deviceId] ?: repository.get(deviceId)?.fallbackName ?: "CLumo"
     var appearance by remember(deviceId) { mutableStateOf(persisted) }
     var saveFailed by remember(deviceId) { mutableStateOf(false) }
     var editingPart by remember { mutableStateOf<AppearancePart?>(null) }
@@ -99,7 +101,7 @@ fun DeviceAppearanceScreen(
         appearance = next
         saveFailed = false
         scope.launch {
-            runCatching { service.preferences.setDeviceAppearance(deviceId, next) }
+            runCatching { preferences.setDeviceAppearance(deviceId, next) }
                 .onFailure {
                     appearance = persisted
                     saveFailed = true
@@ -111,7 +113,7 @@ fun DeviceAppearanceScreen(
         appearance = DeviceAppearance.DEFAULT
         saveFailed = false
         scope.launch {
-            runCatching { service.preferences.resetDeviceAppearance(deviceId) }
+            runCatching { preferences.resetDeviceAppearance(deviceId) }
                 .onFailure {
                     appearance = persisted
                     saveFailed = true

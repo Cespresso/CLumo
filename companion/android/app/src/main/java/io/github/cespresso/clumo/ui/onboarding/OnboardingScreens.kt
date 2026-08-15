@@ -38,7 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.service.DeviceHubService
+import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.ui.components.BrandCorner
 import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
@@ -114,7 +114,7 @@ fun OnboardingWelcomeScreen(onStart: () -> Unit) {
 
 @Composable
 fun OnboardingBluetoothScreen(
-    service: DeviceHubService,
+    preferences: AppPreferences,
     onDone: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -122,7 +122,7 @@ fun OnboardingBluetoothScreen(
 
     fun finish() {
         scope.launch {
-            service.preferences.setOnboardingDone()
+            preferences.setOnboardingDone()
             onDone()
         }
     }

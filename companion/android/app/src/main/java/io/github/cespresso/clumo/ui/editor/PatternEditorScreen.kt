@@ -54,19 +54,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import io.github.cespresso.clumo.R
+import io.github.cespresso.clumo.data.AppPreferences
+import io.github.cespresso.clumo.data.DeviceRegistry
+import io.github.cespresso.clumo.data.DeviceRepository
+import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.domain.Pattern
-import io.github.cespresso.clumo.service.DeviceHubService
-import io.github.cespresso.clumo.ui.components.CtaPillButton
+import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.ContentTone
+import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.NameInputDialog
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
-import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.components.contentToneFor
-import io.github.cespresso.clumo.ui.appearance.resolveAppearance
+import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
@@ -78,18 +81,21 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun PatternEditorScreen(
-    service: DeviceHubService,
+    registry: DeviceRegistry,
+    repository: DeviceRepository,
+    preferences: AppPreferences,
+    patternRepository: PatternRepository,
     address: String?,
     patternId: String?,
     onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val patterns by service.patterns.patterns.collectAsState(initial = emptyList())
+    val patterns by patternRepository.patterns.collectAsState(initial = emptyList())
     val existing = patternId?.let { id -> patterns.firstOrNull { it.id == id } }
-    val connection = address?.let { service.registry.get(it) }
+    val connection = address?.let { registry.get(it) }
     val connectedDeviceId = connection?.deviceId?.collectAsState()?.value
-    val knownDeviceId = address?.let(service.repository::getByAddress)?.id
-    val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
+    val knownDeviceId = address?.let(repository::getByAddress)?.id
+    val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
     val appearance = resolveAppearance(connectedDeviceId ?: knownDeviceId, appearances)
 
     var cells by remember(patternId) {
@@ -343,7 +349,7 @@ fun PatternEditorScreen(
                     bits = FaceBits.toBitsString(cells),
                 )
                 runPersistence {
-                    service.patterns.saveAndSelect(pattern)
+                    patternRepository.saveAndSelect(pattern)
                 }
             },
             onDismiss = { saveOpen = false },
@@ -354,7 +360,7 @@ fun PatternEditorScreen(
         DeleteConfirmDialog(
             onConfirm = {
                 deleteOpen = false
-                runPersistence { service.patterns.remove(existing.id) }
+                runPersistence { patternRepository.remove(existing.id) }
             },
             onDismiss = { deleteOpen = false },
         )

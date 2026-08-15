@@ -6,17 +6,16 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Binder
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
 import androidx.glance.appwidget.updateAll
 import io.github.cespresso.clumo.R
+import io.github.cespresso.clumo.appContainer
 import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.data.DeviceRegistry
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
-import io.github.cespresso.clumo.data.ble.BleScanner
 import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.data.ble.ButtonEvent
 import io.github.cespresso.clumo.data.ble.DeviceConnection
@@ -49,8 +48,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /**
- * Foreground service that owns the device hub (registry, repositories, scanner)
- * so BLE connections and visualizer streaming survive while the app is backgrounded.
+ * Foreground service that keeps the device hub alive, so BLE connections and visualizer
+ * streaming survive while the app is backgrounded. It holds a lifecycle, not the graph: the
+ * registry and repositories it drives belong to [io.github.cespresso.clumo.AppContainer].
  * Per-device logic lives in [io.github.cespresso.clumo.data.ble.DeviceConnection].
  */
 class DeviceHubService : Service() {
@@ -70,25 +70,16 @@ class DeviceHubService : Service() {
         }
     }
 
-    inner class LocalBinder : Binder() {
-        val service: DeviceHubService get() = this@DeviceHubService
-    }
-
-    private val binder = LocalBinder()
-    override fun onBind(intent: Intent?): IBinder = binder
+    /** Nothing binds to the hub; it is started, not consulted. */
+    override fun onBind(intent: Intent?): IBinder? = null
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    lateinit var repository: DeviceRepository
-        private set
-    lateinit var registry: DeviceRegistry
-        private set
-    lateinit var scanner: BleScanner
-        private set
-    lateinit var patterns: PatternRepository
-        private set
-    lateinit var preferences: AppPreferences
-        private set
+    private val repository: DeviceRepository get() = appContainer.repository
+    private val registry: DeviceRegistry get() = appContainer.registry
+    private val patterns: PatternRepository get() = appContainer.patterns
+    private val preferences: AppPreferences get() = appContainer.preferences
+
     private lateinit var widgetStore: WidgetSnapshotStore
     private lateinit var publisher: WidgetStatePublisher
 
@@ -97,11 +88,6 @@ class DeviceHubService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        repository = DeviceRepository(this)
-        registry = DeviceRegistry(this, repository)
-        scanner = BleScanner(this)
-        patterns = PatternRepository(this)
-        preferences = AppPreferences(this)
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notif_idle)))
         observeConnections()
@@ -151,7 +137,7 @@ class DeviceHubService : Service() {
      * [DeviceConnection.connect] guards itself and returns immediately unless the link is
      * down, so a live connection comes back untouched.
      */
-    fun ensureConnected(target: Device): DeviceConnection =
+    private fun ensureConnected(target: Device): DeviceConnection =
         registry.connect(target.address, target.name)
 
     private suspend fun handleWidgetCommand(command: WidgetCommand) {

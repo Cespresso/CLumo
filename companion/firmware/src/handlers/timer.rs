@@ -11,10 +11,6 @@ use super::ModeHandler;
 
 const COMPLETION_BLINK_MS: u128 = 400;
 
-pub fn idle_status() -> [u8; 5] {
-    encode_timer_status(&Countdown::default())
-}
-
 pub struct TimerHandler {
     timer: Countdown,
     last_tick: Instant,
@@ -73,6 +69,10 @@ impl TimerHandler {
         // command payload. Echo the current status even when a running timer
         // rejects the setting so subsequent reads remain a valid 5-byte status.
         self.status_pending = true;
+    }
+
+    pub fn current_status(&self) -> [u8; 5] {
+        encode_timer_status(&self.timer)
     }
 
     fn advance_running_timer(&mut self) {
@@ -142,7 +142,7 @@ impl ModeHandler for TimerHandler {
         }
         self.status_pending = false;
         self.last_notified_secs = self.timer.remaining_secs();
-        Some(encode_timer_status(&self.timer))
+        Some(self.current_status())
     }
 
     fn tick(&mut self) -> Option<[u8; 8]> {

@@ -23,14 +23,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -39,18 +37,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.data.DeviceRegistry
-import io.github.cespresso.clumo.data.DeviceRepository
-import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.design.ClumoColors
-import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
-import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.DeviceMode
-import io.github.cespresso.clumo.domain.PomodoroStatus
-import io.github.cespresso.clumo.domain.effectiveModeOf
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.ClumoSlider
@@ -58,115 +48,40 @@ import io.github.cespresso.clumo.ui.components.ModeHelpDialog
 import io.github.cespresso.clumo.ui.components.ModeHelpHeader
 import io.github.cespresso.clumo.ui.components.NameInputDialog
 import io.github.cespresso.clumo.ui.components.SegmentedControl
-import io.github.cespresso.clumo.ui.components.completionBlink
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
 
 @Composable
 fun DeviceScreen(
-    registry: DeviceRegistry,
-    repository: DeviceRepository,
-    preferences: AppPreferences,
-    patternRepository: PatternRepository,
-    address: String,
+    viewModel: DeviceViewModel,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAppearance: (deviceId: String) -> Unit,
     onOpenEditor: (patternId: String?) -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val connections by registry.connections.collectAsState()
-    val connection = connections[address]
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val settingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
-        connection?.connect()
+        viewModel.onReconnect()
     }
+    val state = ui.link
+    val reconnectAttempt = ui.reconnectAttempt
+    val effectiveMode = ui.effectiveMode
+    val pomodoroStatus = ui.pomodoroStatus
+    val timerStatus = ui.timerStatus
+    val patterns = ui.patterns
+    val selectedPatternId = ui.appliedPatternId
+    val timerBlinkOn = ui.timerBlinkOn
 
-    val state = connection?.connectionState?.collectAsState()?.value ?: ConnectionState.Disconnected
-    val failure = connection?.connectionFailure?.collectAsState()?.value
-    val reconnectAttempt = connection?.reconnectAttempt?.collectAsState()?.value ?: 0
-    val currentMode = connection?.currentMode?.collectAsState()?.value
-    val pomodoroStatus = connection?.pomodoroStatus?.collectAsState()?.value
-    val timerStatus = connection?.timerStatus?.collectAsState()?.value
-    val deviceId = connection?.deviceId?.collectAsState()?.value
-    val scannedName = connection?.deviceName?.collectAsState()?.value
-
-    val aliases by preferences.aliases.collectAsState(initial = emptyMap())
-    val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
-    val primaryDeviceId by preferences.primaryDeviceId.collectAsState(initial = null)
-    val visualizerSensitivity by preferences.visualizerSensitivity.collectAsState(initial = 0.6f)
-    val automaticLowVolumeBoost by preferences.automaticLowVolumeBoost.collectAsState(initial = false)
-    val patterns by patternRepository.patterns.collectAsState(initial = emptyList())
-    val selectedPatternId by patternRepository.selectedId.collectAsState(initial = null)
-    val selectedPattern = patterns.firstOrNull { it.id == selectedPatternId }
-
-    val knownDevice = repository.getByAddress(address)
-
-    // Sync the segmented selector with the device (mode notifications included).
-    var pendingMode by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(currentMode) { if (currentMode != null) pendingMode = null }
-    val effectiveMode = effectiveModeOf(pendingMode, currentMode)
-
-    // Brightness: the slider runs 0..100, the device takes 0..15, and a level is written only
-    // once it has held still for ~100ms.
-    val deviceBrightness = connection?.brightness?.collectAsState()?.value ?: Brightness.MAX_LEVEL
-    var brightnessUi by remember { mutableFloatStateOf(Brightness.toPercent(deviceBrightness)) }
+    var brightnessUi by remember { mutableFloatStateOf(ui.brightnessPercent) }
     var brightnessDragging by remember { mutableStateOf(false) }
-    LaunchedEffect(deviceBrightness) {
+    LaunchedEffect(ui.brightnessPercent) {
         // Adopt the device's value, but never yank the slider out from under a finger.
-        if (!brightnessDragging) brightnessUi = Brightness.toPercent(deviceBrightness)
+        if (!brightnessDragging) brightnessUi = ui.brightnessPercent
     }
-    LaunchedEffect(connection) {
-        if (connection == null) return@LaunchedEffect
-        snapshotFlow { Brightness.toLevel(brightnessUi) }
-            .distinctUntilChanged()
-            .collectLatest { level ->
-                delay(100)
-                if (Brightness.shouldWrite(level, connection.brightness.value)) {
-                    connection.writeBrightness(level)
-                }
-            }
-    }
-
-    val timerBlinkOn = completionBlink(
-        effectiveMode == DeviceMode.TIMER && timerStatus?.isCompleted == true
-    )
-    val columns = connection?.audioVisualizer?.columns?.collectAsState()?.value ?: IntArray(0)
-    val visualizerActive = connection?.audioVisualizer?.isActive?.collectAsState()?.value ?: false
-
-    var dismissedDialogFailure by remember { mutableStateOf<ConnectionFailure?>(null) }
-    LaunchedEffect(failure) {
-        if (failure == null) dismissedDialogFailure = null
-    }
-
-    val ui = DeviceUiStateFactory.create(
-        connected = connection != null,
-        state = state,
-        failure = failure,
-        reconnectAttempt = reconnectAttempt,
-        currentMode = currentMode,
-        pendingMode = pendingMode,
-        pomodoro = pomodoroStatus,
-        timer = timerStatus,
-        deviceId = deviceId,
-        scannedName = scannedName,
-        knownDevice = knownDevice,
-        aliases = aliases,
-        appearances = appearances,
-        primaryDeviceId = primaryDeviceId,
-        selectedPatternBits = selectedPattern?.bits,
-        brightnessUi = brightnessUi,
-        columns = columns,
-        visualizerActive = visualizerActive,
-        timerBlinkOn = timerBlinkOn,
-        dismissedDialogFailure = dismissedDialogFailure,
-    )
     val ready = ui.ready
     val stableId = ui.stableId
     val appearance = ui.appearance
@@ -181,18 +96,6 @@ fun DeviceScreen(
     }
     val failureMessage = ui.failureMessage.text()
 
-    // Re-read MODE when entering the screen so the selector starts in sync.
-    LaunchedEffect(connection, ready) {
-        if (ready) connection?.readMode()
-    }
-
-    // While in Display mode, keep the device showing the selected pattern.
-    LaunchedEffect(ready, effectiveMode, selectedPattern?.bits, connection) {
-        if (ready && effectiveMode == DeviceMode.DISPLAY && selectedPattern != null) {
-            connection?.writeDisplay(selectedPattern.toRowBytes())
-        }
-    }
-
     fun runFailureAction(action: DeviceFailureAction) {
         when (action) {
             DeviceFailureAction.OpenAppSettings -> settingsLauncher.launch(
@@ -205,7 +108,7 @@ fun DeviceScreen(
                 Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
             )
             DeviceFailureAction.BackToList -> onBack()
-            DeviceFailureAction.Retry -> registry.connect(address, scannedName)
+            DeviceFailureAction.Retry -> viewModel.onReconnect()
         }
     }
 
@@ -294,6 +197,7 @@ fun DeviceScreen(
                                     onValueChange = {
                                         brightnessDragging = true
                                         brightnessUi = it
+                                        viewModel.onBrightnessChanged(it)
                                     },
                                     modifier = Modifier.weight(1f),
                                     enabled = ready,
@@ -315,10 +219,7 @@ fun DeviceScreen(
                                 ),
                                 selectedIndex = effectiveMode.coerceIn(0, 3),
                                 onSelect = { index ->
-                                    if (index != effectiveMode) {
-                                        pendingMode = index
-                                        connection?.writeMode(index)
-                                    }
+                                    viewModel.onModeSelected(index)
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -346,9 +247,7 @@ fun DeviceScreen(
                                     patterns = patterns,
                                     selectedId = selectedPatternId,
                                     appearance = appearance,
-                                    onSelect = { pattern ->
-                                        scope.launch { patternRepository.select(pattern.id) }
-                                    },
+                                    onSelect = viewModel::onPatternApplied,
                                     onAddNew = { onOpenEditor(null) },
                                     onEditSelected = {
                                         selectedPatternId?.let { onOpenEditor(it) }
@@ -356,34 +255,34 @@ fun DeviceScreen(
                                 )
 
                                 DeviceMode.VISUALIZER -> VisualizerSection(
-                                    connection = connection,
-                                    visualizerSensitivity = visualizerSensitivity,
-                                    automaticLowVolumeBoost = automaticLowVolumeBoost,
-                                    onVisualizerSensitivityChange = { sensitivity ->
-                                        connection?.audioVisualizer?.sensitivity = sensitivity
-                                    },
-                                    onVisualizerSensitivityChangeFinished = { sensitivity ->
-                                        scope.launch {
-                                            preferences.setVisualizerSensitivity(sensitivity)
-                                        }
-                                    },
-                                    onAutomaticLowVolumeBoostChange = { enabled ->
-                                        connection?.audioVisualizer?.automaticLowVolumeBoost = enabled
-                                        scope.launch {
-                                            preferences.setAutomaticLowVolumeBoost(enabled)
-                                        }
-                                    },
+                                    visualizerActive = ui.visualizerActive,
+                                    visualizerSensitivity = ui.visualizerSensitivity,
+                                    automaticLowVolumeBoost = ui.automaticLowVolumeBoost,
+                                    onStart = { viewModel.onVisualizerStart() },
+                                    onStop = viewModel::onVisualizerStop,
+                                    onVisualizerSensitivityChange =
+                                        viewModel::onVisualizerSensitivityChanged,
+                                    onVisualizerSensitivityChangeFinished =
+                                        viewModel::onVisualizerSensitivityChangeFinished,
+                                    onAutomaticLowVolumeBoostChange =
+                                        viewModel::onAutomaticLowVolumeBoostChanged,
                                 )
 
                                 DeviceMode.POMODORO -> PomodoroSection(
-                                    connection = connection,
-                                    status = pomodoroStatus ?: PomodoroStatus.DEFAULT,
+                                    status = pomodoroStatus,
+                                    onDurationsChanged = viewModel::onPomodoroDurationsChanged,
+                                    onStart = viewModel::onPomodoroStart,
+                                    onPause = viewModel::onPomodoroPause,
+                                    onReset = viewModel::onPomodoroReset,
                                 )
 
                                 DeviceMode.TIMER -> CountdownTimerSection(
-                                    connection = connection,
-                                    status = timerStatus ?: CountdownTimerStatus.DEFAULT,
+                                    status = timerStatus,
                                     completionBlinkOn = timerBlinkOn,
+                                    onDurationChanged = viewModel::onTimerDurationChanged,
+                                    onStart = viewModel::onTimerStart,
+                                    onPause = viewModel::onTimerPause,
+                                    onCancel = viewModel::onTimerCancel,
                                 )
 
                                 else -> Unit
@@ -402,20 +301,11 @@ fun DeviceScreen(
                 onDismiss = { menuOpen = false },
                 onRename = { renameOpen = true },
                 onAppearance = { stableId?.let(onOpenAppearance) },
-                onTogglePrimary = {
-                    stableId?.let { id ->
-                        scope.launch {
-                            preferences.setPrimaryDeviceId(if (ui.isPrimary) null else id)
-                        }
-                    }
-                },
+                onTogglePrimary = viewModel::onTogglePrimary,
                 onSettings = onOpenSettings,
-                onRefreshGatt = {
-                    registry.get(address)?.reconnectWithCacheRefresh()
-                        ?: registry.connect(address, scannedName)
-                },
+                onRefreshGatt = viewModel::onReconnectWithCacheRefresh,
                 onDisconnect = {
-                    registry.disconnect(address)
+                    viewModel.onDisconnect()
                     onBack()
                 },
             )
@@ -436,10 +326,10 @@ fun DeviceScreen(
             body = dialog.message.text(),
             confirmText = dialog.confirm.label(),
             onConfirm = {
-                dismissedDialogFailure = dialog.failure
+                viewModel.onFailureDialogDismissed(dialog.failure)
                 runFailureAction(dialog.confirm)
             },
-            onDismiss = { dismissedDialogFailure = dialog.failure },
+            onDismiss = { viewModel.onFailureDialogDismissed(dialog.failure) },
         )
     }
 
@@ -450,8 +340,7 @@ fun DeviceScreen(
             placeholder = null,
             onConfirm = { name ->
                 renameOpen = false
-                val id = stableId ?: return@NameInputDialog
-                scope.launch { preferences.setAlias(id, name) }
+                viewModel.onRename(name)
             },
             onDismiss = { renameOpen = false },
         )

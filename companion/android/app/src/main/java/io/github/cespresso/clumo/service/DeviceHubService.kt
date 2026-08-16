@@ -13,11 +13,11 @@ import androidx.glance.appwidget.updateAll
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.appContainer
 import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.data.DeviceRegistry
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.data.ble.ButtonEvent
-import io.github.cespresso.clumo.data.ble.DeviceConnection
+import io.github.cespresso.clumo.data.session.DeviceSession
+import io.github.cespresso.clumo.data.session.DeviceSessionRegistry
 import io.github.cespresso.clumo.data.steppedVisualizerSensitivity
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
@@ -51,7 +51,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Foreground service that keeps the device hub alive, so BLE connections and visualizer
  * streaming survive while the app is backgrounded. It holds a lifecycle, not the graph: the
  * registry and repositories it drives belong to [io.github.cespresso.clumo.AppContainer].
- * Per-device logic lives in [io.github.cespresso.clumo.data.ble.DeviceConnection].
+ * Per-device logic lives in [DeviceSession].
  */
 class DeviceHubService : Service() {
 
@@ -76,7 +76,7 @@ class DeviceHubService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val repository: DeviceRepository get() = appContainer.repository
-    private val registry: DeviceRegistry get() = appContainer.registry
+    private val registry: DeviceSessionRegistry get() = appContainer.registry
     private val patterns: PatternRepository get() = appContainer.patterns
     private val preferences: AppPreferences get() = appContainer.preferences
 
@@ -134,16 +134,16 @@ class DeviceHubService : Service() {
 
     /**
      * Connects to the primary device on behalf of a caller that has no address to hand in.
-     * [DeviceConnection.connect] guards itself and returns immediately unless the link is
+     * [DeviceSession.connect] guards itself and returns immediately unless the link is
      * down, so a live connection comes back untouched.
      */
-    private fun ensureConnected(target: Device): DeviceConnection =
+    private fun ensureConnected(target: Device): DeviceSession =
         registry.connect(target.address, target.name)
 
     private suspend fun handleWidgetCommand(command: WidgetCommand) {
         val target = currentTarget()
         val existing = target?.let { registry.get(it.address) }
-        val state = existing?.connectionState?.value ?: ConnectionState.Disconnected
+        val state = existing?.state?.value?.link ?: ConnectionState.Disconnected
         when (
             WidgetCommandGate.decide(
                 command = command,
@@ -178,10 +178,10 @@ class DeviceHubService : Service() {
      * dispatcher time, so a wait suspended by doze can return non-null well past 20s of wall
      * clock, and a command that late must not fire.
      */
-    private suspend fun awaitReadyThenRun(connection: DeviceConnection) {
+    private suspend fun awaitReadyThenRun(connection: DeviceSession) {
         val startedAt = SystemClock.elapsedRealtime()
         val ready = withTimeoutOrNull(WidgetCommandGate.CONNECT_TIMEOUT_MS) {
-            connection.connectionState.first { it == ConnectionState.Ready }
+            connection.state.map { it.link }.first { it == ConnectionState.Ready }
         }
         if (ready == null || WidgetCommandGate.hasTimedOut(startedAt, SystemClock.elapsedRealtime())) {
             pendingCommand = null
@@ -197,17 +197,18 @@ class DeviceHubService : Service() {
         pendingCommand = null
     }
 
-    private fun execute(command: WidgetCommand, connection: DeviceConnection) {
+    private fun execute(command: WidgetCommand, connection: DeviceSession) {
+        val observed = connection.state.value.observed
         when (command) {
             WidgetCommand.TogglePomodoro ->
-                if (connection.pomodoroStatus.value?.isRunning == true) {
+                if (observed?.pomodoro?.isRunning == true) {
                     connection.pomodoroPause()
                 } else {
                     connection.pomodoroStart()
                 }
             WidgetCommand.ResetPomodoro -> connection.pomodoroReset()
             WidgetCommand.ToggleTimer ->
-                if (connection.timerStatus.value?.isRunning == true) {
+                if (observed?.timer?.isRunning == true) {
                     connection.timerPause()
                 } else {
                     connection.timerStart()
@@ -249,16 +250,9 @@ class DeviceHubService : Service() {
     /** Keeps the foreground notification text in sync with connection states. */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeConnections() {
-        registry.connections
-            .flatMapLatest { map ->
-                if (map.isEmpty()) {
-                    flowOf(emptyList())
-                } else {
-                    combine(map.values.map { it.connectionState }) { it.toList() }
-                }
-            }
+        registry.states
             .onEach { states ->
-                val ready = states.count { it == ConnectionState.Ready }
+                val ready = states.values.count { it.link == ConnectionState.Ready }
                 val status = if (ready > 0) {
                     getString(R.string.notif_connected)
                 } else {
@@ -271,15 +265,15 @@ class DeviceHubService : Service() {
 
     private fun observeVisualizerPreferences() {
         combine(
-            registry.connections,
+            registry.sessions,
             preferences.visualizerSensitivity,
             preferences.automaticLowVolumeBoost,
         ) { connections, sensitivity, automaticBoost ->
             Triple(connections.values, sensitivity, automaticBoost)
-        }.onEach { (connections, sensitivity, automaticBoost) ->
-            connections.forEach {
-                it.audioVisualizer.sensitivity = sensitivity
-                it.audioVisualizer.automaticLowVolumeBoost = automaticBoost
+        }.onEach { (sessions, sensitivity, automaticBoost) ->
+            sessions.forEach {
+                it.setVisualizerSensitivity(sensitivity)
+                it.setAutomaticLowVolumeBoost(automaticBoost)
             }
         }.launchIn(scope)
     }
@@ -287,7 +281,7 @@ class DeviceHubService : Service() {
     /** Applies device button presses the firmware forwarded. */
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeButtonEvents() {
-        registry.connections
+        registry.sessions
             .flatMapLatest { map ->
                 if (map.isEmpty()) {
                     emptyFlow()
@@ -305,7 +299,7 @@ class DeviceHubService : Service() {
      * A failed preference write must cost one press, not the whole collector: an
      * exception escaping here would cancel the observer for the service's lifetime.
      */
-    private suspend fun applyButtonEvent(connection: DeviceConnection, event: ButtonEvent) {
+    private suspend fun applyButtonEvent(connection: DeviceSession, event: ButtonEvent) {
         try {
             when (event.mode) {
                 DeviceMode.DISPLAY -> cycleDisplayPattern(connection, event.isMain)
@@ -318,9 +312,12 @@ class DeviceHubService : Service() {
         }
     }
 
-    private suspend fun cycleDisplayPattern(connection: DeviceConnection, forward: Boolean) {
-        val next = patterns.cycleSelection(forward) ?: return
-        connection.writeDisplay(next.toRowBytes())
+    private suspend fun cycleDisplayPattern(connection: DeviceSession, forward: Boolean) {
+        val deviceId = connection.deviceId.value
+            ?: repository.getByAddress(connection.address)?.id
+            ?: connection.address
+        val next = patterns.cycleApplied(deviceId, forward) ?: return
+        connection.commitPattern(next)
     }
 
     private suspend fun stepVisualizerSensitivity(up: Boolean) {

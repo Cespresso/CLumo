@@ -34,13 +34,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,73 +57,28 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
-import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.RgbColor
-import io.github.cespresso.clumo.domain.resolveAppearance
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.components.ScreenHeader
 import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
-import kotlinx.coroutines.launch
 
 private const val PREVIEW_BITS =
     "0000000001100110111111111111111101111110001111000001100000000000"
 
 @Composable
 fun DeviceAppearanceScreen(
-    repository: DeviceRepository,
-    preferences: AppPreferences,
-    deviceId: String,
+    viewModel: DeviceAppearanceViewModel,
     onBack: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
-    val aliases by preferences.aliases.collectAsState(initial = emptyMap())
-    val persisted = resolveAppearance(deviceId, appearances)
-    val deviceName = DeviceNaming.displayName(
-        deviceId = deviceId,
-        aliases = aliases,
-        fallbackName = repository.get(deviceId)?.fallbackName,
-    )
-    var appearance by remember(deviceId) { mutableStateOf(persisted) }
-    var saveFailed by remember(deviceId) { mutableStateOf(false) }
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    val appearance = ui.appearance
     var editingPart by remember { mutableStateOf<AppearancePart?>(null) }
-
-    LaunchedEffect(persisted) {
-        appearance = persisted
-        saveFailed = false
-    }
-
-    fun persist(next: DeviceAppearance) {
-        appearance = next
-        saveFailed = false
-        scope.launch {
-            runCatching { preferences.setDeviceAppearance(deviceId, next) }
-                .onFailure {
-                    appearance = persisted
-                    saveFailed = true
-                }
-        }
-    }
-
-    fun reset() {
-        appearance = DeviceAppearance.DEFAULT
-        saveFailed = false
-        scope.launch {
-            runCatching { preferences.resetDeviceAppearance(deviceId) }
-                .onFailure {
-                    appearance = persisted
-                    saveFailed = true
-                }
-        }
-    }
 
     Column(modifier = Modifier.fillMaxSize()) {
         ScreenHeader(title = stringResource(R.string.appearance_title), onBack = onBack)
@@ -158,7 +111,7 @@ fun DeviceAppearanceScreen(
                     shadowElevation = 10.dp,
                 )
                 Text(
-                    text = stringResource(R.string.appearance_preview_label, deviceName),
+                    text = stringResource(R.string.appearance_preview_label, ui.deviceName),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = RoundedFontFamily,
@@ -166,7 +119,7 @@ fun DeviceAppearanceScreen(
                 )
             }
 
-            if (saveFailed) {
+            if (ui.saveFailed) {
                 Text(
                     text = stringResource(R.string.appearance_save_error),
                     modifier = Modifier
@@ -186,33 +139,33 @@ fun DeviceAppearanceScreen(
                 part = AppearancePart.Enclosure,
                 current = appearance.enclosureColor,
                 presets = PHYSICAL_PART_PRESETS,
-                onSelect = { persist(appearance.withColor(AppearancePart.Enclosure, it)) },
+                onSelect = { viewModel.onColorSelected(AppearancePart.Enclosure, it) },
                 onCustom = { editingPart = AppearancePart.Enclosure },
             )
             AppearanceColorSection(
                 part = AppearancePart.ButtonA,
                 current = appearance.buttonAColor,
                 presets = PHYSICAL_PART_PRESETS,
-                onSelect = { persist(appearance.withColor(AppearancePart.ButtonA, it)) },
+                onSelect = { viewModel.onColorSelected(AppearancePart.ButtonA, it) },
                 onCustom = { editingPart = AppearancePart.ButtonA },
             )
             AppearanceColorSection(
                 part = AppearancePart.ButtonB,
                 current = appearance.buttonBColor,
                 presets = PHYSICAL_PART_PRESETS,
-                onSelect = { persist(appearance.withColor(AppearancePart.ButtonB, it)) },
+                onSelect = { viewModel.onColorSelected(AppearancePart.ButtonB, it) },
                 onCustom = { editingPart = AppearancePart.ButtonB },
             )
             AppearanceColorSection(
                 part = AppearancePart.Led,
                 current = appearance.ledColor,
                 presets = LED_PRESETS,
-                onSelect = { persist(appearance.withColor(AppearancePart.Led, it)) },
+                onSelect = { viewModel.onColorSelected(AppearancePart.Led, it) },
                 onCustom = { editingPart = AppearancePart.Led },
             )
             OutlinePillButton(
                 text = stringResource(R.string.appearance_reset),
-                onClick = ::reset,
+                onClick = viewModel::reset,
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -224,7 +177,7 @@ fun DeviceAppearanceScreen(
             initialColor = appearance.colorFor(part),
             onConfirm = { selected ->
                 editingPart = null
-                persist(appearance.withColor(part, selected))
+                viewModel.onColorSelected(part, selected)
             },
             onDismiss = { editingPart = null },
         )
@@ -540,7 +493,7 @@ private fun DeviceAppearance.colorFor(part: AppearancePart): RgbColor = when (pa
     AppearancePart.Led -> ledColor
 }
 
-private fun DeviceAppearance.withColor(part: AppearancePart, color: RgbColor): DeviceAppearance =
+internal fun DeviceAppearance.withColor(part: AppearancePart, color: RgbColor): DeviceAppearance =
     when (part) {
         AppearancePart.Enclosure -> copy(enclosureColor = color)
         AppearancePart.ButtonA -> copy(buttonAColor = color)

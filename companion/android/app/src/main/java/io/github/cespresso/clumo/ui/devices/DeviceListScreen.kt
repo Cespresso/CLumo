@@ -66,7 +66,6 @@ import io.github.cespresso.clumo.data.ble.DeviceAdvertisement
 import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.data.ble.ScanEvent
 import io.github.cespresso.clumo.data.ble.ScanFailure
-import io.github.cespresso.clumo.data.ble.bluetoothPermissions
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionState
@@ -86,6 +85,7 @@ import io.github.cespresso.clumo.ui.components.ScanningIndicator
 import io.github.cespresso.clumo.ui.components.connectionLabel
 import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.components.liveMirrorBits
+import io.github.cespresso.clumo.ui.components.bluetoothPermissions
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.CoroutineScope

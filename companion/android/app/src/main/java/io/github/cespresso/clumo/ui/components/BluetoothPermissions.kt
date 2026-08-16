@@ -1,12 +1,8 @@
-package io.github.cespresso.clumo.data.ble
+package io.github.cespresso.clumo.ui.components
 
 import android.Manifest
 import android.os.Build
 
-/**
- * Runtime permissions needed for scanning and connecting, per SDK level. Before Android 12 a
- * BLE scan could reveal the user's location, so the platform asked for that instead.
- */
 fun bluetoothPermissions(): Array<String> =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         arrayOf(

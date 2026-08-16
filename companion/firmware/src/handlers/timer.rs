@@ -1,17 +1,23 @@
 use std::time::Instant;
 
+use esp_idf_hal::sys::EspError;
+use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
+
 use crate::assets;
 use crate::countdown::{
-    encode_timer_status, progress_frame, progress_pixels, Countdown, CountdownState,
-    DurationSetting,
+    decode_persisted_duration, encode_persisted_duration, encode_timer_status, progress_frame,
+    progress_pixels, Countdown, CountdownState, DurationSetting,
 };
 use crate::utils::bluetooth::TimerCommand;
 
 use super::ModeHandler;
 
 const COMPLETION_BLINK_MS: u128 = 400;
+const NVS_NAMESPACE: &str = "COUNTDOWN";
+const KEY_DURATION_SECS: &str = "DURATION";
 
 pub struct TimerHandler {
+    nvs: EspNvs<NvsDefault>,
     timer: Countdown,
     last_tick: Instant,
     last_lit: u8,
@@ -23,9 +29,12 @@ pub struct TimerHandler {
 }
 
 impl TimerHandler {
-    pub fn new() -> Self {
-        let timer = Countdown::default();
-        Self {
+    pub fn new(nvs_partition: EspDefaultNvsPartition) -> Result<Self, EspError> {
+        let nvs = EspNvs::new(nvs_partition, NVS_NAMESPACE, true)?;
+        let setting = decode_persisted_duration(nvs.get_u16(KEY_DURATION_SECS)?.unwrap_or(0));
+        let timer = Countdown::new(setting);
+        Ok(Self {
+            nvs,
             last_lit: progress_pixels(timer.remaining_secs(), timer.setting().total_secs()),
             last_notified_secs: timer.remaining_secs(),
             timer,
@@ -34,7 +43,7 @@ impl TimerHandler {
             dirty: true,
             blink_on: false,
             last_blink: Instant::now(),
-        }
+        })
     }
 
     fn start_resume(&mut self) {
@@ -64,6 +73,12 @@ impl TimerHandler {
     fn set_duration(&mut self, setting: DurationSetting) {
         if self.timer.set_duration(setting) {
             self.dirty = true;
+            if let Err(e) = self
+                .nvs
+                .set_u16(KEY_DURATION_SECS, encode_persisted_duration(setting))
+            {
+                log::warn!("Timer: failed to persist duration: {:?}", e);
+            }
         }
         // A GATT write temporarily replaces the characteristic value with the
         // command payload. Echo the current status even when a running timer

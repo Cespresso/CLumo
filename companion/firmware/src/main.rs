@@ -15,6 +15,7 @@ mod countdown;
 mod handlers;
 mod mode;
 mod mode_values;
+mod settings_values;
 mod utils;
 mod visualizer_values;
 
@@ -54,6 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let nvs_mode = EspNvs::new(nvs_partition.clone(), "STATE", true)?;
     let mut mode_manager = mode::ModeManager::new(nvs_mode)?;
     log::info!("Mode system initialized: {}", mode_manager.current().name());
+    display.set_intensity(mode_manager.brightness());
 
     let mut runtime = Runtime::new(nvs_partition.clone())?;
 
@@ -62,6 +64,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         mode_manager.current() as u8,
         runtime.pomodoro_status(),
         runtime.timer_status(),
+        mode_manager.brightness(),
         device_id,
     )?;
     log::info!("BLE initialized");
@@ -125,11 +128,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::SetDisplayData(data) => {
                     runtime.on_display_data(mode_manager.current(), data);
                 }
-                BleCommand::SetBrightness(level) => {
-                    display.set_intensity(level);
-                    ble.notify_brightness_change(level);
-                    log::info!("Brightness set to {}", level);
-                }
+                BleCommand::SetBrightness(level) => match mode_manager.set_brightness(level) {
+                    Ok(applied) => {
+                        display.set_intensity(applied);
+                        ble.notify_brightness_change(applied);
+                        log::info!("Brightness set to {}", applied);
+                    }
+                    Err(e) => {
+                        log::warn!("Brightness persistence failed: {:?}", e);
+                        ble.notify_brightness_change(mode_manager.brightness());
+                    }
+                },
                 BleCommand::Pomodoro(timer_cmd) => {
                     if mode_manager.current() == Mode::Pomodoro {
                         runtime.on_pomodoro_command(timer_cmd);

@@ -60,6 +60,7 @@ impl BluetoothManager {
         initial_mode: u8,
         initial_pomodoro_status: [u8; 6],
         initial_timer_status: [u8; 5],
+        initial_brightness: u8,
         device_id: DeviceId,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let commands: Arc<Mutex<VecDeque<BleCommand>>> = Arc::new(Mutex::new(VecDeque::new()));
@@ -282,7 +283,9 @@ impl BluetoothManager {
                 | NimbleProperties::WRITE_ENC
                 | NimbleProperties::NOTIFY,
         );
-        brightness_characteristic.lock().set_value(&[0x0F]); // default: max brightness
+        brightness_characteristic
+            .lock()
+            .set_value(&[initial_brightness.min(0x0F)]);
 
         let commands_clone = commands.clone();
         brightness_characteristic.lock().on_write(move |value| {

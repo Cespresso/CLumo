@@ -37,9 +37,10 @@ BUTTON, so those presses do nothing while disconnected.
 
 All mode handlers live for the process lifetime. Pomodoro and Timer continue
 counting while another mode is visible and resume from the same state when
-selected again. Pomodoro work and break durations remain persisted in NVS.
-Timer duration and execution state are not persisted; Timer starts at `05:00`
-after boot.
+selected again. Pomodoro work/break durations, Timer configured duration,
+brightness, Display bitmap, and current mode are persisted in NVS. Countdown
+execution state is not persisted across reboot; both countdowns boot idle with
+their stored durations.
 
 ## Build & flash
 
@@ -156,7 +157,7 @@ full-screen blink, switches phase, and keeps running.
 | `[0x01]` | Start from idle, resume from paused, or restart the configured duration after completion. No-op while running. |
 | `[0x02]` | Pause. No-op unless running. |
 | `[0x03]` | Cancel: state = idle and remaining = configured duration. The configured duration is retained. |
-| `[0x10, minutes, seconds]` | Set duration while idle. Minutes and seconds must each be `0..=59`, and `00:00` is rejected. While running, paused, or completed, the setting is left unchanged and the current status is echoed. The value is not persisted. |
+| `[0x10, minutes, seconds]` | Set duration while idle. Minutes and seconds must each be `0..=59`, and `00:00` is rejected. While running, paused, or completed, the setting is left unchanged and the current status is echoed. Accepted values are persisted in NVS. |
 
 Every accepted command results in a status notify, including no-ops as a status
 echo. Timer commands are processed only while the device is in Timer mode.

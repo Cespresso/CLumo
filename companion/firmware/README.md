@@ -36,11 +36,14 @@ usable while disconnected. In Display and Visualizer the firmware only notifies
 BUTTON, so those presses do nothing while disconnected.
 
 All mode handlers live for the process lifetime. Pomodoro and Timer continue
-counting while another mode is visible and resume from the same state when
-selected again. Pomodoro work/break durations, Timer configured duration,
-brightness, Display bitmap, and current mode are persisted in NVS. Countdown
-execution state is not persisted across reboot; both countdowns boot idle with
-their stored durations.
+counting while another mode is visible and resume from the same state when selected
+again. Pomodoro work/break durations, Timer configured duration, brightness, Display
+bitmap, and current mode are persisted in NVS. Countdown execution state is not
+persisted across reboot; both countdowns boot idle with their stored durations.
+
+While disconnected, the matrix briefly shows the link-loss icon and then returns
+to the current mode's standalone frame. The connection icon keeps blinking until a
+connected client finishes its encrypted GATT initial sync.
 
 ## Build & flash
 

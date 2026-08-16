@@ -79,7 +79,7 @@ cargo run
 
 | Name       | UUID | Properties | Payload |
 |------------|------|------------|---------|
-| MODE       | `681285a6-247f-48c6-80ad-68c3dce18586` | READ, WRITE, NOTIFY | 1 byte: mode `0..=3`. Write switches mode. Firmware notifies after an accepted change. Invalid values are ignored. |
+| MODE       | `681285a6-247f-48c6-80ad-68c3dce18586` | READ, WRITE, NOTIFY | 1 byte: mode `0..=3`. Write switches mode. A same-value Display write commits the current preview. Firmware notifies after an accepted mode change. Invalid values are ignored. |
 | DISPLAY    | `681285a6-247f-48c6-80ad-68c3dce18585` | READ, WRITE, WRITE_NR | 8 bytes, interpreted by the current mode (see below). Ignored in Pomodoro and Timer modes. |
 | POMODORO   | `681285a6-247f-48c6-80ad-68c3dce18587` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 6-byte status (below). |
 | BRIGHTNESS | `681285a6-247f-48c6-80ad-68c3dce18588` | READ, WRITE, NOTIFY | 1 byte: MAX7219 intensity, clamped to `0..=15`. Firmware echoes the applied value via notify. |
@@ -102,12 +102,29 @@ features come alive after a firmware upgrade without re-pairing.
 
 - **Display mode (2)**: row bitmap. Byte 0 = top row, byte 7 = bottom row.
   Within a byte, bit 7 (MSB) = leftmost column, bit 0 = rightmost column.
-  The last bitmap is persisted in NVS and restored on reboot.
 - **Visualizer mode (3)**: column heights. Byte 0 = leftmost column, byte 7 =
   rightmost column. Each byte is a height `0..=8` (values above 8 are clamped).
 - **Pomodoro (0) and Timer (1)**: ignored.
 
-Use WRITE_NR (write without response) for high-rate visualizer streaming.
+Use WRITE_NR (write without response) for high-rate visualizer and Display-preview
+streaming.
+
+### Display preview and commit
+
+Legacy v2 clients get the original behavior: every DISPLAY write is persisted.
+
+A client that supports high-rate preview opts in once per connection by writing the
+current `MODE = 2` value after initial sync, or by writing `MODE = 2` twice when
+entering Display. Its later DISPLAY writes are visible immediately but are not
+persisted. Another same-value `MODE = 2` write commits the current preview. An
+uncommitted preview is discarded on disconnect, mode change, or after 5 seconds
+without another preview, and the last committed bitmap is restored. The Android
+companion performs this handshake automatically.
+
+ESP-NimBLE does not expose request-vs-command metadata to the server callback, so
+the explicit same-mode MODE write is the commit boundary. Leaving legacy writes
+durable lets live preview avoid wearing NVS without changing the behavior of
+already-installed v2 clients.
 
 ### BUTTON notify payload (2 bytes)
 

@@ -50,6 +50,7 @@ import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.PomodoroStatus
+import io.github.cespresso.clumo.domain.effectiveModeOf
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.ClumoSlider

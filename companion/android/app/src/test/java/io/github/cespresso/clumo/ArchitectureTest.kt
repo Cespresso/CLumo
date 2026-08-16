@@ -5,7 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Layering rules the compiler cannot state. Both encode drift that actually happened here, so
+ * Layering rules the compiler cannot state. Each encodes drift that actually happened here, so
  * a failure means the shape is sliding back, not that the rule is inconvenient.
  */
 class ArchitectureTest {
@@ -35,6 +35,30 @@ class ArchitectureTest {
             .filter { it.readText().contains("service.DeviceHubService") }
         assertEquals(
             "These screens reach the hub service instead of taking what they use",
+            emptyList<String>(),
+            offenders.map { it.name }.sorted(),
+        )
+    }
+
+    /**
+     * A screen that imports the data layer holds two jobs at once: deciding what to show and
+     * fetching it. The ViewModel is where the second job lives, so the screen keeps only the first.
+     */
+    @Test
+    fun screensWithViewModelsDependOnlyOnThem() {
+        val screensWithViewModels = setOf(
+            "DeviceListScreen.kt",
+            "DeviceScreen.kt",
+            "PatternEditorScreen.kt",
+            "DeviceAppearanceScreen.kt",
+        )
+        val forbidden = Regex("""import io\.github\.cespresso\.clumo\.data\.""")
+        val offenders = sources
+            .filter { it.name in screensWithViewModels }
+            .filter { forbidden.containsMatchIn(it.readText()) }
+
+        assertEquals(
+            "These screens reach the data layer instead of going through their ViewModel",
             emptyList<String>(),
             offenders.map { it.name }.sorted(),
         )

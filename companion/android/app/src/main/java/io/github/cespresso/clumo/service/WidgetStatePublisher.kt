@@ -13,10 +13,9 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.data.DeviceRegistry
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
-import io.github.cespresso.clumo.data.ble.DeviceConnection
+import io.github.cespresso.clumo.data.session.DeviceSessionRegistry
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
@@ -41,6 +40,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
@@ -51,7 +51,7 @@ import kotlinx.coroutines.launch
  */
 class WidgetStatePublisher(
     private val context: Context,
-    private val registry: DeviceRegistry,
+    private val registry: DeviceSessionRegistry,
     private val repository: DeviceRepository,
     private val preferences: AppPreferences,
     private val patterns: PatternRepository,
@@ -91,33 +91,35 @@ class WidgetStatePublisher(
             Identity(resolvePrimaryTarget(primaryId, devices), aliases, appearances)
         }
 
-        val selection: Flow<PatternSelection> = combine(
+        // Flatten into the primary session's own state, so a status notification
+        // moves the widget without the session map itself changing.
+        combine(
+            identity,
+            registry.sessions,
             patterns.patterns,
-            patterns.selectedId,
-        ) { list, selectedId ->
-            val selected = list.firstOrNull { it.id == selectedId }
-            PatternSelection(
+            patterns.appliedPatternIds,
+        ) { id, sessions, patternList, appliedPatternIds ->
+            val selectedId = id.target?.id?.let(appliedPatternIds::get)
+            val selected = patternList.firstOrNull { it.id == selectedId }
+            val pattern = PatternSelection(
                 name = selected?.name,
                 bits = selected?.let { FaceBits.fromBitsString(it.bits) } ?: FaceBits.EMPTY,
             )
+            Triple(id, id.target?.let { sessions[it.address] }, pattern)
         }
-
-        // Flatten into the primary connection's own StateFlows, so a status notification is
-        // enough to move the widget without the connection map itself changing.
-        combine(identity, registry.connections, selection) { id, connections, pattern ->
-            Triple(id, id.target?.let { connections[it.address] }, pattern)
-        }
-            .flatMapLatest { (id, connection, pattern) ->
-                if (connection == null) {
+            .flatMapLatest { (id, session, pattern) ->
+                if (session == null) {
                     flowOf(Live(id, pattern, ConnectionState.Disconnected, null, null, null))
                 } else {
-                    combine(
-                        connection.connectionState,
-                        connection.currentMode,
-                        connection.pomodoroStatus,
-                        connection.timerStatus,
-                    ) { state, mode, pomodoro, timer ->
-                        Live(id, pattern, state, mode, pomodoro, timer)
+                    session.state.map { state ->
+                        Live(
+                            identity = id,
+                            pattern = pattern,
+                            connectionState = state.link,
+                            mode = state.observed?.mode,
+                            pomodoro = state.observed?.pomodoro,
+                            timer = state.observed?.timer,
+                        )
                     }
                 }
             }

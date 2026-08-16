@@ -3,7 +3,8 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs};
 use std::time::Instant;
 
-use crate::handlers::{pomodoro, timer};
+use crate::display_commit_policy::should_auto_commit_display;
+use crate::handlers::Runtime;
 use crate::mode::Mode;
 use crate::utils::bluetooth::{BleCommand, BluetoothManager, BUTTON_MAIN, BUTTON_SUB};
 use crate::utils::button::Buttons;
@@ -12,14 +13,19 @@ use crate::utils::led::Display;
 
 mod assets;
 mod countdown;
+mod display_commit_policy;
+mod display_state;
 mod handlers;
 mod mode;
 mod mode_values;
+mod settings_values;
 mod utils;
 mod visualizer_values;
 
 /// Blink interval for the disconnected icon during connection setup (ms).
 const CONNECTION_BLINK_MS: u128 = 400;
+/// Briefly show link loss, then return the matrix to its standalone mode frame.
+const DISCONNECTED_NOTICE_MS: u128 = 1_200;
 
 fn disconnected_icon(bonded: bool) -> &'static [u8; 8] {
     if bonded {
@@ -54,21 +60,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let nvs_mode = EspNvs::new(nvs_partition.clone(), "STATE", true)?;
     let mut mode_manager = mode::ModeManager::new(nvs_mode)?;
     log::info!("Mode system initialized: {}", mode_manager.current().name());
+    display.set_intensity(mode_manager.brightness());
 
-    // Seed the POMODORO characteristic with an idle status so reads before the
-    // first status push are already valid.
-    let mut last_pomodoro_status = {
-        let nvs_timer = EspNvs::new(nvs_partition.clone(), pomodoro::NVS_NAMESPACE, true)?;
-        let (work_min, break_min) = pomodoro::load_durations(&nvs_timer);
-        pomodoro::idle_status(work_min, break_min)
-    };
-    let mut last_timer_status = timer::idle_status();
+    let mut runtime = Runtime::new(nvs_partition.clone())?;
 
     // Initialize BLE
     let ble = BluetoothManager::init(
         mode_manager.current() as u8,
-        last_pomodoro_status,
-        last_timer_status,
+        runtime.pomodoro_status(),
+        runtime.timer_status(),
+        mode_manager.brightness(),
         device_id,
     )?;
     log::info!("BLE initialized");
@@ -79,12 +80,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut buttons = Buttons::new(peripherals.pins.gpio3.into(), peripherals.pins.gpio4.into())?;
     log::info!("Buttons initialized (red=GPIO3, white=GPIO4)");
 
-    // Create handler for current mode
-    let mut handler = handlers::create_handler(mode_manager.current(), nvs_partition.clone())?;
     let mut ble_connected = false;
     let mut client_ready = false;
     let mut connection_icon_on = true;
     let mut last_connection_blink = Instant::now();
+    let mut disconnected_notice_started = Some(Instant::now());
+    let mut explicit_display_commit = false;
 
     // Main loop
     loop {
@@ -97,8 +98,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::ConnectionChanged(connected) => {
                     ble_connected = connected;
                     client_ready = false;
+                    explicit_display_commit = false;
                     connection_icon_on = true;
                     last_connection_blink = Instant::now();
+                    disconnected_notice_started = if connected {
+                        None
+                    } else {
+                        runtime.cancel_display_preview();
+                        Some(Instant::now())
+                    };
                     display.show(disconnected_icon(ble_bonded));
                 }
                 BleCommand::BondChanged(bonded) => {
@@ -110,58 +118,69 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::AuthenticationFailed => {
                     ble_connected = false;
                     client_ready = false;
+                    explicit_display_commit = false;
+                    runtime.cancel_display_preview();
+                    disconnected_notice_started = Some(Instant::now());
                     display.show(disconnected_icon(ble_bonded));
                 }
                 BleCommand::ClientReady => {
                     if ble_connected && !client_ready {
                         client_ready = true;
-                        display.show(&handler.on_enter());
+                        display.show(&runtime.on_enter(mode_manager.current()));
                     }
                 }
                 BleCommand::SwitchMode(m) => {
                     let new_mode = Mode::from_u8(m);
                     if new_mode == mode_manager.current() {
+                        if new_mode == Mode::Display {
+                            runtime.commit_display_preview();
+                            explicit_display_commit = true;
+                        }
                         continue;
                     }
-                    if mode_manager.current() == Mode::Pomodoro {
-                        // Leaving Pomodoro mode drops the countdown; report idle.
-                        last_pomodoro_status =
-                            pomodoro::idle_status(last_pomodoro_status[4], last_pomodoro_status[5]);
-                        ble.notify_pomodoro_status(&last_pomodoro_status);
-                    } else if mode_manager.current() == Mode::Timer {
-                        last_timer_status = timer::idle_status();
-                        ble.notify_timer_status(&last_timer_status);
-                    }
+                    explicit_display_commit = false;
+                    runtime.cancel_display_preview();
                     if let Err(e) = mode_manager.switch_to(new_mode) {
                         log::error!("BLE switch_to failed: {:?}", e);
                     }
                     ble.notify_mode_change(mode_manager.current() as u8);
-                    handler =
-                        handlers::create_handler(mode_manager.current(), nvs_partition.clone())?;
-                    if client_ready {
-                        display.show(&handler.on_enter());
+                    if client_ready || (!ble_connected && disconnected_notice_started.is_none()) {
+                        display.show(&runtime.on_enter(mode_manager.current()));
                     }
                 }
                 BleCommand::SetDisplayData(data) => {
-                    handler.on_ble_data(data);
+                    let mode = mode_manager.current();
+                    runtime.on_display_data(mode, data);
+                    if mode == Mode::Display && should_auto_commit_display(explicit_display_commit)
+                    {
+                        runtime.commit_display_preview();
+                    }
                 }
-                BleCommand::SetBrightness(level) => {
-                    display.set_intensity(level);
-                    ble.notify_brightness_change(level);
-                    log::info!("Brightness set to {}", level);
-                }
+                BleCommand::SetBrightness(level) => match mode_manager.set_brightness(level) {
+                    Ok(applied) => {
+                        display.set_intensity(applied);
+                        ble.notify_brightness_change(applied);
+                        log::info!("Brightness set to {}", applied);
+                    }
+                    Err(e) => {
+                        log::warn!("Brightness persistence failed: {:?}", e);
+                        ble.notify_brightness_change(mode_manager.brightness());
+                    }
+                },
                 BleCommand::Pomodoro(timer_cmd) => {
-                    handler.on_pomodoro_command(timer_cmd);
-                    if mode_manager.current() != Mode::Pomodoro {
+                    if mode_manager.current() == Mode::Pomodoro {
+                        runtime.on_pomodoro_command(timer_cmd);
+                    } else {
                         // Pomodoro commands are ignored outside Pomodoro mode; restore
                         // the status value so READ stays accurate.
-                        ble.set_pomodoro_status(&last_pomodoro_status);
+                        ble.set_pomodoro_status(&runtime.pomodoro_status());
                     }
                 }
                 BleCommand::Timer(timer_cmd) => {
-                    handler.on_timer_command(timer_cmd);
-                    if mode_manager.current() != Mode::Timer {
-                        ble.set_timer_status(&last_timer_status);
+                    if mode_manager.current() == Mode::Timer {
+                        runtime.on_timer_command(timer_cmd);
+                    } else {
+                        ble.set_timer_status(&runtime.timer_status());
                     }
                 }
             }
@@ -171,9 +190,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // and keep working while disconnected. Display and Visualizer content
         // lives in the app, so their presses are forwarded and the app decides
         // what they mean.
-        // The mode must be read after the BLE command drain: SwitchMode rebuilds
-        // `handler`, so an earlier read could dispatch a press to a handler for a
-        // different mode.
+        // The mode must be read after the BLE command drain so a press is attributed
+        // to the currently rendered mode.
         let mode = mode_manager.current();
         for (pressed, is_main) in [(main_pressed, true), (sub_pressed, false)] {
             if !pressed {
@@ -186,11 +204,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             match mode {
                 Mode::Pomodoro | Mode::Timer => {
-                    if is_main {
-                        handler.on_main_button();
-                    } else {
-                        handler.on_sub_button();
-                    }
+                    runtime.on_button(mode, is_main);
                 }
                 Mode::Display | Mode::Visualizer => {
                     if client_ready {
@@ -203,10 +217,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Display update
-        if let Some(frame) = handler.tick() {
-            if client_ready {
+        if let Some(frame) = runtime.tick(mode) {
+            if client_ready || (!ble_connected && disconnected_notice_started.is_none()) {
                 display.show(&frame);
             }
+        }
+
+        if !ble_connected
+            && disconnected_notice_started
+                .is_some_and(|started| started.elapsed().as_millis() >= DISCONNECTED_NOTICE_MS)
+        {
+            disconnected_notice_started = None;
+            display.show(&runtime.on_enter(mode));
         }
 
         // Blink the disconnected icon while the BLE link, authentication, and
@@ -224,14 +246,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Pomodoro status: pushed on state/phase changes and once per second
-        // while running (Pomodoro mode only).
-        if let Some(status) = handler.poll_pomodoro_status() {
-            last_pomodoro_status = status;
+        if let Some(status) = runtime.poll_pomodoro_status() {
             ble.notify_pomodoro_status(&status);
         }
-        if let Some(status) = handler.poll_timer_status() {
-            last_timer_status = status;
+        if let Some(status) = runtime.poll_timer_status() {
             ble.notify_timer_status(&status);
         }
 

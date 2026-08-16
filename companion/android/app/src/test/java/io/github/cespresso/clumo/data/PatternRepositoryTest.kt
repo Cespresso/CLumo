@@ -2,10 +2,82 @@ package io.github.cespresso.clumo.data
 
 import io.github.cespresso.clumo.domain.Pattern
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PatternRepositoryTest {
+
+    @Test
+    fun saveAndApplyChangesOnlyTheTargetDevice() {
+        val existing = Pattern(id = "existing", name = "Existing", bits = "0".repeat(64))
+        val saved = Pattern(id = "saved", name = "Saved", bits = "1".repeat(64))
+
+        val update = saveAndApplyPattern(
+            patterns = listOf(existing),
+            appliedPatternIds = mapOf("other-device" to existing.id),
+            deviceId = "target-device",
+            pattern = saved,
+        )
+
+        assertEquals(listOf(existing, saved), update.patterns)
+        assertEquals(
+            mapOf("other-device" to existing.id, "target-device" to saved.id),
+            update.appliedPatternIds,
+        )
+    }
+
+    @Test
+    fun deletingPatternRemovesEveryAppliedReferenceWithoutClaimingAnotherFrame() {
+        assertEquals(
+            mapOf("kept-device" to "kept"),
+            appliedPatternIdsAfterRemoval(
+                appliedPatternIds = mapOf(
+                    "first-device" to "deleted",
+                    "second-device" to "deleted",
+                    "kept-device" to "kept",
+                ),
+                removedPatternId = "deleted",
+            ),
+        )
+    }
+
+    @Test
+    fun legacySelectionMigratesToPrimaryWithoutOverwritingExistingApplication() {
+        assertEquals(
+            mapOf("secondary" to "two", "primary" to "one"),
+            migrateLegacyPatternSelection(
+                legacyPatternId = "one",
+                appliedPatternIds = mapOf("secondary" to "two"),
+                primaryDeviceId = "primary",
+                knownDeviceIds = listOf("secondary", "primary"),
+            ),
+        )
+        assertEquals(
+            mapOf("primary" to "newer"),
+            migrateLegacyPatternSelection(
+                legacyPatternId = "old",
+                appliedPatternIds = mapOf("primary" to "newer"),
+                primaryDeviceId = "primary",
+                knownDeviceIds = listOf("primary"),
+            ),
+        )
+    }
+
+    @Test
+    fun legacySelectionIsRetainedUntilThereIsAMigrationTarget() {
+        assertFalse(legacySelectionCanBeConsumed(null, emptyList()))
+        assertTrue(legacySelectionCanBeConsumed(null, listOf("known")))
+        assertTrue(legacySelectionCanBeConsumed("primary", emptyList()))
+    }
+
+    @Test
+    fun appliedPatternMapRoundTripsJsonForMultipleDevices() {
+        val original = linkedMapOf("device-a" to "pattern-1", "device-b" to "pattern-2")
+
+        assertEquals(original, decodeAppliedPatternIds(encodeAppliedPatternIds(original)))
+    }
 
     @Test
     fun upsertPatternAppendsANewPattern() {
@@ -25,17 +97,6 @@ class PatternRepositoryTest {
             listOf(updatedFirst, second),
             upsertPattern(listOf(first, second), updatedFirst),
         )
-    }
-
-    @Test
-    fun saveAndSelectPatternSelectsThePatternInTheSameUpdate() {
-        val existing = Pattern(id = "existing", name = "Existing", bits = "0".repeat(64))
-        val saved = Pattern(id = "saved", name = "Saved", bits = "1".repeat(64))
-
-        val update = saveAndSelectPattern(listOf(existing), saved)
-
-        assertEquals(listOf(existing, saved), update.patterns)
-        assertEquals(saved.id, update.selectedId)
     }
 
     @Test

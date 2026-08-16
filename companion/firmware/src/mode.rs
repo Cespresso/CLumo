@@ -2,12 +2,14 @@ use esp_idf_hal::sys::EspError;
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 
 use crate::mode_values::{decode_mode, migrate_legacy_mode};
+use crate::settings_values::decode_brightness;
 
 pub use crate::mode_values::MODE_COUNT;
 
 const MODE_KEY: &str = "MODE";
 const MODE_SCHEMA_KEY: &str = "MODE_SCHEMA";
 const MODE_SCHEMA_VERSION: u8 = 2;
+const BRIGHTNESS_KEY: &str = "BRIGHT";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -40,6 +42,7 @@ impl Mode {
 
 pub struct ModeManager {
     current_mode: Mode,
+    brightness: u8,
     nvs: EspNvs<NvsDefault>,
 }
 
@@ -68,7 +71,12 @@ impl ModeManager {
                 Mode::Pomodoro
             }
         };
-        Ok(Self { current_mode, nvs })
+        let brightness = decode_brightness(nvs.get_u8(BRIGHTNESS_KEY)?);
+        Ok(Self {
+            current_mode,
+            brightness,
+            nvs,
+        })
     }
 
     pub fn current(&self) -> Mode {
@@ -83,5 +91,16 @@ impl ModeManager {
         self.current_mode = new_mode;
         self.nvs.set_u8(MODE_KEY, new_mode as u8)?;
         Ok(())
+    }
+
+    pub fn brightness(&self) -> u8 {
+        self.brightness
+    }
+
+    pub fn set_brightness(&mut self, level: u8) -> Result<u8, EspError> {
+        let level = level.min(15);
+        self.nvs.set_u8(BRIGHTNESS_KEY, level)?;
+        self.brightness = level;
+        Ok(level)
     }
 }

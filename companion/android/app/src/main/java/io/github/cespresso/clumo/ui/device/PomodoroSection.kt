@@ -27,7 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.ui.components.CtaPillButton
@@ -37,8 +36,11 @@ import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
 @Composable
 internal fun PomodoroSection(
-    connection: DeviceConnection?,
     status: PomodoroStatus,
+    onDurationsChanged: (Int, Int) -> Unit,
+    onStart: () -> Unit,
+    onPause: () -> Unit,
+    onReset: () -> Unit,
 ) {
     var workMin by remember { mutableIntStateOf(status.workMin.coerceIn(1, 99)) }
     var breakMin by remember { mutableIntStateOf(status.breakMin.coerceIn(1, 99)) }
@@ -48,7 +50,7 @@ internal fun PomodoroSection(
     }
 
     fun pushDurations() {
-        connection?.pomodoroSetDurations(workMin, breakMin)
+        onDurationsChanged(workMin, breakMin)
     }
 
     Column(
@@ -119,7 +121,7 @@ internal fun PomodoroSection(
                     if (status.isRunning) R.string.pomodoro_pause else R.string.pomodoro_start
                 ),
                 onClick = {
-                    if (status.isRunning) connection?.pomodoroPause() else connection?.pomodoroStart()
+                    if (status.isRunning) onPause() else onStart()
                 },
                 fontSize = 15.sp,
                 verticalPadding = 14.dp,
@@ -127,7 +129,7 @@ internal fun PomodoroSection(
             )
             OutlinePillButton(
                 text = stringResource(R.string.pomodoro_reset),
-                onClick = { connection?.pomodoroReset() },
+                onClick = onReset,
                 fontSize = 15.sp,
                 verticalPadding = 14.dp,
                 modifier = Modifier.weight(1f),

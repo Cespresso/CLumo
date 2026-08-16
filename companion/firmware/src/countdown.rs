@@ -31,6 +31,20 @@ impl DurationSetting {
     }
 }
 
+pub fn encode_persisted_duration(setting: DurationSetting) -> u16 {
+    setting.total_secs()
+}
+
+pub fn decode_persisted_duration(total_secs: u16) -> DurationSetting {
+    if total_secs == 0 || total_secs > 59 * 60 + 59 {
+        return DEFAULT_DURATION;
+    }
+    DurationSetting {
+        minutes: (total_secs / 60) as u8,
+        seconds: (total_secs % 60) as u8,
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Countdown {
     state: CountdownState,
@@ -316,5 +330,17 @@ mod tests {
         assert_eq!(parse_timer_duration(&[0x10, 1]), None);
         assert_eq!(parse_timer_duration(&[0x10, 1, 0, 0xFF]), None);
         assert_eq!(parse_timer_duration(&[0x01, 1, 0]), None);
+    }
+
+    #[test]
+    fn timer_setting_round_trips_through_persisted_total_seconds() {
+        let setting = DurationSetting::new(59, 59).unwrap();
+
+        assert_eq!(
+            decode_persisted_duration(encode_persisted_duration(setting)),
+            setting
+        );
+        assert_eq!(decode_persisted_duration(0), DEFAULT_DURATION);
+        assert_eq!(decode_persisted_duration(3_600), DEFAULT_DURATION);
     }
 }

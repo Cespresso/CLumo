@@ -14,3 +14,8 @@ internal fun shouldStopVisualizerForModeChange(
     requestedMode: Int,
 ): Boolean = visualizerActive &&
     requestedMode != DeviceMode.VISUALIZER
+
+internal fun shouldStopVisualizerForLinkChange(
+    visualizerActive: Boolean,
+    connectionState: ConnectionState,
+): Boolean = visualizerActive && connectionState != ConnectionState.Ready

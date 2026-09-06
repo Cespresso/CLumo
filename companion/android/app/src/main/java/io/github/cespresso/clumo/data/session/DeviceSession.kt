@@ -92,7 +92,9 @@ class DeviceSession internal constructor(
                 )
             }
             wasReady = true
-            if (snapshot?.mode == DeviceMode.DISPLAY) {
+            // Gate on MODE alone: the snapshot is null unless all five characteristics
+            // were read, and a dropped announce leaves every preview frame persisted.
+            if (transport.currentMode.value == DeviceMode.DISPLAY) {
                 // Announce v2 preview support before the UI can enqueue a frame.
                 transport.writeMode(DeviceMode.DISPLAY)
             }

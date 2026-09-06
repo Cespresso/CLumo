@@ -24,6 +24,8 @@ mod visualizer_values;
 
 /// Blink interval for the disconnected icon during connection setup (ms).
 const CONNECTION_BLINK_MS: u128 = 400;
+/// Briefly show link loss, then return the matrix to its standalone mode frame.
+const DISCONNECTED_NOTICE_MS: u128 = 1_200;
 
 fn disconnected_icon(bonded: bool) -> &'static [u8; 8] {
     if bonded {
@@ -82,6 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client_ready = false;
     let mut connection_icon_on = true;
     let mut last_connection_blink = Instant::now();
+    let mut disconnected_notice_started = Some(Instant::now());
     let mut explicit_display_commit = false;
 
     // Main loop
@@ -98,9 +101,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     explicit_display_commit = false;
                     connection_icon_on = true;
                     last_connection_blink = Instant::now();
-                    if !connected {
+                    disconnected_notice_started = if connected {
+                        None
+                    } else {
                         runtime.cancel_display_preview();
-                    }
+                        Some(Instant::now())
+                    };
                     display.show(disconnected_icon(ble_bonded));
                 }
                 BleCommand::BondChanged(bonded) => {
@@ -114,6 +120,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     client_ready = false;
                     explicit_display_commit = false;
                     runtime.cancel_display_preview();
+                    disconnected_notice_started = Some(Instant::now());
                     display.show(disconnected_icon(ble_bonded));
                 }
                 BleCommand::ClientReady => {
@@ -137,7 +144,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         log::error!("BLE switch_to failed: {:?}", e);
                     }
                     ble.notify_mode_change(mode_manager.current() as u8);
-                    if client_ready {
+                    if client_ready || (!ble_connected && disconnected_notice_started.is_none()) {
                         display.show(&runtime.on_enter(mode_manager.current()));
                     }
                 }
@@ -211,9 +218,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Display update
         if let Some(frame) = runtime.tick(mode) {
-            if client_ready {
+            if client_ready || (!ble_connected && disconnected_notice_started.is_none()) {
                 display.show(&frame);
             }
+        }
+
+        if !ble_connected
+            && disconnected_notice_started
+                .is_some_and(|started| started.elapsed().as_millis() >= DISCONNECTED_NOTICE_MS)
+        {
+            disconnected_notice_started = None;
+            display.show(&runtime.on_enter(mode));
         }
 
         // Blink the disconnected icon while the BLE link, authentication, and

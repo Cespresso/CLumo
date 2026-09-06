@@ -61,6 +61,20 @@ cargo install ldproxy espflash
 cargo run
 ```
 
+## Testing
+
+`lib.rs` exposes the mode-agnostic modules (`countdown`, `display_state`,
+`display_commit_policy`, `mode_values`, `settings_values`, `visualizer_values`) so
+they can be unit tested on the host, without ESP-IDF. `--target` must override the
+crate's default ESP32 target:
+
+```bash
+cargo test --lib --target <host-triple>   # e.g. aarch64-apple-darwin, x86_64-unknown-linux-gnu
+```
+
+CI runs this on every push and PR (`firmware-ci.yml`). `handlers/`, `mode.rs`, and
+`main.rs` depend on ESP-IDF and are not covered by host tests.
+
 ## Pairing
 
 - Security: BLE bonding with MITM protection, passkey **123456** (DisplayOnly).

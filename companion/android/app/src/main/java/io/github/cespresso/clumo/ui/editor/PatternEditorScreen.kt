@@ -63,7 +63,7 @@ import io.github.cespresso.clumo.design.ContentTone
 import io.github.cespresso.clumo.design.contentToneFor
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.Pattern
-import io.github.cespresso.clumo.ui.appearance.resolveAppearance
+import io.github.cespresso.clumo.domain.resolveAppearance
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.CtaPillButton

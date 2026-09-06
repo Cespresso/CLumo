@@ -1,7 +1,5 @@
 package io.github.cespresso.clumo.ui.onboarding
 
-import android.Manifest
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -39,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.AppPreferences
+import io.github.cespresso.clumo.data.ble.bluetoothPermissions
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.ui.components.BrandCorner
@@ -236,14 +235,3 @@ fun OnboardingBluetoothScreen(
         }
     }
 }
-
-/** Runtime permissions needed for scanning/connecting, per SDK level. */
-fun bluetoothPermissions(): Array<String> =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        arrayOf(
-            Manifest.permission.BLUETOOTH_SCAN,
-            Manifest.permission.BLUETOOTH_CONNECT,
-        )
-    } else {
-        arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-    }

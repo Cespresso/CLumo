@@ -1,7 +1,5 @@
-package io.github.cespresso.clumo.ui.appearance
+package io.github.cespresso.clumo.domain
 
-import io.github.cespresso.clumo.domain.DeviceAppearance
-import io.github.cespresso.clumo.domain.RgbColor
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

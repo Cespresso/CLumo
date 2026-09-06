@@ -57,4 +57,35 @@ class ArchitectureTest {
             offenders.map { it.name }.sorted(),
         )
     }
+
+    /**
+     * One screen reaching into another makes the two impossible to read apart: the borrowed piece
+     * keeps the layout of wherever it was first needed, and it moves when that screen moves. What
+     * two screens share is either a component or a rule, so it belongs in [SHARED] or below the
+     * ui layer entirely.
+     */
+    @Test
+    fun noScreenReachesIntoAnotherScreen() {
+        val offenders = sources
+            .filter { it.isUnder("ui") }
+            .flatMap { file ->
+                val home = file.relativeTo(sourceRoot).invariantSeparatorsPath.split("/")[1]
+                IMPORT.findAll(file.readText())
+                    .map { it.groupValues[1] }
+                    .filter { it != home && it !in SHARED }
+                    .map { "${file.name} -> ui.$it" }
+                    .toList()
+            }
+        assertEquals(
+            "These screens borrow from a sibling screen",
+            emptyList<String>(),
+            offenders.sorted(),
+        )
+    }
+
+    private companion object {
+        /** Packages every screen may draw from: the shared components and the theme. */
+        val SHARED = setOf("components", "theme")
+        val IMPORT = Regex("""import io\.github\.cespresso\.clumo\.ui\.(\w+)\.""")
+    }
 }

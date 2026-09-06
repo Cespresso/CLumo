@@ -1,0 +1,242 @@
+name: Release & Deploy Installer
+
+# - タグ push（v*）→ 3成果物（bin ×2 + APK）をビルドして Release に添付
+# - main への push / 手動実行 → installer/ を GitHub Pages にデプロイ
+#   （github-pages 環境はタグからのデプロイを許可しないため main 起点にする）
+on:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write   # Release の作成・アセット添付
+  pages: write      # GitHub Pages へのデプロイ
+  id-token: write   # Pages デプロイの OIDC 認証
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ───────────────────────────────────────────────
+  # 1. 単独版ファームウェアをビルド（clumo-standalone.bin）
+  # ───────────────────────────────────────────────
+  build-standalone:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # esp-rs 公式アクション。riscv32imc ターゲット / ldproxy をセットアップ
+      # （ESP-IDF 本体は cargo build 時に esp-idf-sys が取得）
+      - name: Install Rust ESP toolchain
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          buildtargets: esp32c3
+          ldproxy: true
+
+      # cargo registry / target / ESP-IDF キャッシュをまとめて面倒みる
+      - name: Cache build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: standalone
+          cache-directories: |
+            standalone/.embuild
+            ~/.espressif
+
+      - name: Build (release)
+        working-directory: standalone
+        run: cargo build --release
+
+      - name: Install espflash
+        run: cargo install espflash --locked
+
+      # bootloader + partition table + app を 1 ファイルに結合
+      - name: Generate merged firmware
+        run: |
+          espflash save-image \
+            --chip esp32c3 \
+            --merge \
+            --flash-size 4mb \
+            standalone/target/riscv32imc-esp-espidf/release/clumo-standalone \
+            clumo-standalone.bin
+          ls -lh clumo-standalone.bin
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clumo-standalone
+          path: clumo-standalone.bin
+
+  # ───────────────────────────────────────────────
+  # 2. 協調版ファームウェアをビルド（clumo-companion.bin）
+  # ───────────────────────────────────────────────
+  build-companion:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust ESP toolchain
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          buildtargets: esp32c3
+          ldproxy: true
+
+      - name: Cache build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: companion/firmware
+          cache-directories: |
+            companion/firmware/.embuild
+            ~/.espressif
+
+      - name: Build (release)
+        working-directory: companion/firmware
+        run: cargo build --release
+
+      - name: Install espflash
+        run: cargo install espflash --locked
+
+      - name: Generate merged firmware
+        run: |
+          espflash save-image \
+            --chip esp32c3 \
+            --merge \
+            --flash-size 4mb \
+            companion/firmware/target/riscv32imc-esp-espidf/release/clumo-companion \
+            clumo-companion.bin
+          ls -lh clumo-companion.bin
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clumo-companion
+          path: clumo-companion.bin
+
+  # ───────────────────────────────────────────────
+  # 3. Android アプリをビルド（clumo.apk）
+  # ───────────────────────────────────────────────
+  build-apk:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # 署名用 keystore が Secrets にあれば復元して環境変数を渡す。
+      # なければ build.gradle.kts 側の debug 署名フォールバックに任せる。
+      - name: Prepare signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/clumo-release.keystore"
+            {
+              echo "CLUMO_KEYSTORE_PATH=$RUNNER_TEMP/clumo-release.keystore"
+              echo "CLUMO_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "CLUMO_KEY_ALIAS=$KEY_ALIAS"
+              echo "CLUMO_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+          else
+            echo "::warning::署名用 Secrets が未設定のため debug 署名でビルドします"
+          fi
+
+      - name: Build APK (release)
+        working-directory: companion/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleRelease
+
+      - name: Rename APK
+        run: |
+          apk=$(ls companion/android/app/build/outputs/apk/release/*.apk | head -n 1)
+          cp "$apk" clumo.apk
+          ls -lh clumo.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clumo-apk
+          path: clumo.apk
+
+  # ───────────────────────────────────────────────
+  # 4. 3成果物をまとめて GitHub Release に添付
+  # ───────────────────────────────────────────────
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-standalone, build-companion, build-apk]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/clumo-standalone.bin
+            dist/clumo-companion.bin
+            dist/clumo.apk
+          generate_release_notes: true
+
+  # ───────────────────────────────────────────────
+  # 5. installer/ を GitHub Pages にデプロイ（インストーラページ）
+  # ───────────────────────────────────────────────
+  deploy-pages:
+    # main への push / 手動実行のときだけ Pages をデプロイ（ビルドには依存しない）
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 最新 Release の firmware を installer/ に取り込む。
+      # GitHub Release アセットの CDN は CORS ヘッダを返さないため、
+      # ESP Web Tools が fetch() できるよう manifest と同一オリジン（Pages）で配信する。
+      # Release がまだ無い初回はスキップしてページだけデプロイする。
+      - name: Fetch latest firmware into installer/
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for bin in clumo-standalone.bin clumo-companion.bin; do
+            if ! gh release download --repo "${{ github.repository }}" \
+                --pattern "$bin" --dir installer --clobber; then
+              echo "::warning::$bin を取得できませんでした（Release 未作成の可能性）。ページのみデプロイします"
+            fi
+          done
+          ls -lh installer/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: installer
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

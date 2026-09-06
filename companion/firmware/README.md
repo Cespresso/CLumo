@@ -82,6 +82,10 @@ CI runs this on every push and PR (`firmware-ci.yml`). `handlers/`, `mode.rs`, a
   BUTTON is notify-only, and NimBLE's auto-generated CCCD is subscribable without
   encryption, so the firmware instead withholds button notifications until a client
   has completed the encrypted initial sync.
+- A connected client blocks advertising, so a client that connects but never
+  completes that encrypted initial sync (bonds but never reads DEVICE_ID, or isn't
+  CLumo's app at all) is force-disconnected after 60s, so a real client isn't
+  locked out until power-cycle.
 
 ## BLE protocol v2
 

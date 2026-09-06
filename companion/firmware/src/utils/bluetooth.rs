@@ -48,6 +48,7 @@ pub enum BleCommand {
 pub struct BluetoothManager {
     commands: Arc<Mutex<VecDeque<BleCommand>>>,
     has_bonded_peer: bool,
+    current_conn_handle: Arc<Mutex<Option<u16>>>,
     mode_characteristic: Arc<Mutex<BLECharacteristic>>,
     pomodoro_characteristic: Arc<Mutex<BLECharacteristic>>,
     timer_characteristic: Arc<Mutex<BLECharacteristic>>,
@@ -86,9 +87,13 @@ impl BluetoothManager {
 
         let server = ble_device.get_server();
 
+        let current_conn_handle: Arc<Mutex<Option<u16>>> = Arc::new(Mutex::new(None));
+
         let commands_clone = commands.clone();
+        let current_conn_handle_clone = current_conn_handle.clone();
         server.on_connect(move |server, clntdesc| {
             log::info!("BLE client connected: {:?}", clntdesc);
+            *current_conn_handle_clone.lock() = Some(clntdesc.conn_handle());
             commands_clone
                 .lock()
                 .push_back(BleCommand::ConnectionChanged(true));
@@ -98,8 +103,16 @@ impl BluetoothManager {
         });
 
         let commands_clone = commands.clone();
-        server.on_disconnect(move |_desc, _reason| {
+        let current_conn_handle_clone = current_conn_handle.clone();
+        server.on_disconnect(move |desc, _reason| {
             log::info!("BLE client disconnected");
+            // NimBLE allows more than one concurrent connection, so only forget the
+            // handle if the peer that just left is the one being tracked.
+            let mut tracked = current_conn_handle_clone.lock();
+            if *tracked == Some(desc.conn_handle()) {
+                *tracked = None;
+            }
+            drop(tracked);
             commands_clone
                 .lock()
                 .push_back(BleCommand::ConnectionChanged(false));
@@ -347,6 +360,7 @@ impl BluetoothManager {
         Ok(Self {
             commands,
             has_bonded_peer,
+            current_conn_handle,
             mode_characteristic,
             pomodoro_characteristic,
             timer_characteristic,
@@ -363,6 +377,26 @@ impl BluetoothManager {
     /// Whether the device had at least one peer in its bond store at startup.
     pub fn has_bonded_peer(&self) -> bool {
         self.has_bonded_peer
+    }
+
+    /// Force-disconnect the current client, if still connected.
+    /// Returns whether the stack accepted the request, so a caller that armed a
+    /// timeout can keep it armed and retry.
+    pub fn disconnect_stalled_client(&self) -> bool {
+        let Some(conn_handle) = *self.current_conn_handle.lock() else {
+            return false;
+        };
+        log::warn!(
+            "BLE: client_ready wait timed out, disconnecting conn {}",
+            conn_handle
+        );
+        match BLEDevice::take().get_server().disconnect(conn_handle) {
+            Ok(()) => true,
+            Err(e) => {
+                log::warn!("BLE: failed to disconnect stalled client: {:?}", e);
+                false
+            }
+        }
     }
 
     /// Update the Mode Characteristic value and notify connected clients.

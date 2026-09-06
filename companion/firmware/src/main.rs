@@ -26,6 +26,10 @@ mod visualizer_values;
 const CONNECTION_BLINK_MS: u128 = 400;
 /// Briefly show link loss, then return the matrix to its standalone mode frame.
 const DISCONNECTED_NOTICE_MS: u128 = 1_200;
+/// NimBLE advertises only while unconnected, so a client that connects and never
+/// completes the encrypted initial sync locks every other client out until the
+/// device is power-cycled. Long enough not to preempt a slow passkey entry.
+const CLIENT_READY_TIMEOUT_MS: u128 = 60_000;
 
 fn disconnected_icon(bonded: bool) -> &'static [u8; 8] {
     if bonded {
@@ -86,6 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_connection_blink = Instant::now();
     let mut disconnected_notice_started = Some(Instant::now());
     let mut explicit_display_commit = false;
+    let mut client_ready_wait_started: Option<Instant> = None;
 
     // Main loop
     loop {
@@ -101,6 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     explicit_display_commit = false;
                     connection_icon_on = true;
                     last_connection_blink = Instant::now();
+                    client_ready_wait_started = if connected { Some(Instant::now()) } else { None };
                     disconnected_notice_started = if connected {
                         None
                     } else {
@@ -119,6 +125,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     ble_connected = false;
                     client_ready = false;
                     explicit_display_commit = false;
+                    client_ready_wait_started = None;
                     runtime.cancel_display_preview();
                     disconnected_notice_started = Some(Instant::now());
                     display.show(disconnected_icon(ble_bonded));
@@ -126,6 +133,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::ClientReady => {
                     if ble_connected && !client_ready {
                         client_ready = true;
+                        client_ready_wait_started = None;
                         display.show(&runtime.on_enter(mode_manager.current()));
                     }
                 }
@@ -229,6 +237,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         {
             disconnected_notice_started = None;
             display.show(&runtime.on_enter(mode));
+        }
+
+        if ble_connected
+            && !client_ready
+            && client_ready_wait_started
+                .is_some_and(|started| started.elapsed().as_millis() >= CLIENT_READY_TIMEOUT_MS)
+            && ble.disconnect_stalled_client()
+        {
+            // Only disarm once the stack accepted the request; a refused disconnect
+            // leaves the timer armed so the next pass tries again.
+            client_ready_wait_started = None;
         }
 
         // Blink the disconnected icon while the BLE link, authentication, and

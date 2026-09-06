@@ -1,27 +1,43 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>CLumo インストーラ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet" />
 
-  <!-- 選択状態は URL パラメータで持つ。
-         ?fw=standalone / companion … 書き込むファームウェア
-         ?v=pc / mobile             … 書き込み方式
-           pc     … 公式 esp-web-tools（Web Serial / PC のみ）
-           mobile … tasmota-esp-web-tools（WebUSB / PC + Android）
-       両エンジンは同じ <esp-web-install-button> を定義するため、
-       選んだ方式のスクリプトだけを後段で動的ロードする。
-       data-fw / data-v を <html> に先付けして表示のちらつきを防ぐ。 -->
+  <!-- State lives in the URL so a choice can be linked to and reloaded.
+         ?fw=standalone | companion   which firmware to flash
+         ?v=pc | mobile               how to flash
+           pc      official esp-web-tools (Web Serial, desktop only)
+           mobile  tasmota-esp-web-tools (WebUSB, desktop + Android)
+         ?lang=ja | en                page language; remembered in localStorage,
+                                      otherwise taken from the browser
+       Both engines define the same <esp-web-install-button>, so only the chosen
+       engine's script is loaded, later in the page. The data-* attributes are
+       set on <html> before first paint so the right sections show without a flash. -->
   <script>
     (function () {
       var q = new URLSearchParams(location.search);
       var fw = q.get("fw");
       var v = q.get("v");
-      document.documentElement.dataset.fw =
-        fw === "standalone" || fw === "companion" ? fw : "none";
-      document.documentElement.dataset.v =
-        v === "pc" || v === "mobile" ? v : "none";
+      var lang = q.get("lang");
+      var root = document.documentElement;
+      root.dataset.fw = fw === "standalone" || fw === "companion" ? fw : "none";
+      root.dataset.v = v === "pc" || v === "mobile" ? v : "none";
+      if (lang !== "ja" && lang !== "en") {
+        try { lang = localStorage.getItem("clumo-lang"); } catch (e) { lang = null; }
+      } else {
+        try { localStorage.setItem("clumo-lang", lang); } catch (e) {}
+      }
+      if (lang !== "ja" && lang !== "en") {
+        lang = /^ja\b/i.test(navigator.language || "") ? "ja" : "en";
+      }
+      root.dataset.lang = lang;
+      root.lang = lang;
+      document.title = lang === "ja" ? "CLumo インストーラ" : "CLumo Installer";
     })();
   </script>
 
@@ -29,13 +45,17 @@
     :root {
       --bg: #faf9f6;
       --card: #ffffff;
-      --border: #c7ccca;
+      --panel: #f4f2ee;
+      --border: #ede9e1;
+      --outline: #dcd8d0;
       --text: #3e3a36;
-      --muted: #8b8680;
+      --muted: #8c867e;
       --sage: #7e9e7c;
       --sage-soft: #eef2ed;
       --coral: #e8907e;
-      --coral-soft: #fbeae5;
+      --coral-deep: #c06a57;
+      --coral-soft: #fbebe6;
+      --gray: #c7ccca;
     }
     * { box-sizing: border-box; }
     body {
@@ -47,124 +67,131 @@
       display: flex;
       justify-content: center;
       min-height: 100vh;
-      padding: 2.5rem 1rem;
-      line-height: 1.6;
+      padding: 1.5rem 1rem 3rem;
+      line-height: 1.65;
     }
-    main {
-      width: 100%;
-      max-width: 560px;
-    }
+    main { width: 100%; max-width: 600px; }
+    h1, h2, .brand { font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", sans-serif; }
 
-    /* 本体の顔を模した太枠モチーフ */
-    header { text-align: center; margin-bottom: 2rem; }
-    .logo {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 0.9rem;
-      border: 7px solid var(--text);
-      border-radius: 18px;
+    /* language switch */
+    .topbar { display: flex; justify-content: flex-end; margin-bottom: 0.5rem; }
+    .lang {
+      display: inline-flex;
+      border: 1px solid var(--outline);
+      border-radius: 999px;
       background: var(--card);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 11px;
+      padding: 2px;
+      font-size: 0.8rem;
+      font-weight: 700;
     }
-    .logo i {
-      width: 9px;
-      height: 9px;
-      border-radius: 2px;
-      background: var(--coral);
+    .lang a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.2rem 0.8rem;
+      border-radius: 999px;
     }
-    h1 {
-      font-size: 1.8rem;
-      letter-spacing: 0.03em;
-      margin: 0 0 0.3rem;
-    }
-    .lead { color: var(--muted); margin: 0; }
+    html[data-lang="ja"] .lang a[data-lang-link="ja"],
+    html[data-lang="en"] .lang a[data-lang-link="en"] { background: var(--sage); color: #fff; }
+
+    /* hero: three CLumo faces, as on the cover photo */
+    header { text-align: center; margin-bottom: 2rem; }
+    .hero { display: flex; justify-content: center; gap: 0.6rem; margin: 0.5rem 0 1rem; }
+    .hero img { width: 84px; height: auto; }
+    .hero img:nth-child(2) { width: 100px; }
+    h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: 0.02em; margin: 0 0 0.3rem; }
+    .lead { color: var(--muted); margin: 0 auto; max-width: 30em; }
 
     .card {
       background: var(--card);
       border: 2px solid var(--border);
-      border-radius: 20px;
-      padding: 1.5rem;
-      margin-bottom: 1.25rem;
+      border-radius: 24px;
+      padding: 1.4rem 1.5rem;
+      margin-bottom: 1.1rem;
     }
-    h2 { font-size: 1.1rem; margin: 0 0 0.75rem; }
+    h2 { font-size: 1.15rem; font-weight: 800; margin: 0 0 0.6rem; }
     .step-label {
       display: block;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 700;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       color: var(--sage);
-      margin-bottom: 1rem;
+      margin: 0 0.25rem 0.9rem;
     }
     a { color: var(--sage); }
     code {
-      background: var(--sage-soft);
-      padding: 0.15em 0.45em;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      padding: 0.1em 0.45em;
       border-radius: 6px;
       font-size: 0.9em;
     }
-    ol { padding-left: 1.25rem; line-height: 1.9; margin: 0; }
-    ul { line-height: 1.9; }
+    ol { padding-left: 1.3rem; line-height: 1.85; margin: 0; }
+    ol li + li { margin-top: 0.25rem; }
+    ul { line-height: 1.85; }
 
-    /* --- 選択カード --- */
-    .choice h2 { margin-bottom: 0.4rem; }
-    .choice .tag {
+    /* choice cards: the device's face on the left, words on the right */
+    .choice { display: flex; gap: 1.2rem; align-items: flex-start; }
+    .choice img { width: 92px; height: auto; flex: none; margin-top: 0.15rem; }
+    .choice .body { flex: 1; min-width: 0; }
+    .choice h2 { margin-bottom: 0.3rem; }
+    .tag {
       display: inline-block;
-      font-size: 0.75rem;
-      padding: 0.15rem 0.6rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.1rem 0.6rem;
       border-radius: 999px;
       margin-left: 0.5rem;
       vertical-align: middle;
     }
     .tag.rec { background: var(--sage-soft); color: var(--sage); }
-    .tag.alt { background: var(--coral-soft); color: #c86a56; }
-    .choice p {
-      color: var(--muted);
-      margin: 0 0 1rem;
-      font-size: 0.95rem;
-    }
-    .choice-btn {
+    .tag.alt { background: var(--coral-soft); color: var(--coral-deep); }
+    .choice p { color: var(--muted); margin: 0 0 1rem; font-size: 0.95rem; }
+    .pill {
       display: inline-block;
-      padding: 0.6rem 1.4rem;
-      background: var(--coral);
-      color: #fff;
+      padding: 0.55rem 1.4rem;
       border-radius: 999px;
       text-decoration: none;
       font-weight: 700;
+      font-size: 0.95rem;
     }
-    .banner {
-      color: var(--muted);
-      font-size: 0.9rem;
-      margin: 0 0 1.25rem;
+    .pill.primary { background: var(--coral); color: #fff; }
+    .pill.primary:hover { filter: brightness(0.96); }
+    .pill.secondary { background: var(--card); color: var(--text); border: 2px solid var(--outline); }
+    @media (max-width: 460px) {
+      .choice { flex-direction: column; align-items: center; text-align: center; }
+      .choice img { width: 110px; }
     }
+
+    .banner { color: var(--muted); font-size: 0.92rem; margin: 0 0.25rem 1.1rem; }
     .banner b { color: var(--text); }
 
     .note {
       background: var(--sage-soft);
       border-left: 4px solid var(--sage);
       padding: 0.75rem 1rem;
-      border-radius: 0 12px 12px 0;
+      border-radius: 0 14px 14px 0;
       color: var(--muted);
       font-size: 0.9rem;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.1rem;
     }
+    .note strong { color: var(--text); }
 
-    /* --- インストールボタン --- */
+    /* install button */
     .install-wrap { text-align: center; padding: 2rem 1.5rem; }
     button.install {
       background: var(--coral);
       color: #fff;
       border: none;
-      padding: 0.85rem 2.2rem;
+      padding: 0.9rem 2.4rem;
       border-radius: 999px;
       font-size: 1.05rem;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
-      font-family: inherit;
+      font-family: "M PLUS Rounded 1c", inherit;
     }
     button.install:hover { filter: brightness(0.96); }
+    .install-wrap [slot="unsupported"], .install-wrap [slot="not-allowed"] { color: var(--coral-deep); }
 
     .specs { list-style: none; padding: 0; margin: 0; }
     .specs li {
@@ -178,17 +205,12 @@
     .specs .k { color: var(--muted); }
     .specs .v { font-variant-numeric: tabular-nums; text-align: right; }
 
-    footer {
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.85rem;
-      margin-top: 2rem;
-    }
+    footer { text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 2rem; }
 
-    /* 選択状態に応じた出し分け（<html data-fw / data-v> で制御）
-       fw 未選択 → ファームウェア選択のみ
-       fw 選択済 & v 未選択 → 書き込み方式選択のみ
-       両方選択済 → インストーラ */
+    /* which sections show (driven by <html data-fw / data-v>)
+       no fw            -> firmware chooser only
+       fw, no method    -> method chooser only
+       both             -> installer */
     html[data-fw="none"] #method-chooser,
     html[data-fw="none"] #installer { display: none; }
     html:not([data-fw="none"]) #fw-chooser { display: none; }
@@ -199,155 +221,202 @@
     html:not([data-fw="companion"]) .companion-only { display: none; }
     html:not([data-v="pc"]) .pc-only { display: none; }
     html:not([data-v="mobile"]) .mobile-only { display: none; }
+
+    /* language: every text block exists twice, one per lang attribute */
+    html[data-lang="ja"] [lang="en"],
+    html[data-lang="en"] [lang="ja"] { display: none !important; }
   </style>
 </head>
 <body>
   <main>
+    <div class="topbar">
+      <nav class="lang" aria-label="Language">
+        <a data-lang-link="ja" href="?lang=ja">日本語</a>
+        <a data-lang-link="en" href="?lang=en">English</a>
+      </nav>
+    </div>
+
     <header>
-      <div class="logo" aria-hidden="true"><i></i><i></i></div>
-      <h1>CLumo インストーラ</h1>
-      <p class="lead">
-        ブラウザから ESP32-C3 へファームウェアを書き込みます。ツールのインストールは不要です。
-      </p>
+      <div class="hero" aria-hidden="true">
+        <img src="img/pet-normal.svg" alt="" />
+        <img src="img/display-heart.svg" alt="" />
+        <img src="img/dice-5.svg" alt="" />
+      </div>
+      <h1 lang="ja">CLumo インストーラ</h1>
+      <h1 lang="en">CLumo Installer</h1>
+      <p class="lead" lang="ja">ブラウザから CLumo にファームウェアを書き込みます。ツールのインストールは不要です。</p>
+      <p class="lead" lang="en">Flash CLumo's firmware from your browser. Nothing to install.</p>
     </header>
 
-    <!-- ===== 1. ファームウェア選択（?fw= 未指定のとき表示） ===== -->
+    <!-- ===== 1. Which firmware (shown while ?fw= is unset) ===== -->
     <div id="fw-chooser">
-      <span class="step-label">STEP 1 / 2 — ファームウェアを選ぶ</span>
+      <span class="step-label" lang="ja">STEP 1 / 2 · ファームウェアを選ぶ</span>
+      <span class="step-label" lang="en">STEP 1 / 2 · CHOOSE A FIRMWARE</span>
 
       <div class="card choice">
-        <h2>単独版<span class="tag rec">アプリ不要</span></h2>
-        <p>
-          ボタン2つだけで完結する <code>clumo-standalone</code>。
-          デジタルペット・ポモドーロタイマー・サイコロの3モードを搭載します。
-          Bluetooth もスマホも使いません。
-        </p>
-        <a class="choice-btn" data-fw-link="standalone" href="?fw=standalone">単独版を書き込む →</a>
+        <img src="img/pet-normal.svg" alt="" />
+        <div class="body">
+          <h2 lang="ja">単独版<span class="tag rec">アプリ不要</span></h2>
+          <h2 lang="en">Standalone<span class="tag rec">No app needed</span></h2>
+          <p lang="ja">ボタン 2 つだけで完結します。デジタルペット、ポモドーロタイマー、サイコロの 3 つのモード。Bluetooth もスマホも使いません。</p>
+          <p lang="en">Everything runs on the two buttons: a digital pet, a pomodoro timer, and dice. No Bluetooth, no phone.</p>
+          <a class="pill primary" data-fw-link="standalone" href="?fw=standalone"><span lang="ja">単独版を書き込む</span><span lang="en">Flash standalone</span></a>
+        </div>
       </div>
 
       <div class="card choice">
-        <h2>アプリ協調版<span class="tag alt">Android アプリ連携</span></h2>
-        <p>
-          Android アプリ「CLumo」と BLE で連携する <code>clumo-companion</code>。
-          アプリからのタイマー設定・8x8 パターンエディタ「マイ表示」・オーディオビジュアライザが使えます。
-          アプリは <a href="https://github.com/Cespresso/CLumo/releases/latest" target="_blank" rel="noopener">最新 Release</a> の <code>clumo.apk</code> をどうぞ。
-        </p>
-        <a class="choice-btn" data-fw-link="companion" href="?fw=companion">アプリ協調版を書き込む →</a>
+        <img src="img/display-heart.svg" alt="" />
+        <div class="body">
+          <h2 lang="ja">アプリ協調版<span class="tag alt">Android アプリ連携</span></h2>
+          <h2 lang="en">Companion<span class="tag alt">With the Android app</span></h2>
+          <p lang="ja">Android アプリ「CLumo」と Bluetooth でつながります。ポモドーロ、タイマー、アプリで描いた絵を映すマイ表示、音に合わせて動くビジュアライザ。アプリは <a href="https://github.com/Cespresso/CLumo/releases/latest" target="_blank" rel="noopener">最新の Release</a> の <code>clumo.apk</code> です。</p>
+          <p lang="en">Pairs with the CLumo Android app over Bluetooth: pomodoro, a timer, pictures you draw in the app, and a visualizer that moves with your audio. The app is <code>clumo.apk</code> in the <a href="https://github.com/Cespresso/CLumo/releases/latest" target="_blank" rel="noopener">latest release</a>.</p>
+          <a class="pill primary" data-fw-link="companion" href="?fw=companion"><span lang="ja">アプリ協調版を書き込む</span><span lang="en">Flash companion</span></a>
+        </div>
       </div>
 
-      <div class="note">
-        どちらを選んでも、あとからこのページで<strong>何度でも書き換えて切り替え</strong>られます。
-        迷ったらまずは<strong>単独版</strong>がおすすめです。
-      </div>
+      <div class="note" lang="ja">どちらを選んでも、あとからこのページで何度でも書き換えられます。迷ったら<strong>単独版</strong>から。</div>
+      <div class="note" lang="en">Whichever you pick, you can come back here and switch as often as you like. If in doubt, start with <strong>standalone</strong>.</div>
     </div>
 
-    <!-- ===== 2. 書き込み方式選択（fw 選択済み & ?v= 未指定のとき表示） ===== -->
+    <!-- ===== 2. How to flash (shown once fw is chosen and ?v= is unset) ===== -->
     <div id="method-chooser">
-      <span class="step-label">STEP 2 / 2 — 書き込み方式を選ぶ</span>
+      <span class="step-label" lang="ja">STEP 2 / 2 · 書き込み方法を選ぶ</span>
+      <span class="step-label" lang="en">STEP 2 / 2 · CHOOSE HOW TO FLASH</span>
       <p class="banner">
-        選択中: <b><span class="standalone-only">単独版（clumo-standalone）</span><span class="companion-only">アプリ協調版（clumo-companion）</span></b>
-        · <a href="./">選び直す</a>
+        <span lang="ja">選択中: <b><span class="standalone-only">単独版</span><span class="companion-only">アプリ協調版</span></b> · <a data-reset-link href="./">選び直す</a></span>
+        <span lang="en">Selected: <b><span class="standalone-only">standalone</span><span class="companion-only">companion</span></b> · <a data-reset-link href="./">change</a></span>
       </p>
 
       <div class="card choice">
-        <h2>PC専用（公式版）<span class="tag rec">推奨</span></h2>
-        <p>
-          本家 ESP Web Tools（Web Serial）。実績のある公式ツールで書き込みます。
-          対応は <strong>PC の Chrome / Edge / Opera（デスクトップ）</strong>のみ。スマホは使えません。
-        </p>
-        <a class="choice-btn" data-v-link="pc" href="?v=pc">この方法で進む →</a>
+        <img src="img/pomodoro-idle.svg" alt="" />
+        <div class="body">
+          <h2 lang="ja">PC から<span class="tag rec">推奨</span></h2>
+          <h2 lang="en">From a PC<span class="tag rec">Recommended</span></h2>
+          <p lang="ja">本家の ESP Web Tools（Web Serial）を使います。PC の Chrome / Edge / Opera で動きます。スマホは使えません。</p>
+          <p lang="en">Uses the original ESP Web Tools over Web Serial. Works in Chrome, Edge, and Opera on a desktop. Phones are not supported.</p>
+          <a class="pill primary" data-v-link="pc" href="?v=pc"><span lang="ja">この方法で進む</span><span lang="en">Continue</span></a>
+        </div>
       </div>
 
       <div class="card choice">
-        <h2>PC + スマホ版<span class="tag alt">WebUSB</span></h2>
-        <p>
-          上記に加えて <strong>Android の Chrome（USB-OTG）</strong>でも書き込めます。
-          コミュニティ製フォーク（tasmota-esp-web-tools）を使用します。
-        </p>
-        <a class="choice-btn" data-v-link="mobile" href="?v=mobile">この方法で進む →</a>
+        <img src="img/visualizer.svg" alt="" />
+        <div class="body">
+          <h2 lang="ja">PC または Android から<span class="tag alt">WebUSB</span></h2>
+          <h2 lang="en">From a PC or Android<span class="tag alt">WebUSB</span></h2>
+          <p lang="ja">PC に加えて Android の Chrome（USB-OTG）からも書き込めます。コミュニティ製のフォーク（tasmota-esp-web-tools）を使います。</p>
+          <p lang="en">Also works from Chrome on Android over USB-OTG, using a community fork (tasmota-esp-web-tools).</p>
+          <a class="pill primary" data-v-link="mobile" href="?v=mobile"><span lang="ja">この方法で進む</span><span lang="en">Continue</span></a>
+        </div>
       </div>
 
-      <div class="note">
-        書き込まれるファームウェアはどちらの方式でも同一です。迷ったら<strong>「PC専用（公式版）」</strong>を、
-        スマホから書き込みたいときは<strong>「PC + スマホ版」</strong>を選んでください。
-      </div>
+      <div class="note" lang="ja">書き込まれるファームウェアはどちらでも同じです。迷ったら「PC から」を、スマホで書き込みたいときは「PC または Android から」を選んでください。</div>
+      <div class="note" lang="en">The firmware is the same either way. If in doubt pick "From a PC"; pick the other one when you want to flash from a phone.</div>
     </div>
 
-    <!-- ===== インストーラ（fw と v の両方が選択済みのとき表示） ===== -->
+    <!-- ===== Installer (shown once both are chosen) ===== -->
     <div id="installer">
       <p class="banner">
-        <b><span class="standalone-only">単独版（clumo-standalone）</span><span class="companion-only">アプリ協調版（clumo-companion）</span></b>を
-        <span class="pc-only">PC専用（公式）版</span><span class="mobile-only">PC + スマホ（WebUSB）版</span>で書き込みます。
-        <a href="./">別の選択にする</a>
+        <span lang="ja"><b><span class="standalone-only">単独版</span><span class="companion-only">アプリ協調版</span></b>を<span class="pc-only">PC から</span><span class="mobile-only">PC または Android から</span>書き込みます。 <a data-reset-link href="./">選び直す</a></span>
+        <span lang="en">Flashing the <b><span class="standalone-only">standalone</span><span class="companion-only">companion</span></b> firmware <span class="pc-only">from a PC</span><span class="mobile-only">from a PC or Android</span>. <a data-reset-link href="./">Change</a></span>
       </p>
 
       <div class="card install-wrap">
         <esp-web-install-button id="install-btn">
-          <button slot="activate" class="install">インストール</button>
+          <button slot="activate" class="install"><span lang="ja">インストール</span><span lang="en">Install</span></button>
           <span slot="unsupported">
-            このブラウザは未対応です。PC は Chrome / Edge / Opera<span class="mobile-only">、スマホは Android の Chrome</span>をご利用ください（iOS・Safari・Firefox は非対応）。
+            <span lang="ja">このブラウザは未対応です。PC は Chrome / Edge / Opera<span class="mobile-only">、スマホは Android の Chrome</span> をご利用ください。iOS、Safari、Firefox では使えません。</span>
+            <span lang="en">This browser is not supported. Use Chrome, Edge, or Opera on a desktop<span class="mobile-only">, or Chrome on Android</span>. iOS, Safari, and Firefox cannot flash.</span>
           </span>
           <span slot="not-allowed">
-            HTTPS 接続でのみ利用できます。
+            <span lang="ja">HTTPS で開いたときだけ使えます。</span>
+            <span lang="en">Only available over HTTPS.</span>
           </span>
         </esp-web-install-button>
       </div>
 
       <div class="card">
-        <h2>手順</h2>
-        <ol>
-          <li>CLumo を USB ケーブルで接続
+        <h2 lang="ja">手順</h2>
+        <h2 lang="en">Steps</h2>
+        <ol lang="ja">
+          <li>CLumo を USB ケーブルでつなぐ
             <ul>
-              <li><strong>PC：</strong>Chrome / Edge にそのまま接続</li>
-              <li class="mobile-only"><strong>Android スマホ：</strong>USB-OTG ケーブルで接続し Chrome でこのページを開く</li>
+              <li><strong>PC:</strong> そのままつなぐ</li>
+              <li class="mobile-only"><strong>Android:</strong> USB-OTG ケーブルでつなぎ、Chrome でこのページを開く</li>
             </ul>
           </li>
           <li>上の「インストール」を押す</li>
-          <li>表示されたシリアルポート / USB デバイスを選択</li>
-          <li>書き込み完了を待つ（自動で再起動します）</li>
+          <li>表示されたシリアルポート / USB デバイスを選ぶ</li>
+          <li>書き込みが終わるのを待つ。自動で再起動します</li>
+        </ol>
+        <ol lang="en">
+          <li>Connect CLumo over USB
+            <ul>
+              <li><strong>PC:</strong> plug it straight in</li>
+              <li class="mobile-only"><strong>Android:</strong> use a USB-OTG cable and open this page in Chrome</li>
+            </ul>
+          </li>
+          <li>Press "Install" above</li>
+          <li>Pick the serial port or USB device it offers</li>
+          <li>Wait for flashing to finish. The device restarts on its own</li>
         </ol>
       </div>
 
       <div class="card">
-        <h2>書き込み後の使い方</h2>
-        <ol class="standalone-only">
-          <li>「インストール完了」後に表示される<strong>空のダイアログは閉じて OK</strong> です
-            （仕様です。デバイスはすでに起動しています）</li>
-          <li><strong>LED が点灯</strong>し、最初のモードが表示されます</li>
-          <li><strong>白ボタンを長押し</strong>するとモードが切り替わります
-            （ペット → ポモドーロ → サイコロ → …）</li>
-          <li><strong>赤 / 白の短押し</strong>が各モードでの操作です
-            （ペットへの餌やり、タイマーの開始 / 停止、サイコロを振る など）</li>
+        <h2 lang="ja">書き込んだあと</h2>
+        <h2 lang="en">After flashing</h2>
+        <ol class="standalone-only" lang="ja">
+          <li>「インストール完了」のあとに空のダイアログが出たら閉じて構いません。本体はもう動いています</li>
+          <li>マトリクスが点灯し、最初のモードが表示されます</li>
+          <li><strong>白ボタンを 1 秒長押し</strong>でモードが切り替わります。ペット → ポモドーロ → サイコロの順です</li>
+          <li>各モードでの橙 / 白の操作は <a href="https://github.com/Cespresso/CLumo/tree/main/standalone#readme" target="_blank" rel="noopener">単独版の README</a> にまとめてあります</li>
         </ol>
-        <ol class="companion-only">
-          <li>「インストール完了」後に表示される<strong>空のダイアログは閉じて OK</strong> です
-            （仕様です。デバイスはすでに起動しています）</li>
-          <li><strong>LED が点灯</strong>し、デバイスが起動します</li>
-          <li>Android アプリ「<strong>CLumo</strong>」をインストール
-            （<a href="https://github.com/Cespresso/CLumo/releases/latest" target="_blank" rel="noopener">最新 Release</a> の <code>clumo.apk</code>）</li>
-          <li>アプリを開いてデバイスをスキャンし、<code>CLumo-XXXX</code> に接続。
-            ペアリングのパスキーは <code>123456</code></li>
-          <li>タイマー・マイ表示（8x8 パターンエディタ）・オーディオビジュアライザをアプリから操作できます</li>
+        <ol class="standalone-only" lang="en">
+          <li>If an empty dialog appears after "Installation complete", just close it. The device is already running</li>
+          <li>The matrix lights up with the first mode</li>
+          <li><strong>Hold the white button for a second</strong> to switch modes: pet, pomodoro, dice</li>
+          <li>What orange and white do in each mode is in the <a href="https://github.com/Cespresso/CLumo/tree/main/standalone#readme" target="_blank" rel="noopener">standalone README</a></li>
+        </ol>
+        <ol class="companion-only" lang="ja">
+          <li>「インストール完了」のあとに空のダイアログが出たら閉じて構いません。本体はもう動いています</li>
+          <li>マトリクスに接続待ちのアイコンが出ます</li>
+          <li>Android アプリ「CLumo」をインストールします。<a href="https://github.com/Cespresso/CLumo/releases/latest" target="_blank" rel="noopener">最新の Release</a> の <code>clumo.apk</code> です</li>
+          <li>アプリを開いて「CLumo を探す」を押し、見つかった CLumo に接続します。パスキーは <code>123456</code></li>
+          <li>ポモドーロ、タイマー、マイ表示、ビジュアライザをアプリから使えます。本体の表示の意味は <a href="https://github.com/Cespresso/CLumo/tree/main/companion#readme" target="_blank" rel="noopener">協調版の README</a> にまとめてあります</li>
+        </ol>
+        <ol class="companion-only" lang="en">
+          <li>If an empty dialog appears after "Installation complete", just close it. The device is already running</li>
+          <li>The matrix shows the waiting-for-connection icon</li>
+          <li>Install the CLumo Android app: <code>clumo.apk</code> from the <a href="https://github.com/Cespresso/CLumo/releases/latest" target="_blank" rel="noopener">latest release</a></li>
+          <li>Open the app, tap "Find CLumo", and connect to the one it finds. The passkey is <code>123456</code></li>
+          <li>Pomodoro, timer, your own pictures, and the visualizer are then all in the app. What the device shows is explained in the <a href="https://github.com/Cespresso/CLumo/tree/main/companion#readme" target="_blank" rel="noopener">companion README</a></li>
         </ol>
       </div>
 
       <div class="card">
-        <h2>デバイス情報</h2>
+        <h2 lang="ja">デバイス情報</h2>
+        <h2 lang="en">Device</h2>
         <ul class="specs">
           <li><span class="k">MCU</span><span class="v">ESP32-C3</span></li>
-          <li><span class="k">LED</span><span class="v">8x8 マトリクス (MAX7219)</span></li>
-          <li><span class="k">ボタン</span><span class="v">2つ（赤 / 白）</span></li>
-          <li class="standalone-only"><span class="k">Bluetooth</span><span class="v">不使用（アプリ不要）</span></li>
-          <li class="companion-only"><span class="k">BLE デバイス名</span><span class="v">CLumo-XXXX（末尾は個体ごとに異なる）</span></li>
-          <li class="companion-only"><span class="k">BLE パスキー</span><span class="v">123456</span></li>
+          <li><span class="k">LED</span><span class="v"><span lang="ja">8x8 マトリクス（MAX7219）</span><span lang="en">8x8 matrix (MAX7219)</span></span></li>
+          <li><span class="k"><span lang="ja">ボタン</span><span lang="en">Buttons</span></span><span class="v"><span lang="ja">2 つ</span><span lang="en">Two</span></span></li>
+          <li class="standalone-only"><span class="k">Bluetooth</span><span class="v"><span lang="ja">使いません</span><span lang="en">Not used</span></span></li>
+          <li class="companion-only"><span class="k"><span lang="ja">BLE 名</span><span lang="en">BLE name</span></span><span class="v"><span lang="ja">CLumo-XXXX（末尾は個体ごと）</span><span lang="en">CLumo-XXXX (suffix per unit)</span></span></li>
+          <li class="companion-only"><span class="k"><span lang="ja">パスキー</span><span lang="en">Passkey</span></span><span class="v">123456</span></li>
         </ul>
       </div>
 
-      <div class="note">
-        <strong>対応環境：</strong> デスクトップの Chrome / Edge / Opera（Web Serial）で書き込めます。<span class="mobile-only">さらに <strong>Android の Chrome（USB-OTG / WebUSB）</strong>にも対応。</span>
-        iOS（iPhone / iPad）と Safari・Firefox は非対応です。<br />
-        <span class="mobile-only">Android では充電専用ではなく<strong>データ通信対応の OTG ケーブル</strong>を使用してください。<br /></span>
-        初回書き込み時はフラッシュ全体が消去されます（保存済みの設定はリセットされます）。
+      <div class="note" lang="ja">
+        <strong>対応環境:</strong> PC の Chrome / Edge / Opera（Web Serial）。<span class="mobile-only">加えて Android の Chrome（USB-OTG / WebUSB）。</span>
+        iOS、Safari、Firefox では使えません。<br />
+        <span class="mobile-only">Android では充電専用ではなく<strong>データ通信対応の OTG ケーブル</strong>を使ってください。<br /></span>
+        初回の書き込みではフラッシュ全体を消去します。保存されていた設定はリセットされます。
+      </div>
+      <div class="note" lang="en">
+        <strong>Works in:</strong> Chrome, Edge, and Opera on a desktop (Web Serial).<span class="mobile-only"> Also Chrome on Android (USB-OTG / WebUSB).</span>
+        Not on iOS, Safari, or Firefox.<br />
+        <span class="mobile-only">On Android, use an OTG cable that <strong>carries data</strong>, not a charge-only one.<br /></span>
+        The first flash erases the whole flash memory, so any saved settings are reset.
       </div>
     </div>
 
@@ -355,42 +424,47 @@
       Powered by
       <a id="engine-link" href="https://github.com/esphome/esp-web-tools" target="_blank" rel="noopener">ESP Web Tools</a>
       (Apache-2.0) ·
-      <a href="https://github.com/Cespresso/CLumo" target="_blank" rel="noopener">ソースコード</a>
+      <a href="https://github.com/Cespresso/CLumo" target="_blank" rel="noopener">GitHub</a>
     </footer>
   </main>
 
-  <!-- 選択リンクの組み立て・manifest の切り替え・エンジンの動的ロード -->
+  <!-- Build the choice links, pick the manifest, load the chosen engine -->
   <script>
     (function () {
       var d = document.documentElement.dataset;
       var fw = d.fw;
       var v = d.v;
+      var lang = d.lang;
 
-      // 選択リンクにもう一方のパラメータを引き継ぐ
-      document.querySelectorAll("a[data-fw-link]").forEach(function (a) {
+      function link(params) {
         var q = new URLSearchParams();
-        q.set("fw", a.dataset.fwLink);
-        if (v !== "none") q.set("v", v);
-        a.href = "?" + q.toString();
+        if (params.fw) q.set("fw", params.fw);
+        if (params.v) q.set("v", params.v);
+        q.set("lang", params.lang);
+        return "?" + q.toString();
+      }
+      // Every link carries the other choices along, so nothing is lost on the way.
+      document.querySelectorAll("a[data-fw-link]").forEach(function (a) {
+        a.href = link({ fw: a.dataset.fwLink, v: v !== "none" && v, lang: lang });
       });
       document.querySelectorAll("a[data-v-link]").forEach(function (a) {
-        var q = new URLSearchParams();
-        if (fw !== "none") q.set("fw", fw);
-        q.set("v", a.dataset.vLink);
-        a.href = "?" + q.toString();
+        a.href = link({ fw: fw !== "none" && fw, v: a.dataset.vLink, lang: lang });
+      });
+      document.querySelectorAll("a[data-lang-link]").forEach(function (a) {
+        a.href = link({ fw: fw !== "none" && fw, v: v !== "none" && v, lang: a.dataset.langLink });
+      });
+      document.querySelectorAll("a[data-reset-link]").forEach(function (a) {
+        a.href = link({ lang: lang });
       });
 
-      // 選択したファームウェアの manifest をボタンに設定
       var btn = document.getElementById("install-btn");
       if (btn && (fw === "standalone" || fw === "companion")) {
         btn.setAttribute("manifest", "./manifest-" + fw + ".json");
       }
 
-      // 選択されたエンジンのスクリプトだけをロードする
       var ENGINES = {
         pc: "https://unpkg.com/esp-web-tools@10/dist/web/install-button.js",
-        mobile:
-          "https://unpkg.com/tasmota-esp-web-tools@12.2.4/dist/web/install-button.js?module",
+        mobile: "https://unpkg.com/tasmota-esp-web-tools@12.2.4/dist/web/install-button.js?module",
       };
       if ((fw === "standalone" || fw === "companion") && ENGINES[v]) {
         var s = document.createElement("script");
@@ -399,11 +473,10 @@
         document.head.appendChild(s);
       }
 
-      // フッターのクレジットを使用エンジンに合わせる
-      var link = document.getElementById("engine-link");
-      if (link && v === "mobile") {
-        link.textContent = "ESP Web Tools（WebUSB対応版）";
-        link.href = "https://github.com/Jason2866/esp-web-tools";
+      var engine = document.getElementById("engine-link");
+      if (engine && v === "mobile") {
+        engine.textContent = "ESP Web Tools (WebUSB fork)";
+        engine.href = "https://github.com/Jason2866/esp-web-tools";
       }
     })();
   </script>

@@ -25,6 +25,11 @@ jobs:
         working-directory: companion/firmware
         run: rustup show
 
+      # The tree is fmt-clean; keep it that way without anyone having to remember.
+      - name: Check formatting
+        working-directory: companion/firmware
+        run: cargo fmt --check
+
       - name: Cache cargo registry and target
         uses: Swatinem/rust-cache@v2
         with:

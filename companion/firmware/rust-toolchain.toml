@@ -4,4 +4,5 @@
 # libc crate version esp-idf-sys pins, breaking the host-side build-std pass
 # too (e.g. a missing libc::AT_FDCWD). Bump deliberately, not via `rustup update`.
 channel = "nightly-2025-11-01"
-components = ["rust-src"]
+# The CI fmt check must fail only for formatting, never for a nightly that lacks rustfmt.
+components = ["rust-src", "rustfmt"]

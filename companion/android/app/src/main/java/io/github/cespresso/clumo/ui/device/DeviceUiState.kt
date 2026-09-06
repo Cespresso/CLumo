@@ -7,6 +7,7 @@ import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceMode
+import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.domain.mirrorBitsFor
@@ -145,10 +146,12 @@ object DeviceUiStateFactory {
             }
 
         return DeviceUiState(
-            displayName = stableId?.let { aliases[it] }
-                ?: scannedName
-                ?: knownDevice?.fallbackName
-                ?: "CLumo",
+            displayName = DeviceNaming.displayName(
+                deviceId = stableId,
+                aliases = aliases,
+                scannedName = scannedName,
+                fallbackName = knownDevice?.fallbackName,
+            ),
             stableId = stableId,
             isPrimary = stableId != null && stableId == primaryDeviceId,
             appearance = resolveAppearance(stableId, appearances),

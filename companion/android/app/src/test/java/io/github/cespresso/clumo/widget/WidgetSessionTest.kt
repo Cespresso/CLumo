@@ -1,0 +1,75 @@
+package io.github.cespresso.clumo.widget
+
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/** What a widget is allowed to wake up for. */
+class WidgetSessionTest {
+
+    private fun snapshot(updatedAt: Long) = WidgetSnapshot(
+        link = WidgetLink.Ready,
+        headline = WidgetHeadline.PomodoroWorking,
+        subtitle = WidgetSubtitle.Alias,
+        alias = "つくえ",
+        faceBits = -1L shl 24,
+        actions = listOf(WidgetAction.Pause, WidgetAction.Reset),
+        enclosureArgb = 0xFF7E9E7C.toInt(),
+        ctaArgb = 0xFFE8907E.toInt(),
+        onCtaArgb = 0xFFFFFFFF.toInt(),
+        knobArgb = 0xFFFFFFFF.toInt(),
+        ledArgb = 0xFFF0A35E.toInt(),
+        updatedAtRealtime = updatedAt,
+    )
+
+    /** Past every timestamp below, and still inside the staleness threshold for all of them. */
+    private val now = 1_000L + HEARTBEAT_INTERVAL_MS * 2 + 1_000L
+
+    private fun collect(
+        vararg emissions: WidgetSnapshot?,
+        clock: () -> Long = { now },
+    ): List<WidgetSnapshot?> = runBlocking {
+        flowOf(*emissions).freshContentOnly(clock).toList()
+    }
+
+    @Test
+    fun theHeartbeatDoesNotReachTheWidget() {
+        // Same content, later timestamp: the service is only saying it is still alive.
+        val emitted = collect(
+            snapshot(1_000L),
+            snapshot(1_000L + HEARTBEAT_INTERVAL_MS),
+            snapshot(1_000L + HEARTBEAT_INTERVAL_MS * 2),
+        )
+        assertEquals(1, emitted.size)
+        assertEquals(1_000L, emitted.single()?.updatedAtRealtime)
+    }
+
+    @Test
+    fun aContentChangeStillReachesTheWidget() {
+        val emitted = collect(
+            snapshot(1_000L),
+            snapshot(2_000L).copy(headline = WidgetHeadline.Paused),
+        )
+        assertEquals(2, emitted.size)
+        assertEquals(WidgetHeadline.Paused, emitted.last()?.headline)
+    }
+
+    @Test
+    fun goingStaleStillReachesTheWidget() {
+        // The staleness check runs before the timestamp filter, so an unchanged snapshot
+        // whose clock has run out still flips the widget to the disconnected fallback.
+        var now = 1_000L
+        val emitted = collect(snapshot(500L), snapshot(500L), clock = {
+            now.also { now += STALE_THRESHOLD_MS }
+        })
+        assertEquals(listOf(snapshot(500L), null), emitted)
+    }
+
+    @Test
+    fun aStaleSeedIsNotDrawn() {
+        assertEquals(null, snapshot(500L).freshOrNull(500L + STALE_THRESHOLD_MS + 1L))
+        assertEquals(snapshot(500L), snapshot(500L).freshOrNull(600L))
+    }
+}

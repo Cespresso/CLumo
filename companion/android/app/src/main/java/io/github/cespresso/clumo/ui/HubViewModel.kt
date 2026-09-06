@@ -32,9 +32,12 @@ class HubViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val ctx = getApplication<Application>()
-        val intent = Intent(ctx, DeviceHubService::class.java)
-        ctx.startForegroundService(intent)
-        ctx.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        DeviceHubService.start(ctx)
+        ctx.bindService(
+            Intent(ctx, DeviceHubService::class.java),
+            connection,
+            Context.BIND_AUTO_CREATE,
+        )
     }
 
     override fun onCleared() {

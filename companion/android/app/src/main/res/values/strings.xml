@@ -207,4 +207,33 @@
     <string name="notif_title" translatable="false">CLumo</string>
     <string name="notif_idle">待機中</string>
     <string name="notif_connected">デバイスと接続中</string>
+
+    <!-- Widgets -->
+    <string name="widget_control_label">CLumo 操作</string>
+    <string name="widget_presence_label">CLumo</string>
+    <string name="widget_working">作業中</string>
+    <string name="widget_break">休憩中</string>
+    <string name="widget_pomodoro">ポモドーロ</string>
+    <string name="widget_timer">タイマー</string>
+    <string name="widget_paused">一時停止</string>
+    <string name="widget_my_display">マイ表示</string>
+    <string name="widget_visualizer">ビジュアライザ</string>
+    <string name="widget_connecting">接続中…</string>
+    <string name="widget_cant_connect">つながりません</string>
+    <string name="widget_not_connected">未接続</string>
+    <string name="widget_choose_device">CLumo を選択</string>
+    <string name="widget_bluetooth_off">Bluetooth がオフです</string>
+    <string name="widget_permission_needed">Bluetooth の許可が必要です</string>
+    <string name="widget_sub_pomodoro_durations">%1$d分 / 休憩%2$d分</string>
+    <string name="widget_sub_timer_duration">%1$02d:%2$02d</string>
+    <string name="widget_sub_reacting">音に反応中</string>
+    <string name="widget_sub_check_power">電源とBluetoothを確認</string>
+    <string name="widget_sub_tap_reconnect">タップで再接続</string>
+    <string name="widget_sub_tap_settings">タップして設定を開く</string>
+    <string name="widget_sub_tap_app">タップしてアプリを開く</string>
+    <string name="widget_action_start">開始</string>
+    <string name="widget_action_pause">一時停止</string>
+    <string name="widget_action_reset">リセット</string>
+    <string name="widget_action_cancel">キャンセル</string>
+    <string name="widget_action_retry">再試行</string>
 </resources>

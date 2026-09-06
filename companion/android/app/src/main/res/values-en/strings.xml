@@ -207,4 +207,33 @@
     <string name="notif_title" translatable="false">CLumo</string>
     <string name="notif_idle">Idle</string>
     <string name="notif_connected">Connected to a device</string>
+
+    <!-- Widgets -->
+    <string name="widget_control_label">CLumo Controls</string>
+    <string name="widget_presence_label">CLumo</string>
+    <string name="widget_working">Working</string>
+    <string name="widget_break">Break</string>
+    <string name="widget_pomodoro">Pomodoro</string>
+    <string name="widget_timer">Timer</string>
+    <string name="widget_paused">Paused</string>
+    <string name="widget_my_display">My display</string>
+    <string name="widget_visualizer">Visualizer</string>
+    <string name="widget_connecting">Connecting…</string>
+    <string name="widget_cant_connect">Can\'t connect</string>
+    <string name="widget_not_connected">Not connected</string>
+    <string name="widget_choose_device">Choose a CLumo</string>
+    <string name="widget_bluetooth_off">Bluetooth is off</string>
+    <string name="widget_permission_needed">Bluetooth permission needed</string>
+    <string name="widget_sub_pomodoro_durations">%1$d min / %2$d min break</string>
+    <string name="widget_sub_timer_duration">%1$02d:%2$02d</string>
+    <string name="widget_sub_reacting">Reacting to sound</string>
+    <string name="widget_sub_check_power">Check power and Bluetooth</string>
+    <string name="widget_sub_tap_reconnect">Tap to reconnect</string>
+    <string name="widget_sub_tap_settings">Tap to open settings</string>
+    <string name="widget_sub_tap_app">Tap to open the app</string>
+    <string name="widget_action_start">Start</string>
+    <string name="widget_action_pause">Pause</string>
+    <string name="widget_action_reset">Reset</string>
+    <string name="widget_action_cancel">Cancel</string>
+    <string name="widget_action_retry">Retry</string>
 </resources>

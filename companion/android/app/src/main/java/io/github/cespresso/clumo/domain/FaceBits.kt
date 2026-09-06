@@ -13,15 +13,21 @@ object FaceBits {
         return mask
     }
 
+    /** The hourglass CLumo shows while Pomodoro is idle. Same bytes as the firmware's ICON_POMODORO. */
+    val POMODORO_IDLE: Long = fromRowBytes(byteArrayOf(0x7E, 0x42, 0x24, 0x18, 0x18, 0x24, 0x42, 0x7E))
+
+    /** The clock face CLumo shows while Timer is idle. Same bytes as the firmware's ICON_TIMER. */
+    val TIMER_IDLE: Long = fromRowBytes(byteArrayOf(0x3C, 0x52, 0x91.toByte(), 0x9D.toByte(), 0x81.toByte(), 0x81.toByte(), 0x42, 0x3C))
+
     /**
      * Pixel countdown, identical rule to the firmware:
      * lit = ceil(remainingSec * 64 / phaseTotalSec) clamped 0..64,
      * with remaining pixels occupying the row-major suffix so they turn off
-     * from the top-left toward the bottom-right.
+     * from the top-left toward the bottom-right. Idle shows the mode's icon.
      */
-    fun fromPomodoro(status: PomodoroStatus): Long = fromProgress(status.remainingSec, status.phaseTotalSec)
+    fun fromPomodoro(status: PomodoroStatus): Long = if (status.isIdle) POMODORO_IDLE else fromProgress(status.remainingSec, status.phaseTotalSec)
 
-    fun fromCountdownTimer(status: CountdownTimerStatus): Long = fromProgress(status.remainingSec, status.configuredTotalSec)
+    fun fromCountdownTimer(status: CountdownTimerStatus): Long = if (status.isIdle) TIMER_IDLE else fromProgress(status.remainingSec, status.configuredTotalSec)
 
     private fun fromProgress(remainingSec: Int, total: Int): Long {
         if (total <= 0) return EMPTY

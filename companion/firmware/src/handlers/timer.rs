@@ -103,15 +103,30 @@ impl TimerHandler {
         }
     }
 
-    fn progress_frame(&mut self) -> Option<[u8; 8]> {
-        let lit = progress_pixels(
+    fn lit_pixels(&self) -> u8 {
+        progress_pixels(
             self.timer.remaining_secs(),
             self.timer.setting().total_secs(),
-        );
+        )
+    }
+
+    /// The frame for the current state: the icon while idle, the bar otherwise.
+    /// Every path out of idle sets `dirty`, so the switch to the bar is drawn even
+    /// though the pixel count does not change.
+    fn frame(&self, lit: u8) -> [u8; 8] {
+        if self.timer.state() == CountdownState::Idle {
+            assets::ICON_TIMER
+        } else {
+            progress_frame(lit)
+        }
+    }
+
+    fn progress_frame(&mut self) -> Option<[u8; 8]> {
+        let lit = self.lit_pixels();
         if self.dirty || lit != self.last_lit {
             self.last_lit = lit;
             self.dirty = false;
-            Some(progress_frame(lit))
+            Some(self.frame(lit))
         } else {
             None
         }
@@ -120,12 +135,9 @@ impl TimerHandler {
 
 impl ModeHandler for TimerHandler {
     fn on_enter(&mut self) -> [u8; 8] {
-        self.last_lit = progress_pixels(
-            self.timer.remaining_secs(),
-            self.timer.setting().total_secs(),
-        );
+        self.last_lit = self.lit_pixels();
         self.dirty = false;
-        progress_frame(self.last_lit)
+        self.frame(self.last_lit)
     }
 
     fn on_main_button(&mut self) {

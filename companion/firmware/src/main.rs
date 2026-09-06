@@ -27,6 +27,8 @@ mod visualizer_values;
 /// Blink interval for the disconnected icon during connection setup (ms).
 const CONNECTION_BLINK_MS: u128 = 400;
 /// Briefly show link loss, then return the matrix to its standalone mode frame.
+/// A device that has never been paired has no app to lose: it keeps the icon up
+/// until a phone pairs or a button puts it to standalone use.
 const DISCONNECTED_NOTICE_MS: u128 = 1_200;
 /// NimBLE advertises only while unconnected, so a client that connects and never
 /// completes the encrypted initial sync locks every other client out until the
@@ -220,6 +222,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // The mode must be read after the BLE command drain so a press is attributed
         // to the currently rendered mode.
         let mode = mode_manager.current();
+        let standalone_press =
+            (main_pressed || sub_pressed) && matches!(mode, Mode::Pomodoro | Mode::Timer);
         for (pressed, is_main) in [(main_pressed, true), (sub_pressed, false)] {
             if !pressed {
                 continue;
@@ -251,8 +255,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         if !ble_connected
-            && disconnected_notice_started
-                .is_some_and(|started| started.elapsed().as_millis() >= DISCONNECTED_NOTICE_MS)
+            && disconnected_notice_started.is_some_and(|started| {
+                (ble_bonded && started.elapsed().as_millis() >= DISCONNECTED_NOTICE_MS)
+                    || standalone_press
+            })
         {
             disconnected_notice_started = None;
             display.show(&runtime.on_enter(mode));

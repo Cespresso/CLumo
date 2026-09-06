@@ -69,7 +69,7 @@ pub fn load_durations(nvs: &EspNvs<NvsDefault>) -> (u8, u8) {
 ///
 /// The LED matrix acts as a progress bar: `lit = ceil(remaining_secs * 64 /
 /// phase_total_secs)`. As time passes, pixels turn off row-major from the
-/// top-left toward the bottom-right. Idle shows all 64 pixels lit.
+/// top-left toward the bottom-right. Idle shows the hourglass icon instead.
 pub struct PomodoroHandler {
     nvs: EspNvs<NvsDefault>,
     state: PomodoroState,
@@ -124,6 +124,15 @@ impl PomodoroHandler {
         lit.min(PIXELS_TOTAL) as u8
     }
 
+    /// The frame for the current state: the icon while idle, the bar otherwise.
+    fn frame(&self, lit: u8) -> [u8; 8] {
+        if self.state == PomodoroState::Idle {
+            assets::ICON_POMODORO
+        } else {
+            progress_frame(lit)
+        }
+    }
+
     pub fn current_status(&self) -> [u8; 6] {
         let state = match self.state {
             PomodoroState::Idle => STATE_IDLE,
@@ -161,6 +170,9 @@ impl PomodoroHandler {
                 self.remaining_ms = self.active_total_secs as u64 * 1000;
                 self.state = PomodoroState::Running;
                 self.last_tick = Instant::now();
+                // The bar starts full, the same pixel count the icon left behind
+                // in last_lit, so only the dirty flag gets it drawn.
+                self.dirty = true;
             }
             PomodoroState::Paused => {
                 log::info!("Pomodoro: resumed");
@@ -243,7 +255,7 @@ impl ModeHandler for PomodoroHandler {
         let lit = self.lit_pixels();
         self.last_lit = lit;
         self.dirty = false;
-        progress_frame(lit)
+        self.frame(lit)
     }
 
     fn on_main_button(&mut self) {
@@ -314,7 +326,7 @@ impl ModeHandler for PomodoroHandler {
         if lit != self.last_lit || self.dirty {
             self.last_lit = lit;
             self.dirty = false;
-            Some(progress_frame(lit))
+            Some(self.frame(lit))
         } else {
             None
         }

@@ -6,7 +6,11 @@ import org.junit.Test
 class FaceBitsTest {
     @Test
     fun rendersPomodoroProgress() {
-        assertEquals(-1L, FaceBits.fromPomodoro(PomodoroStatus.DEFAULT))
+        assertEquals(FaceBits.POMODORO_IDLE, FaceBits.fromPomodoro(PomodoroStatus.DEFAULT))
+        assertEquals(
+            -1L,
+            FaceBits.fromPomodoro(PomodoroStatus.DEFAULT.copy(state = PomodoroStatus.STATE_RUNNING)),
+        )
         assertEquals(
             -1L shl 32,
             FaceBits.fromPomodoro(
@@ -47,7 +51,11 @@ class FaceBitsTest {
 
     @Test
     fun rendersCountdownTimerProgress() {
-        assertEquals(-1L, FaceBits.fromCountdownTimer(CountdownTimerStatus.DEFAULT))
+        assertEquals(FaceBits.TIMER_IDLE, FaceBits.fromCountdownTimer(CountdownTimerStatus.DEFAULT))
+        assertEquals(
+            -1L,
+            FaceBits.fromCountdownTimer(CountdownTimerStatus.DEFAULT.copy(state = CountdownTimerStatus.STATE_RUNNING)),
+        )
         assertEquals(
             -1L shl 32,
             FaceBits.fromCountdownTimer(

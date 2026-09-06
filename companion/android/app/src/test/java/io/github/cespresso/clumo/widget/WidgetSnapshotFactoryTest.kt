@@ -96,7 +96,7 @@ class WidgetSnapshotFactoryTest {
         assertEquals(WidgetSubtitle.PomodoroDurations, s.subtitle)
         assertEquals(25, s.subtitleArgA)
         assertEquals(5, s.subtitleArgB)
-        assertEquals(-1L, s.faceBits)
+        assertEquals(FaceBits.POMODORO_IDLE, s.faceBits)
         assertEquals(listOf(WidgetAction.Start), s.actions)
     }
 
@@ -127,7 +127,7 @@ class WidgetSnapshotFactoryTest {
         assertEquals(WidgetSubtitle.TimerDuration, s.subtitle)
         assertEquals(1, s.subtitleArgA)
         assertEquals(30, s.subtitleArgB)
-        assertEquals(-1L, s.faceBits)
+        assertEquals(FaceBits.TIMER_IDLE, s.faceBits)
         assertEquals(listOf(WidgetAction.Start), s.actions)
     }
 
@@ -139,7 +139,7 @@ class WidgetSnapshotFactoryTest {
         assertEquals(WidgetSubtitle.TimerDuration, s.subtitle)
         assertEquals(1, s.subtitleArgA)
         assertEquals(30, s.subtitleArgB)
-        assertEquals(-1L, s.faceBits)
+        assertEquals(FaceBits.TIMER_IDLE, s.faceBits)
         assertFalse(s.faceDimmed)
         assertEquals(listOf(WidgetAction.Start), s.actions)
     }
@@ -151,7 +151,7 @@ class WidgetSnapshotFactoryTest {
         assertEquals(WidgetSubtitle.TimerDuration, s.subtitle)
         assertEquals(5, s.subtitleArgA)
         assertEquals(0, s.subtitleArgB)
-        assertEquals(-1L, s.faceBits)
+        assertEquals(FaceBits.TIMER_IDLE, s.faceBits)
         assertFalse(s.faceDimmed)
         assertEquals(listOf(WidgetAction.Start), s.actions)
     }

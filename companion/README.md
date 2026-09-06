@@ -34,8 +34,8 @@ once the app is connected and ready.
 
 | Screen | What it means |
 |:---:|---|
-| <img src="img/link-lost.svg" width="84" alt="Thick corner in the top-left"> | Not connected. Shown for about a second after power-on and right after a disconnect, then the device returns to the function it was last using. |
-| <img src="img/link-lost-bonded.svg" width="84" alt="Thick corner in the top-left with a dot in the bottom-right"> | Also not connected. The dot in the bottom-right means a phone has been paired before. |
+| <img src="img/link-lost.svg" width="84" alt="Thick corner in the top-left"> | Never paired. A freshly flashed device waits on this screen. Press orange or white and it goes straight to Pomodoro or Timer, usable on its own. |
+| <img src="img/link-lost-bonded.svg" width="84" alt="Thick corner in the top-left with a dot in the bottom-right"> | Paired but not connected. Shown for about a second after power-on and right after a disconnect, then the device returns to the function it was last using. |
 | <img src="img/connecting.svg" width="182" alt="The corner-and-dot screen alternating with every pixel off"> | Connecting. Blinks from the moment the phone connects until the app has finished reading the device's state. |
 
 ## The four functions
@@ -47,14 +47,19 @@ that too.
 
 | Screen | Function | What it does |
 |:---:|---|---|
-| <img src="img/countdown-44.svg" width="84" alt="Lower part of the matrix lit"> | **Pomodoro** | Alternates work and break. The durations are set in the app and start out at 25 and 5 minutes. |
-| <img src="img/countdown-full.svg" width="84" alt="Every pixel lit"> | **Timer** | A one-shot countdown from 00:01 to 59:59. When time is up it blinks until you do something. |
+| <img src="img/pomodoro-idle.svg" width="84" alt="Hourglass"> | **Pomodoro** | Alternates work and break. The durations are set in the app and start out at 25 and 5 minutes. |
+| <img src="img/timer-idle.svg" width="84" alt="Clock face"> | **Timer** | A one-shot countdown from 00:01 to 59:59. When time is up it blinks until you do something. |
 | <img src="img/display-heart.svg" width="84" alt="Heart"> | **My Displays** | Shows an 8x8 picture drawn in the app. A heart, a smile, and a star come preloaded. |
 | <img src="img/visualizer.svg" width="84" alt="Eight bars of different heights"> | **Visualizer** | Eight bars move with the audio playing on the phone. Sensitivity is adjusted in the app. |
 
-Pomodoro and Timer show the remaining time as 64 pixels. They start fully lit and
-go out from the top-left toward the bottom-right. When a pomodoro phase ends the
-matrix flashes three times and the next phase starts on its own.
+Pomodoro and Timer show their icon while idle. Once started, the remaining time is
+64 pixels: they start fully lit and go out from the top-left toward the
+bottom-right.
+
+| Screen | What it means |
+|:---:|---|
+| <img src="img/countdown-44.svg" width="84" alt="Lower part of the matrix lit"> | About a third of the way through. Work, break, and timer all look the same. A pause freezes the picture where it is. |
+| <img src="img/countdown-full.svg" width="84" alt="Every pixel lit"> | The end-of-phase flash. Pomodoro flashes three times and moves to the next phase on its own; Timer keeps blinking until you do something. |
 
 ## While the phone is away
 

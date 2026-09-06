@@ -12,8 +12,8 @@ the [companion README](../README.md).
 
 | Value | Mode       | Description | Buttons |
 |-------|------------|-------------|---------|
-| 0     | Pomodoro   | Work/break countdown with app-settable durations. The matrix is a 64-pixel progress bar. | Main: start/pause/resume. Sub: reset. |
-| 1     | Timer      | One-shot countdown configurable from `00:01` to `59:59`. At `00:00`, the matrix blinks every 400 ms until operated. | Main: start/pause/resume/restart. Sub: cancel. |
+| 0     | Pomodoro   | Work/break countdown with app-settable durations. The matrix is a 64-pixel progress bar; idle shows an hourglass. | Main: start/pause/resume. Sub: reset. |
+| 1     | Timer      | One-shot countdown configurable from `00:01` to `59:59`. Idle shows a clock face. At `00:00`, the matrix blinks every 400 ms until operated. | Main: start/pause/resume/restart. Sub: cancel. |
 | 2     | Display    | Shows the 8-byte bitmap last committed over DISPLAY_FRAME, with DISPLAY_PREVIEW frames drawn on top until they expire. Persisted in NVS across reboots; blank until the first commit arrives. | Reported over BUTTON; the app cycles its saved patterns. |
 | 3     | Visualizer | Bar visualizer driven by column heights streamed to the VISUALIZER characteristic. The matrix stays blank until data arrives; bars rise instantly, fall smoothly, and decay to zero when data stops. | Reported over BUTTON; the app steps visualizer sensitivity. |
 
@@ -43,8 +43,11 @@ bitmap, and current mode are persisted in NVS. Countdown execution state is not
 persisted across reboot; both countdowns boot idle with their stored durations.
 
 While disconnected, the matrix briefly shows the link-loss icon and then returns
-to the current mode's standalone frame. The connection icon keeps blinking until a
-connected client finishes its encrypted GATT initial sync.
+to the current mode's standalone frame. A device that has never bonded keeps the
+icon up instead, until a phone pairs or a Pomodoro/Timer button press puts it to
+standalone use; a device with nothing to reconnect to should not look like it is
+running something. The connection icon keeps blinking until a connected client
+finishes its encrypted GATT initial sync.
 
 ## Build & flash
 
@@ -291,7 +294,18 @@ For Pomodoro, `total_secs` is the current phase duration. For Timer, it is the
 configured duration. Pixels are indexed row-major from the top-left
 (`index = row * 8 + column`, bit 7 = leftmost column); the last `lit` pixel
 indices are ON. As time passes, pixels turn off from the top-left toward the
-bottom-right. Idle shows all 64 pixels lit, and a paused frame remains static.
+bottom-right. A paused frame remains static.
+
+Idle (state `0`) does not draw the bar. It shows the mode's icon, as row bitmaps
+in the DISPLAY_FRAME byte order:
+
+| Mode | Icon | Rows |
+|------|------|------|
+| Pomodoro | hourglass | `7E 42 24 18 18 24 42 7E` |
+| Timer | clock face | `3C 52 91 9D 81 81 42 3C` |
+
+A running or paused countdown with all 64 pixels lit is therefore distinguishable
+from idle by the status byte alone, which is what the app's mirror keys on.
 
 ## Appendix: pin assignments
 

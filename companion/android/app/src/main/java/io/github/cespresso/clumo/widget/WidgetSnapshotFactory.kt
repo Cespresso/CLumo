@@ -162,7 +162,7 @@ object WidgetSnapshotFactory {
                 subtitle = WidgetSubtitle.PomodoroDurations,
                 subtitleArgA = status.workMin,
                 subtitleArgB = status.breakMin,
-                faceBits = -1L,
+                faceBits = FaceBits.POMODORO_IDLE,
                 actions = listOf(WidgetAction.Start),
             )
             else -> base.copy(
@@ -202,7 +202,7 @@ object WidgetSnapshotFactory {
                 subtitle = WidgetSubtitle.TimerDuration,
                 subtitleArgA = status.configuredMin,
                 subtitleArgB = status.configuredSec,
-                faceBits = -1L,
+                faceBits = FaceBits.TIMER_IDLE,
                 actions = listOf(WidgetAction.Start),
             )
         }

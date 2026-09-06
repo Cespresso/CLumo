@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use crate::assets;
+use crate::progress::{lit_pixels, progress_frame, PIXELS_TOTAL};
 use crate::utils::animation::{AnimationClip, AnimationPlayer};
 use crate::utils::button::PressType;
 
@@ -8,7 +9,6 @@ use super::ModeHandler;
 
 const WORK_DURATION_MS: u64 = 25 * 60 * 1000;
 const BREAK_DURATION_MS: u64 = 5 * 60 * 1000;
-const PIXELS_TOTAL: u64 = 64;
 
 static BLINK_FRAMES: &[[u8; 8]] = &[
     assets::PATTERN_ALL_ON,
@@ -74,20 +74,13 @@ impl PomodoroHandler {
         )
     }
 
+    /// Work drains the matrix; break fills it.
     fn filled_pixels(&self) -> u8 {
-        let duration = self.active_duration_ms();
-        if duration == 0 {
-            return 0;
-        }
-        let elapsed = self.elapsed_ms.min(duration);
-        if self.is_work_phase() {
-            // Work: start full (64), turn off as time passes
-            let turned_off = elapsed * PIXELS_TOTAL / duration;
-            (PIXELS_TOTAL - turned_off) as u8
-        } else {
-            // Break: start empty (0), fill up as time passes
-            (elapsed * PIXELS_TOTAL / duration) as u8
-        }
+        lit_pixels(
+            self.elapsed_ms,
+            self.active_duration_ms(),
+            self.is_work_phase(),
+        )
     }
 
     fn start_notification(&mut self) {
@@ -122,25 +115,11 @@ impl PomodoroHandler {
     }
 }
 
-/// Generate an 8x8 frame with `filled` pixels lit, from top-left to bottom-right.
-fn generate_progress_frame(filled: u8) -> [u8; 8] {
-    let mut frame = [0u8; 8];
-    let full_rows = (filled / 8) as usize;
-    let remaining = filled % 8;
-    for row in frame.iter_mut().take(full_rows) {
-        *row = 0xFF;
-    }
-    if full_rows < 8 && remaining > 0 {
-        frame[full_rows] = 0xFF << (8 - remaining);
-    }
-    frame
-}
-
 impl ModeHandler for PomodoroHandler {
     fn on_enter(&mut self) -> [u8; 8] {
         match self.phase {
             TimerPhase::Idle => assets::ICON_POMODORO,
-            _ => generate_progress_frame(self.filled_pixels()),
+            _ => progress_frame(self.filled_pixels()),
         }
     }
 
@@ -154,7 +133,7 @@ impl ModeHandler for PomodoroHandler {
                 self.phase = TimerPhase::Working;
                 self.elapsed_ms = 0;
                 self.last_tick = Instant::now();
-                self.last_pixel_count = 64;
+                self.last_pixel_count = PIXELS_TOTAL as u8;
             }
             TimerPhase::Working => {
                 log::info!("Pomodoro: paused (work)");
@@ -198,7 +177,7 @@ impl ModeHandler for PomodoroHandler {
             if self.animator.is_finished() {
                 self.notifying = false;
                 self.transition_to_next_phase();
-                return Some(generate_progress_frame(self.filled_pixels()));
+                return Some(progress_frame(self.filled_pixels()));
             }
             return None;
         }
@@ -219,7 +198,7 @@ impl ModeHandler for PomodoroHandler {
                 let pixels = self.filled_pixels();
                 if pixels != self.last_pixel_count {
                     self.last_pixel_count = pixels;
-                    Some(generate_progress_frame(pixels))
+                    Some(progress_frame(pixels))
                 } else {
                     None
                 }

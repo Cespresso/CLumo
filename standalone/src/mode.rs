@@ -2,6 +2,7 @@ use esp_idf_hal::sys::EspError;
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 
 use crate::assets;
+use crate::mode_values::{decode_mode, next_mode, MODE_DICE, MODE_PET, MODE_POMODORO};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -11,15 +12,14 @@ pub enum Mode {
     Dice = 2,
 }
 
-const MODE_COUNT: u8 = 3;
-
 impl Mode {
     pub fn from_u8(value: u8) -> Self {
-        match value {
-            0 => Mode::Pet,
-            1 => Mode::Pomodoro,
-            2 => Mode::Dice,
-            _ => Mode::Pet,
+        match decode_mode(value) {
+            MODE_PET => Mode::Pet,
+            MODE_POMODORO => Mode::Pomodoro,
+            MODE_DICE => Mode::Dice,
+            // Unreachable after decode_mode, which folds anything out of range to MODE_DEFAULT.
+            _ => Mode::Pomodoro,
         }
     }
 
@@ -32,7 +32,7 @@ impl Mode {
     }
 
     pub fn next(self) -> Self {
-        Mode::from_u8((self as u8 + 1) % MODE_COUNT)
+        Mode::from_u8(next_mode(self as u8))
     }
 
     pub fn icon(&self) -> [u8; 8] {
@@ -43,6 +43,14 @@ impl Mode {
         }
     }
 }
+
+// The enum and the persisted values name the same three numbers; a drift between
+// them would boot the device into a mode the NVS value does not mean.
+const _: () = assert!(
+    Mode::Pet as u8 == MODE_PET
+        && Mode::Pomodoro as u8 == MODE_POMODORO
+        && Mode::Dice as u8 == MODE_DICE
+);
 
 pub struct ModeManager {
     current_mode: Mode,
@@ -58,8 +66,9 @@ impl ModeManager {
                 mode
             }
             None => {
-                log::info!("No saved mode, defaulting to Pomodoro");
-                Mode::Pomodoro
+                let mode = Mode::from_u8(crate::mode_values::MODE_DEFAULT);
+                log::info!("No saved mode, defaulting to {}", mode.name());
+                mode
             }
         };
         Ok(Self { current_mode, nvs })

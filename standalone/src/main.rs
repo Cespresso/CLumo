@@ -8,6 +8,8 @@ use crate::utils::led::Display;
 mod assets;
 mod handlers;
 mod mode;
+mod mode_values;
+mod progress;
 mod utils;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -33,7 +33,7 @@ fun connectionRingFor(state: ConnectionState): ConnectionRing = when (state) {
 
 fun RgbColor.toComposeColor(): Color = Color(0xFF000000L or value.toLong())
 
-private fun relativeLuminance(color: RgbColor): Float {
+internal fun relativeLuminance(color: RgbColor): Float {
     fun linear(channel: Int): Float {
         val normalized = channel / 255f
         return if (normalized <= 0.04045f) {

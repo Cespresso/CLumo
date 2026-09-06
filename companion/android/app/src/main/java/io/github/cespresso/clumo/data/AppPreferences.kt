@@ -50,6 +50,7 @@ class AppPreferences(context: Context) {
         private val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         private val KEY_ALIASES = stringPreferencesKey("device_aliases_json")
         private val KEY_DEVICE_APPEARANCES = stringPreferencesKey("device_appearances_json")
+        private val KEY_PRIMARY_DEVICE_ID = stringPreferencesKey("primary_device_id")
         private val KEY_VISUALIZER_SENSITIVITY = floatPreferencesKey("visualizer_sensitivity")
         private val KEY_VISUALIZER_AUTO_LOW_VOLUME_BOOST =
             booleanPreferencesKey("visualizer_auto_low_volume_boost")
@@ -73,6 +74,14 @@ class AppPreferences(context: Context) {
     val deviceAppearances: Flow<Map<String, DeviceAppearance>> = data.map { prefs ->
         decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES])
     }
+
+    /**
+     * Firmware device id of the primary CLumo whose appearance drives the app
+     * theme, or null when unset. The id may dangle (device forgotten, appearance
+     * reset); readers must fall back to [DeviceAppearance.DEFAULT] rather than
+     * expecting cleanup here.
+     */
+    val primaryDeviceId: Flow<String?> = data.map { it[KEY_PRIMARY_DEVICE_ID] }
 
     val visualizerSensitivity: Flow<Float> =
         data.map { interpretStoredVisualizerSensitivity(it[KEY_VISUALIZER_SENSITIVITY]) }
@@ -107,6 +116,16 @@ class AppPreferences(context: Context) {
                 appearance = null,
             )
             prefs[KEY_DEVICE_APPEARANCES] = encodeDeviceAppearances(updated)
+        }
+    }
+
+    suspend fun setPrimaryDeviceId(deviceId: String?) {
+        store.edit { prefs ->
+            if (deviceId == null) {
+                prefs.remove(KEY_PRIMARY_DEVICE_ID)
+            } else {
+                prefs[KEY_PRIMARY_DEVICE_ID] = deviceId
+            }
         }
     }
 

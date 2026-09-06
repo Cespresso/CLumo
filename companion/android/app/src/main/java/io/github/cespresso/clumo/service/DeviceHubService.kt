@@ -123,7 +123,9 @@ class DeviceHubService : Service() {
                 scope.launch { handleWidgetCommand(it) }
             }
         }
-        return START_STICKY
+        // A restart after a kill would arrive with a null intent and no sessions to protect:
+        // the links died with the process, and nothing here reconnects them.
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {

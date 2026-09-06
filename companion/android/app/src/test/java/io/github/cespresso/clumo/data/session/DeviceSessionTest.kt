@@ -150,6 +150,77 @@ class DeviceSessionTest {
         assertEquals(0x20.toByte(), fixture.transport.displayWrites[1].first[0])
     }
 
+    @Test
+    fun previewKeepsResendingTheLastFrameWithoutANewEdit() {
+        val fixture = fixture()
+        fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
+
+        fixture.session.previewFrame("1" + "0".repeat(63))
+        fixture.scope.runCurrent()
+        assertEquals(1, fixture.transport.displayWrites.size)
+
+        fixture.scope.advanceTimeBy(2_000)
+        fixture.scope.runCurrent()
+
+        assertEquals(true, fixture.transport.displayWrites.size >= 2)
+        assertEquals(true, fixture.transport.displayWrites.last().second)
+        assertEquals(
+            fixture.transport.displayWrites.first().first.toList(),
+            fixture.transport.displayWrites.last().first.toList(),
+        )
+    }
+
+    @Test
+    fun cancelPreviewStopsFurtherResends() {
+        val fixture = fixture()
+        fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
+
+        fixture.session.previewFrame("1" + "0".repeat(63))
+        fixture.scope.runCurrent()
+        assertEquals(1, fixture.transport.displayWrites.size)
+
+        fixture.session.cancelPreview()
+        fixture.scope.advanceTimeBy(10_000)
+        fixture.scope.runCurrent()
+
+        assertEquals(1, fixture.transport.displayWrites.size)
+    }
+
+    @Test
+    fun anEditDuringTheKeepAliveGapIsSentAtTheEditInterval() {
+        val fixture = fixture()
+        fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
+        fixture.session.previewFrame("1" + "0".repeat(63))
+        fixture.scope.runCurrent()
+
+        // Land mid keep-alive gap, where a plain long sleep would swallow the edit.
+        fixture.scope.advanceTimeBy(500)
+        fixture.scope.runCurrent()
+        val before = fixture.transport.displayWrites.size
+        fixture.session.previewFrame("01" + "0".repeat(62))
+        fixture.scope.advanceTimeBy(100)
+        fixture.scope.runCurrent()
+
+        assertEquals(before + 1, fixture.transport.displayWrites.size)
+        assertEquals(0x40.toByte(), fixture.transport.displayWrites.last().first[0])
+    }
+
+    @Test
+    fun previewStopsWritingOnceTheLinkIsNoLongerReady() {
+        val fixture = fixture()
+        fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
+        fixture.session.previewFrame("1" + "0".repeat(63))
+        fixture.scope.runCurrent()
+
+        fixture.transport.connectionState.value = ConnectionState.Reconnecting
+        fixture.scope.runCurrent()
+        val afterDrop = fixture.transport.displayWrites.size
+        fixture.scope.advanceTimeBy(10_000)
+        fixture.scope.runCurrent()
+
+        assertEquals(afterDrop, fixture.transport.displayWrites.size)
+    }
+
     private fun fixture(): Fixture {
         val dispatcher = StandardTestDispatcher()
         val scope = TestScope(dispatcher)

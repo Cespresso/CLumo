@@ -205,24 +205,42 @@ class DeviceSession internal constructor(
 
     /** Ordered v2 commit: data is previewed, then same-mode MODE write commits it. */
     fun commitPattern(pattern: Pattern) {
-        previewWriteJob?.cancel()
-        previewWriteJob = null
-        latestPreview = null
+        cancelPreview()
         transport.writeDisplay(pattern.toRowBytes(), stream = false)
         transport.writeMode(DeviceMode.DISPLAY)
     }
 
+    /**
+     * Streams [bits] to DISPLAY as a live preview, re-sending the latest frame at least
+     * every [PREVIEW_KEEP_ALIVE_MS] so the device's preview TTL cannot expire mid-edit.
+     * Stops on [cancelPreview], [commitPattern], or the link leaving Ready.
+     */
     fun previewFrame(bits: String) {
         latestPreview = Pattern.bitsToRowBytes(bits)
         if (previewWriteJob?.isActive == true) return
         previewWriteJob = scope.launch {
-            while (true) {
-                val frame = latestPreview ?: break
+            var lastSent: ByteArray? = null
+            var msSinceSend = 0L
+            while (_state.value.link == ConnectionState.Ready) {
+                val fresh = latestPreview
                 latestPreview = null
-                transport.writeDisplay(frame, stream = true)
+                val due = fresh ?: lastSent?.takeIf { msSinceSend >= PREVIEW_KEEP_ALIVE_MS }
+                if (due != null) {
+                    lastSent = due
+                    msSinceSend = 0L
+                    transport.writeDisplay(due, stream = true)
+                }
                 delay(PREVIEW_INTERVAL_MS)
+                msSinceSend += PREVIEW_INTERVAL_MS
             }
         }
+    }
+
+    /** Stops the live preview; the device's own TTL then reverts to the committed frame. */
+    fun cancelPreview() {
+        previewWriteJob?.cancel()
+        previewWriteJob = null
+        latestPreview = null
     }
 
     fun startVisualizer(): Boolean {
@@ -282,6 +300,9 @@ class DeviceSession internal constructor(
     private companion object {
         const val BRIGHTNESS_DEBOUNCE_MS = 100L
         const val PREVIEW_INTERVAL_MS = 100L
+        // Must stay under the firmware's DISPLAY preview TTL, or the device reverts to
+        // the committed frame mid-edit.
+        const val PREVIEW_KEEP_ALIVE_MS = 2_000L
         const val VISUALIZER_INTERVAL_MS = 80L
     }
 }

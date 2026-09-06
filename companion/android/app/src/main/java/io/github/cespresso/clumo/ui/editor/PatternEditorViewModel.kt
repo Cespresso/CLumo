@@ -128,8 +128,11 @@ class PatternEditorViewModel(
 
     fun onLivePreviewChanged(enabled: Boolean) {
         local.update { it.copy(livePreview = enabled) }
+        val session = address?.let(registry::get) ?: return
         if (enabled) {
-            address?.let(registry::get)?.previewFrame(FaceBits.toBitsString(local.value.cells))
+            session.previewFrame(FaceBits.toBitsString(local.value.cells))
+        } else {
+            session.cancelPreview()
         }
     }
 
@@ -156,6 +159,11 @@ class PatternEditorViewModel(
     fun delete() {
         val existing = uiState.value.existing ?: return
         runPersistence { patternRepository.remove(existing.id) }
+    }
+
+    /** The keep-alive would otherwise stream an abandoned edit for the session's life. */
+    override fun onCleared() {
+        address?.let(registry::get)?.cancelPreview()
     }
 
     fun retry() {

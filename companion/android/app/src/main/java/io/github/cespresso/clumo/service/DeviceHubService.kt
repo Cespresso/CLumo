@@ -37,6 +37,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
@@ -61,6 +64,11 @@ class DeviceHubService : Service() {
         private const val TAG = "DeviceHubService"
         private const val CHANNEL_ID = "clumo_hub"
         private const val NOTIFICATION_ID = 1
+
+        private val _running = MutableStateFlow(false)
+
+        /** Whether an instance is up. What the container's watcher reads to decide on a start. */
+        val running: StateFlow<Boolean> = _running.asStateFlow()
 
         fun start(context: Context, command: WidgetCommand? = null) {
             val intent = Intent(context, DeviceHubService::class.java)
@@ -91,6 +99,7 @@ class DeviceHubService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        _running.value = true
         createNotificationChannel()
         currentStatus = getString(R.string.notif_idle)
         postForeground()
@@ -117,6 +126,7 @@ class DeviceHubService : Service() {
     override fun onDestroy() {
         registry.disconnectAll()
         scope.cancel()
+        _running.value = false
         super.onDestroy()
     }
 
@@ -258,22 +268,35 @@ class DeviceHubService : Service() {
     /**
      * Claims the foreground service with the types matching what the hub is doing now.
      *
-     * A refused claim must not take the hub down with it: the BLE link keeps running on the
-     * types already held, and the visualizer is the only thing that degrades.
+     * A refused claim for an extra type must not take the hub down with it: the claim is made
+     * again with the base type alone, so the BLE link keeps running and the visualizer is the
+     * only thing that degrades. If even the base type is refused there is no foreground service
+     * to be, and a started service that never reaches the foreground is killed by the system a
+     * few seconds later with a less useful trace, so it stops itself.
      */
     private fun postForeground() {
         val notification = buildNotification(currentStatus)
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    foregroundServiceTypes(capturingAudio, hasRecordAudioPermission()),
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, notification)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification)
+            return
+        }
+        val wanted = foregroundServiceTypes(capturingAudio, hasRecordAudioPermission())
+        val base = foregroundServiceTypes(capturingAudio = false, recordAudioGranted = false)
+        try {
+            startForeground(NOTIFICATION_ID, notification, wanted)
+        } catch (refused: Exception) {
+            if (wanted == base) {
+                Log.w(TAG, "Cannot run in the foreground; stopping", refused)
+                stopSelf()
+                return
             }
-        }.onFailure { failure -> Log.w(TAG, "Foreground service type refused", failure) }
+            Log.w(TAG, "Foreground service type refused; keeping the base type", refused)
+            runCatching { startForeground(NOTIFICATION_ID, notification, base) }
+                .onFailure { failure ->
+                    Log.w(TAG, "Cannot run in the foreground; stopping", failure)
+                    stopSelf()
+                }
+        }
     }
 
     private fun hasRecordAudioPermission(): Boolean = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED

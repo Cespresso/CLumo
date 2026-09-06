@@ -30,7 +30,6 @@ import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.resolveAppearance
-import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceScreen
 import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceViewModel
 import io.github.cespresso.clumo.ui.device.DeviceScreen
@@ -107,9 +106,6 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
-        // Connections have to outlive this activity, so the hub runs as its own foreground
-        // service. Nothing waits on it: the graph it drives is already in the container.
-        DeviceHubService.start(this)
         val container = appContainer
         // Whatever this activity changes about a device has to reach the home screen too.
         container.widgetPublisher

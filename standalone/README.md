@@ -1,57 +1,107 @@
 # CLumo Standalone Firmware
 
-Standalone firmware for CLumo, a desk gadget built around an ESP32-C3
-(Seeed Studio XIAO ESP32C3), an 8x8 LED matrix (MAX7219), and two buttons.
+[English] | [日本語 (README.ja.md)](README.ja.md)
+
+Standalone firmware for CLumo. It holds a few simple features that run on nothing but
+the two buttons and the LED matrix.
 
 There is no radio, no app, and no pairing: plug in power and everything works with just
-the two buttons. Three modes are built in, and the current mode is persisted
-to flash (NVS), so the device comes back in the same mode after a power cycle.
+the two buttons. Three modes are built in. The current mode is saved to flash, so the
+device comes back in the same mode after a power cycle; a running pomodoro and the pet's
+mood carry across a mode switch but not across a power cycle.
 
-## Modes
+In the pictures below the left button is orange and the right one is white. Read them as
+whatever filament you printed yours with.
 
-| # | Mode | Description |
-|---|----------|-------------|
-| 0 | Pet | A tiny digital pet. It gets hungry over time, changes mood, blinks, and occasionally looks around. |
-| 1 | Pomodoro | 25-minute work / 5-minute break timer. The 64 pixels drain from the top-left toward the bottom-right as a phase passes, break included. Blinks on each phase change. |
-| 2 | Dice | Slot-style dice roll with a deceleration animation that lands on a random 1-6. |
+## Switching modes
 
-## Button controls
+Hold **white** for a second or more. CLumo flashes the icon of the mode it is moving to,
+then shows that mode.
 
-Long press = hold for 1 second or more.
+| Icon | Mode | What it does |
+|:---:|---|---|
+| <img src="img/pet-normal.svg" width="84" alt="Smiling face"> | **Pet** | A tiny digital pet that gets hungry over time. Feed it and keep it happy. |
+| <img src="img/pomodoro-idle.svg" width="84" alt="Hourglass"> | **Pomodoro** | 25 minutes of work, 5 minutes of break, shown as 64 pixels going out. |
+| <img src="img/dice-5.svg" width="84" alt="Five dice pips"> | **Dice** | Roll a die with one press. |
 
-| Button | All modes |
-|--------|-----------|
-| White long press | Switch to the next mode (icon splash, then the mode screen) |
+## Pet
 
-| Mode | Red short press | White short press |
-|----------|--------------------------|-------------------|
-| Pet | Feed the pet | Poke the pet |
-| Pomodoro | Start / pause / resume | Reset to idle |
-| Dice | Roll the dice | (none) |
+The face is the pet's mood, and the mood follows its hunger: 100 is full, 0 is starving.
+It starts at 50 and loses one point every 18 seconds, so an untouched pet goes from
+content to sulking in about 3 minutes and to angry in about 12. Feeding adds 20.
 
-## Hardware
+| Face | Hunger | Meaning |
+|:---:|:---:|---|
+| <img src="img/pet-happy.svg" width="84" alt="Face with a wide open-mouth smile"> | 70-100 | Happy. It was fed recently. |
+| <img src="img/pet-normal.svg" width="84" alt="Face with a small smile"> | 40-69 | Content. This is where it starts. |
+| <img src="img/pet-sad.svg" width="84" alt="Face with a downturned mouth"> | 10-39 | Sad. It wants to be fed. |
+| <img src="img/pet-angry.svg" width="84" alt="Face with a furrowed brow and downturned mouth"> | 0-9 | Angry. Feed it now. |
 
-- MCU: ESP32-C3 (Seeed Studio XIAO ESP32C3)
-- LED matrix: MAX7219 over SPI (GPIO8 SCLK, GPIO9 CS, GPIO10 MOSI)
-- Buttons: red = GPIO3, white = GPIO4 (internal pull-up, active low)
+Between moods the pet is never quite still:
+
+| Face | When you see it |
+|:---:|---|
+| <img src="img/pet-blink.svg" width="84" alt="Face with eyes closed"> | A blink. Happy, content and sad pets blink every couple of seconds; an angry pet just glares. |
+| <img src="img/pet-look-left.svg" width="84" alt="Face with eyes shifted left"> <img src="img/pet-look-right.svg" width="84" alt="Face with eyes shifted right"> | Looking around. Every 5 to 15 seconds it glances left, then right. |
+
+Orange feeds it: hunger goes up by 20 and the pet beams for a moment. White pokes it, and
+it scowls for a moment before settling back into its mood.
+
+## Pomodoro
+
+The matrix is the timer. Every phase starts with all 64 pixels lit and they go out one by
+one, from the top-left toward the bottom-right, so the lit block shrinking toward the
+bottom-right corner is time running out.
+
+| Screen | What it means |
+|:---:|---|
+| <img src="img/pomodoro-idle.svg" width="84" alt="Hourglass"> | Idle. Nothing is counting. Press orange to start 25 minutes of work. |
+| <img src="img/pomodoro-work-44.svg" width="84" alt="Lower part of the matrix lit"> | About a third of the way through a phase. Work and break look the same. |
+| <img src="img/pomodoro-work-20.svg" width="84" alt="Bottom rows of the matrix lit"> | About two thirds of the way through. |
+| <img src="img/pomodoro-flash.svg" width="84" alt="Every pixel lit"> | A phase has ended. The whole matrix flashes three times, then the next phase starts on its own: a 5-minute break after work, 25 minutes of work after a break. |
+
+Orange starts the timer when it is idle, pauses it when it is counting, and resumes it
+when it is paused; a pause freezes the picture where it is. White resets to idle from any
+state.
+
+Both buttons are ignored while the matrix is flashing. Switching to another mode does not
+stop the timer: it keeps counting, and you find it where it got to when you come back.
+
+## Dice
+
+The matrix rests on the last roll; a freshly started CLumo shows a five. Press orange and
+faces flip past for about a second and a half, slowing down before they land on the result.
+
+| 1 | 2 | 3 | 4 | 5 | 6 |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| <img src="img/dice-1.svg" width="72" alt="One pip"> | <img src="img/dice-2.svg" width="72" alt="Two pips"> | <img src="img/dice-3.svg" width="72" alt="Three pips"> | <img src="img/dice-4.svg" width="72" alt="Four pips"> | <img src="img/dice-5.svg" width="72" alt="Five pips"> | <img src="img/dice-6.svg" width="72" alt="Six pips"> |
+
+Orange rolls, and a press while a roll is still spinning is ignored. White has no effect
+in this mode.
+
+## Buttons at a glance
+
+| | Orange | White |
+|---|---|---|
+| **Any mode** | | Hold for a second: next mode |
+| **Pet** | Feed | Poke |
+| **Pomodoro** | Start / pause / resume | Reset to idle |
+| **Dice** | Roll | |
 
 ## Build & flash
 
 ### Requirements
 
 - Rust nightly with the `rust-src` component. If you use rustup,
-  `rust-toolchain.toml` installs it automatically; `espup` works too. The target
-  is `riscv32imc-esp-espidf`, built with `-Z build-std`.
+  `rust-toolchain.toml` installs it automatically.
 - `ldproxy` and `espflash`:
 
   ```bash
   cargo install ldproxy espflash
   ```
 
-- Python >= 3.10 (required by the ESP-IDF tooling).
-- ESP-IDF v5.2.2, fetched and built automatically by `esp-idf-sys` on the
-  first build. No manual installation is needed, but expect the first build to
-  take a while.
+- Python 3.10 or newer
+- ESP-IDF v5.2.2
 
 ### Flash
 
@@ -64,22 +114,14 @@ cargo run
 This builds the firmware, flashes it with `espflash`, and opens the serial
 monitor.
 
-## Recovery: entering bootloader mode manually
+## Appendix: pin assignments
 
-If flashing stops working, put the board into bootloader mode by hand. This
-can happen after misconfiguring GPIO 18/19: those are the USB D-/D+ pins, so
-never reconfigure them.
+The board is a Seeed Studio XIAO ESP32C3 and the matrix is a MAX7219.
 
-The XIAO ESP32C3 has two small buttons on the edge opposite the USB-C
-connector: **BOOT** (left, GPIO9) and **RESET** (right).
-
-1. Press and hold **BOOT**.
-2. While holding it, press and release **RESET**.
-3. Release **BOOT**.
-4. Run `cargo run` to flash.
-
-Alternatively:
-
-1. Unplug the USB cable.
-2. Plug it back in while holding **BOOT**.
-3. Release **BOOT** and run `cargo run`.
+| GPIO | Connected to | Direction |
+|:---:|---|---|
+| 8 | Matrix SCLK | Output (SPI) |
+| 9 | Matrix CS | Output (SPI) |
+| 10 | Matrix MOSI | Output (SPI) |
+| 3 | Orange button | Input, internal pull-up (low when pressed) |
+| 4 | White button | Input, internal pull-up (low when pressed) |

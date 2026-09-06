@@ -1,14 +1,15 @@
 use esp_idf_hal::sys::EspError;
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 
-use crate::mode_values::{decode_mode, migrate_legacy_mode};
+use crate::mode_values::{decode_mode, resolve_boot_mode};
 use crate::settings_values::decode_brightness;
 
 pub use crate::mode_values::MODE_COUNT;
 
-const MODE_KEY: &str = "MODE";
-const MODE_SCHEMA_KEY: &str = "MODE_SCHEMA";
-const MODE_SCHEMA_VERSION: u8 = 2;
+/// Current-schema mode value. The only mode key ever written.
+const MODE_KEY: &str = "MODE2";
+const LEGACY_MODE_KEY: &str = "MODE";
+const LEGACY_MODE_SCHEMA_KEY: &str = "MODE_SCHEMA";
 const BRIGHTNESS_KEY: &str = "BRIGHT";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,28 +50,21 @@ pub struct ModeManager {
 impl ModeManager {
     pub fn new(nvs: EspNvs<NvsDefault>) -> Result<Self, EspError> {
         let stored_mode = nvs.get_u8(MODE_KEY)?;
-        let schema = nvs.get_u8(MODE_SCHEMA_KEY)?.unwrap_or(1);
-        let mode_value = if schema < MODE_SCHEMA_VERSION {
-            let migrated = stored_mode.map(migrate_legacy_mode).unwrap_or(0);
-            if stored_mode.is_some() {
-                nvs.set_u8(MODE_KEY, migrated)?;
+        let legacy_mode = nvs.get_u8(LEGACY_MODE_KEY)?;
+        let legacy_schema = nvs.get_u8(LEGACY_MODE_SCHEMA_KEY)?;
+        let mode_value = resolve_boot_mode(stored_mode, legacy_mode, legacy_schema);
+        let current_mode = Mode::from_u8(mode_value);
+
+        if stored_mode.is_none() {
+            nvs.set_u8(MODE_KEY, mode_value)?;
+            match legacy_mode {
+                Some(_) => log::info!("Migrated mode from legacy NVS: {}", current_mode.name()),
+                None => log::info!("No saved mode, defaulting to {}", current_mode.name()),
             }
-            nvs.set_u8(MODE_SCHEMA_KEY, MODE_SCHEMA_VERSION)?;
-            migrated
         } else {
-            stored_mode.unwrap_or(0)
-        };
-        let current_mode = match stored_mode {
-            Some(_) => {
-                let mode = Mode::from_u8(mode_value);
-                log::info!("Loaded mode from NVS: {}", mode.name());
-                mode
-            }
-            None => {
-                log::info!("No saved mode, defaulting to Pomodoro");
-                Mode::Pomodoro
-            }
-        };
+            log::info!("Loaded mode from NVS: {}", current_mode.name());
+        }
+
         let brightness = decode_brightness(nvs.get_u8(BRIGHTNESS_KEY)?);
         Ok(Self {
             current_mode,

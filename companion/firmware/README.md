@@ -27,8 +27,15 @@ Modes are selected by the Android companion app through the MODE characteristic;
 buttons never change the mode. A mode change immediately shows the selected
 mode's normal frame without an icon splash. The current mode is persisted in NVS
 and restored on boot. Firmware upgrading from protocol v1 migrates the old
-Display value `1` to `2` and Visualizer value `2` to `3`. Every accepted mode
-change is pushed to subscribers of the MODE characteristic.
+Display value `1` to `2` and Visualizer value `2` to `3`, deriving the result
+into the `MODE2` key and leaving the pre-v2 `MODE` and `MODE_SCHEMA` keys
+read-only forever. Each NVS setter commits on its own, so migrating in place
+across two keys could be interrupted between them; because `1` maps to `2` and
+`2` maps to `3`, re-running the migration on its own output would silently turn
+Display into Visualizer. Deriving into a separate key makes the migration
+idempotent: an interrupted boot recomputes the same value from the same
+untouched inputs. Every accepted mode change is pushed to subscribers of the
+MODE characteristic.
 
 Buttons register on release after 50 ms of debounce; there is no long press. In
 Pomodoro and Timer the firmware acts on the press itself, so those modes stay

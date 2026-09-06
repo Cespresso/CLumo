@@ -111,6 +111,8 @@ class MainActivity : ComponentActivity() {
         // service. Nothing waits on it: the graph it drives is already in the container.
         DeviceHubService.start(this)
         val container = appContainer
+        // Whatever this activity changes about a device has to reach the home screen too.
+        container.widgetPublisher
         setContent {
             ClumoTheme(appearance = primaryDeviceAppearance(container.preferences)) {
                 Box(

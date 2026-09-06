@@ -95,6 +95,15 @@ class WidgetSnapshotTest {
     }
 
     @Test
+    fun onlyASnapshotStillShowingTheLinkAgesVisibly() {
+        assertTrue(snapshot(1_000L).agesVisibly())
+        assertFalse(snapshot(1_000L).asDisconnected().agesVisibly())
+        assertFalse(disconnectedSnapshot().agesVisibly())
+        // Blocked and failed pictures carry information aging would erase.
+        assertTrue(snapshot(1_000L).copy(link = WidgetLink.Blocked, headline = WidgetHeadline.BluetoothOff).agesVisibly())
+    }
+
+    @Test
     fun asDisconnectedKeepsIdentityAndClearsEverythingTheLinkReported() {
         val live = snapshot(1_000L).copy(
             alias = "つくえ",

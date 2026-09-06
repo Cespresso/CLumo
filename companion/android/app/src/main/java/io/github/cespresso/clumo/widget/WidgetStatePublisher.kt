@@ -1,4 +1,4 @@
-package io.github.cespresso.clumo.service
+package io.github.cespresso.clumo.widget
 
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
+import androidx.glance.appwidget.updateAll
 import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
@@ -22,12 +23,6 @@ import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.resolvePrimaryTarget
-import io.github.cespresso.clumo.widget.HEARTBEAT_INTERVAL_MS
-import io.github.cespresso.clumo.widget.WidgetBlock
-import io.github.cespresso.clumo.widget.WidgetSnapshot
-import io.github.cespresso.clumo.widget.WidgetSnapshotFactory
-import io.github.cespresso.clumo.widget.WidgetSnapshotStore
-import io.github.cespresso.clumo.widget.sameContentAs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -44,10 +39,19 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
+/** Redraws both widgets from the store. What the publisher calls once a snapshot has changed. */
+suspend fun updateClumoWidgets(context: Context) {
+    ClumoControlWidget().updateAll(context)
+    ClumoPresenceWidget().updateAll(context)
+}
+
 /**
  * Turns the primary device's live state into the single snapshot both widgets read. The
  * firmware notifies once per second and the face has 64 steps, so publishing only on a
  * visible change caps a timed phase at 64 updates however long it runs.
+ *
+ * Runs for the life of the process, not of the hub service: an alias or a color changed in
+ * the app has to reach the home screen whether or not a device is connected at the time.
  */
 class WidgetStatePublisher(
     private val context: Context,
@@ -164,14 +168,15 @@ class WidgetStatePublisher(
     /**
      * An idle or paused device legitimately produces no updates for hours, which would make a
      * healthy snapshot look stale. Rewriting the timestamp keeps it fresh without calling
-     * [onPublished], since nothing visible moved.
+     * [onPublished], since nothing visible moved. A snapshot that already shows the device
+     * disconnected is left to age: it would age into the same picture.
      */
     private suspend fun heartbeat() {
         while (true) {
             delay(HEARTBEAT_INTERVAL_MS)
             refreshBlock()
-            val current = lastPublished ?: continue
-            // One failed beat must not end the loop for the service's lifetime.
+            val current = lastPublished?.takeIf { it.agesVisibly() } ?: continue
+            // One failed beat must not end the loop for the process's lifetime.
             guarded("heartbeat") {
                 store.write(current.copy(updatedAtRealtime = SystemClock.elapsedRealtime()))
             }
@@ -258,7 +263,7 @@ class WidgetStatePublisher(
 
     /**
      * A single failure costs one update. Letting it escape would unwind through `onEach`
-     * and cancel the collector, which would stop widget updates for good.
+     * and cancel the collector, which would stop widget updates for the life of the process.
      */
     private suspend fun guarded(what: String, body: suspend () -> Unit) {
         try {

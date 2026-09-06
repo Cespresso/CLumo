@@ -14,7 +14,7 @@ import java.io.IOException
 
 private val Context.widgetStore by preferencesDataStore(name = "clumo_widget")
 
-/** The single snapshot both widgets read. Written by the service, never by a widget. */
+/** The single snapshot both widgets read. Written by the publisher, never by a widget. */
 class WidgetSnapshotStore(context: Context) {
 
     private val store = context.applicationContext.widgetStore
@@ -32,7 +32,7 @@ class WidgetSnapshotStore(context: Context) {
 
     /**
      * Returns false when the snapshot could not be persisted. An exception escaping here
-     * would unwind through the publisher and cancel its collector for the service's lifetime,
+     * would unwind through the publisher and cancel its collector for the process's lifetime,
      * so a storage failure costs one update rather than every future one.
      */
     suspend fun write(snapshot: WidgetSnapshot): Boolean =

@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
-import androidx.glance.appwidget.updateAll
 import io.github.cespresso.clumo.MainActivity
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.appContainer
@@ -28,12 +27,10 @@ import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.resolvePrimaryTarget
-import io.github.cespresso.clumo.widget.ClumoControlWidget
-import io.github.cespresso.clumo.widget.ClumoPresenceWidget
 import io.github.cespresso.clumo.widget.GateDecision
 import io.github.cespresso.clumo.widget.WidgetCommand
 import io.github.cespresso.clumo.widget.WidgetCommandGate
-import io.github.cespresso.clumo.widget.WidgetSnapshotStore
+import io.github.cespresso.clumo.widget.WidgetStatePublisher
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -84,9 +81,7 @@ class DeviceHubService : Service() {
     private val registry: DeviceSessionRegistry get() = appContainer.registry
     private val patterns: PatternRepository get() = appContainer.patterns
     private val preferences: AppPreferences get() = appContainer.preferences
-
-    private lateinit var widgetStore: WidgetSnapshotStore
-    private lateinit var publisher: WidgetStatePublisher
+    private val publisher: WidgetStatePublisher get() = appContainer.widgetPublisher
 
     private var pendingCommand: WidgetCommand? = null
     private var lastWidgetFailureRealtime: Long? = null
@@ -103,17 +98,9 @@ class DeviceHubService : Service() {
         observeVisualizerPreferences()
         observeAudioCapture()
         observeButtonEvents()
-        widgetStore = WidgetSnapshotStore(this)
-        publisher = WidgetStatePublisher(
-            context = this,
-            registry = registry,
-            repository = repository,
-            preferences = preferences,
-            patterns = patterns,
-            store = widgetStore,
-            onPublished = { updateAllWidgets(this) },
-        )
-        publisher.start(scope)
+        // A widget tap can start this process straight into the service, and the tap's
+        // outcome has to be drawn: the publisher is what draws it.
+        publisher
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -225,11 +212,6 @@ class DeviceHubService : Service() {
             WidgetCommand.CancelTimer -> connection.timerCancel()
             WidgetCommand.Retry -> Unit // reaching Ready was the whole point
         }
-    }
-
-    private suspend fun updateAllWidgets(context: Context) {
-        ClumoControlWidget().updateAll(context)
-        ClumoPresenceWidget().updateAll(context)
     }
 
     // --- Notification ---

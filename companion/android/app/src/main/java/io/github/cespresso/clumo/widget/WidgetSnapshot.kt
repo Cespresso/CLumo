@@ -146,7 +146,10 @@ fun WidgetSnapshot.asDisconnected(): WidgetSnapshot =
         actions = listOf(WidgetAction.Retry),
     )
 
-/** What a widget draws before the service has ever published: no device to name, default colors. */
+/** Whether going stale would change what a widget draws. False once the link is already shown gone. */
+fun WidgetSnapshot.agesVisibly(): Boolean = !sameContentAs(asDisconnected())
+
+/** What a widget draws before anything has ever been published: no device to name, default colors. */
 fun disconnectedSnapshot(): WidgetSnapshot =
     WidgetSnapshotFactory
         .identity(alias = "", appearance = DeviceAppearance.DEFAULT, nowRealtime = 0L)

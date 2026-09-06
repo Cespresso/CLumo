@@ -6,6 +6,9 @@ import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.data.ble.BleScanner
 import io.github.cespresso.clumo.data.session.DeviceSessionRegistry
+import io.github.cespresso.clumo.widget.WidgetSnapshotStore
+import io.github.cespresso.clumo.widget.WidgetStatePublisher
+import io.github.cespresso.clumo.widget.updateClumoWidgets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -19,7 +22,8 @@ import kotlinx.coroutines.launch
  * the price of reading a preference and let every screen reach the whole data layer through it.
  *
  * Built lazily: [DeviceRepository] and [PatternRepository] read storage in their constructors,
- * and a cold start that only shows onboarding should not pay for devices it has never seen.
+ * and a start builds only what it reaches. The hub started by a widget tap never builds the
+ * scanner, and a process woken only to draw a widget builds none of this.
  */
 class AppContainer(context: Context) {
 
@@ -40,5 +44,22 @@ class AppContainer(context: Context) {
             // graph, not to whether a service happens to be running.
             scope.launch { patterns.ensureSeeded() }
         }
+    }
+
+    /**
+     * Starts publishing on first access and never stops. The activity touches it on launch and
+     * the hub service on start, which are the two ways anything a widget shows can change; a
+     * process woken only to draw a widget reads the store and never builds this.
+     */
+    val widgetPublisher: WidgetStatePublisher by lazy {
+        WidgetStatePublisher(
+            context = appContext,
+            registry = registry,
+            repository = repository,
+            preferences = preferences,
+            patterns = patterns,
+            store = WidgetSnapshotStore(appContext),
+            onPublished = { updateClumoWidgets(appContext) },
+        ).also { it.start(scope) }
     }
 }

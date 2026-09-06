@@ -4,15 +4,9 @@ Firmware for CLumo, an ESP32-C3 desk gadget with an 8x8 LED matrix (MAX7219)
 and two physical buttons. It pairs with the CLumo Android companion app over
 BLE; the device's four modes map 1:1 to the app's functions.
 
-This document is the source of truth for the BLE protocol (v3).
-
-## Hardware
-
-| Component  | Detail                                        |
-|------------|-----------------------------------------------|
-| MCU        | ESP32-C3 (`riscv32imc-esp-espidf`)            |
-| LED matrix | MAX7219 over SPI: GPIO8 SCLK, GPIO9 CS, GPIO10 MOSI |
-| Buttons    | Main = red, GPIO3. Sub = white, GPIO4 (pull-up, active low) |
+This document is the source of truth for the BLE protocol (v3). What the device
+shows before the app connects, and what it does while the phone is away, is in
+the [companion README](../README.md).
 
 ## Modes
 
@@ -298,3 +292,15 @@ configured duration. Pixels are indexed row-major from the top-left
 (`index = row * 8 + column`, bit 7 = leftmost column); the last `lit` pixel
 indices are ON. As time passes, pixels turn off from the top-left toward the
 bottom-right. Idle shows all 64 pixels lit, and a paused frame remains static.
+
+## Appendix: pin assignments
+
+The board is a Seeed Studio XIAO ESP32C3 and the matrix is a MAX7219.
+
+| GPIO | Connected to | Direction |
+|:---:|---|---|
+| 8 | Matrix SCLK | Output (SPI) |
+| 9 | Matrix CS | Output (SPI) |
+| 10 | Matrix MOSI | Output (SPI) |
+| 3 | Main button | Input, internal pull-up (low when pressed) |
+| 4 | Sub button | Input, internal pull-up (low when pressed) |

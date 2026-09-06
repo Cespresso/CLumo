@@ -29,6 +29,8 @@ Connects to the CLumo Android app over BLE for richer features.
 - My Displays: draw custom 8x8 patterns in the app and send them to the device
 - Audio visualizer: the matrix dances to audio streamed from your phone
 
+The [companion README](companion/) covers what the matrix shows before the app connects and what keeps working while the phone is away.
+
 ## Quick start
 
 1. Flash the firmware from your browser, no tools to install:

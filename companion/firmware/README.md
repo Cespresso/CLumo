@@ -12,23 +12,28 @@ This document is the source of truth for the BLE protocol (v2).
 |------------|-----------------------------------------------|
 | MCU        | ESP32-C3 (`riscv32imc-esp-espidf`)            |
 | LED matrix | MAX7219 over SPI: GPIO8 SCLK, GPIO9 CS, GPIO10 MOSI |
-| Buttons    | Red = GPIO3, White = GPIO4 (pull-up, active low) |
+| Buttons    | Main = red, GPIO3. Sub = white, GPIO4 (pull-up, active low) |
 
 ## Modes
 
 | Value | Mode       | Description | Buttons |
 |-------|------------|-------------|---------|
-| 0     | Pomodoro   | Work/break countdown with app-settable durations. The matrix is a 64-pixel progress bar. | Red short: start/pause/resume. Red long: reset. |
-| 1     | Timer      | One-shot countdown configurable from `00:01` to `59:59`. At `00:00`, the matrix blinks every 400 ms until operated. | Red short: start/pause/resume/restart. Red long: cancel. |
-| 2     | Display    | Shows the last 8-byte bitmap written to the DISPLAY characteristic. Persisted in NVS across reboots; blank until the first bitmap arrives. | None |
-| 3     | Visualizer | Bar visualizer driven by column heights streamed to the DISPLAY characteristic. The matrix stays blank until data arrives; bars rise instantly, fall smoothly, and decay to zero when data stops. | None |
+| 0     | Pomodoro   | Work/break countdown with app-settable durations. The matrix is a 64-pixel progress bar. | Main: start/pause/resume. Sub: reset. |
+| 1     | Timer      | One-shot countdown configurable from `00:01` to `59:59`. At `00:00`, the matrix blinks every 400 ms until operated. | Main: start/pause/resume/restart. Sub: cancel. |
+| 2     | Display    | Shows the last 8-byte bitmap written to the DISPLAY characteristic. Persisted in NVS across reboots; blank until the first bitmap arrives. | Reported over BUTTON; the app cycles its saved patterns. |
+| 3     | Visualizer | Bar visualizer driven by column heights streamed to the DISPLAY characteristic. The matrix stays blank until data arrives; bars rise instantly, fall smoothly, and decay to zero when data stops. | Reported over BUTTON; the app steps visualizer sensitivity. |
 
-Modes are selected by the Android companion app through the MODE characteristic.
-The white button is currently unassigned. A mode change immediately shows the
-selected mode's normal frame without an icon splash. The current mode is
-persisted in NVS and restored on boot. Firmware upgrading from protocol v1
-migrates the old Display value `1` to `2` and Visualizer value `2` to `3`.
-Every accepted mode change is pushed to subscribers of the MODE characteristic.
+Modes are selected by the Android companion app through the MODE characteristic;
+buttons never change the mode. A mode change immediately shows the selected
+mode's normal frame without an icon splash. The current mode is persisted in NVS
+and restored on boot. Firmware upgrading from protocol v1 migrates the old
+Display value `1` to `2` and Visualizer value `2` to `3`. Every accepted mode
+change is pushed to subscribers of the MODE characteristic.
+
+Buttons register on release after 50 ms of debounce; there is no long press. In
+Pomodoro and Timer the firmware acts on the press itself, so those modes stay
+usable while disconnected. In Display and Visualizer the firmware only notifies
+BUTTON, so those presses do nothing while disconnected.
 
 Mode handlers are recreated on every mode switch. Leaving Pomodoro or Timer
 discards its current execution state and notifies an idle status. Pomodoro work
@@ -54,7 +59,10 @@ cargo run
 ## Pairing
 
 - Security: BLE bonding with MITM protection, passkey **123456** (DisplayOnly).
-- All characteristics require an encrypted (paired) connection.
+- All readable and writable characteristics require an encrypted (paired) connection.
+  BUTTON is notify-only, and NimBLE's auto-generated CCCD is subscribable without
+  encryption, so the firmware instead withholds button notifications until a client
+  has completed the encrypted initial sync.
 
 ## BLE protocol v2
 
@@ -75,6 +83,7 @@ cargo run
 | BRIGHTNESS | `681285a6-247f-48c6-80ad-68c3dce18588` | READ, WRITE, NOTIFY | 1 byte: MAX7219 intensity, clamped to `0..=15`. Firmware echoes the applied value via notify. |
 | DEVICE_ID  | `681285a6-247f-48c6-80ad-68c3dce18589` | READ | 16 bytes: stable UUIDv4 device identifier, generated on first boot and persisted in NVS. |
 | TIMER      | `681285a6-247f-48c6-80ad-68c3dce1858a` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 5-byte status (below). |
+| BUTTON     | `681285a6-247f-48c6-80ad-68c3dce1858b` | NOTIFY | 2 bytes `[mode, button]`: a button press in a mode the firmware does not handle itself (see below). |
 
 ### DISPLAY payload interpretation
 
@@ -86,6 +95,21 @@ cargo run
 - **Pomodoro (0) and Timer (1)** — ignored.
 
 Use WRITE_NR (write without response) for high-rate visualizer streaming.
+
+### BUTTON notify payload (2 bytes)
+
+| Index | Field    | Values |
+|-------|----------|--------|
+| 0     | `mode`   | mode the press happened in: `2` = Display, `3` = Visualizer |
+| 1     | `button` | 0 = main (red), 1 = sub (white) |
+
+Emitted only in Display and Visualizer mode. Pomodoro and Timer presses are
+consumed by the firmware and never notified. The firmware holds no state for
+these presses: it notifies only after a client has completed the encrypted
+initial sync, and a press outside that window is simply lost rather than queued.
+
+Companion apps are expected to treat main as "next / increase" and sub as
+"previous / decrease" for whatever that mode presents.
 
 ### POMODORO commands (writes)
 
@@ -136,7 +160,7 @@ echo. Timer commands are processed only while the device is in Timer mode.
 
 The firmware notifies on state changes, once per second while running, and after
 every accepted command. At completion, remaining is `0` and the matrix blinks
-on/off every 400 ms until Start/Cancel is received or the red button is used.
+on/off every 400 ms until Start/Cancel is received or either button is pressed.
 
 ### Countdown LED render rule
 

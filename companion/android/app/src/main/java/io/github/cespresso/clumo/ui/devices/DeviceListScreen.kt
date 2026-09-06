@@ -57,7 +57,7 @@ import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.BrandCorner
 import io.github.cespresso.clumo.ui.components.CoralPillButton
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
-import io.github.cespresso.clumo.ui.components.DeviceFace
+import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
 import io.github.cespresso.clumo.ui.components.connectionFrameColor
@@ -374,14 +374,10 @@ private fun KnownDeviceCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        DeviceFace(
+        ClumoDevice(
             bits = if (state == ConnectionState.Ready) bits else FaceBits.EMPTY,
             frameColor = frameColor,
             size = 94.dp,
-            frameCorner = 22.dp,
-            framePadding = 12.dp,
-            innerCorner = 11.dp,
-            gridPadding = 7.dp,
             litAlpha = litAlpha,
             glow = false,
         )

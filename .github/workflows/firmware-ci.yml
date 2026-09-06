@@ -16,27 +16,33 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        firmware:
+          - standalone
+          - companion/firmware
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       # rustup show installs whatever nightly rust-toolchain.toml pins.
       - name: Install pinned Rust toolchain
-        working-directory: companion/firmware
+        working-directory: ${{ matrix.firmware }}
         run: rustup show
 
       # The tree is fmt-clean; keep it that way without anyone having to remember.
       - name: Check formatting
-        working-directory: companion/firmware
+        working-directory: ${{ matrix.firmware }}
         run: cargo fmt --check
 
       - name: Cache cargo registry and target
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: companion/firmware
+          workspaces: ${{ matrix.firmware }}
 
       # .cargo/config.toml defaults the target to the ESP32, so the host tests
       # have to name theirs.
       - name: Run host tests
-        working-directory: companion/firmware
+        working-directory: ${{ matrix.firmware }}
         run: cargo test --lib --target x86_64-unknown-linux-gnu

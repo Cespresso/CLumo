@@ -36,10 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Mode system initialized: {}", mode_manager.current().name());
 
     // Initialize buttons (red=GPIO3, white=GPIO4)
-    let mut buttons = Buttons::new(
-        peripherals.pins.gpio3.into(),
-        peripherals.pins.gpio4.into(),
-    )?;
+    let mut buttons = Buttons::new(peripherals.pins.gpio3.into(), peripherals.pins.gpio4.into())?;
     log::info!("Buttons initialized (red=GPIO3, white=GPIO4)");
 
     let mut runtime = handlers::Runtime::new();

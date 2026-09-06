@@ -57,12 +57,14 @@ impl PomodoroHandler {
 
     fn active_duration_ms(&self) -> u64 {
         match self.phase {
-            TimerPhase::Working | TimerPhase::Paused { from: ActivePhase::Working } => {
-                WORK_DURATION_MS
-            }
-            TimerPhase::Breaking | TimerPhase::Paused { from: ActivePhase::Breaking } => {
-                BREAK_DURATION_MS
-            }
+            TimerPhase::Working
+            | TimerPhase::Paused {
+                from: ActivePhase::Working,
+            } => WORK_DURATION_MS,
+            TimerPhase::Breaking
+            | TimerPhase::Paused {
+                from: ActivePhase::Breaking,
+            } => BREAK_DURATION_MS,
             TimerPhase::Idle => 0,
         }
     }
@@ -70,7 +72,10 @@ impl PomodoroHandler {
     fn is_work_phase(&self) -> bool {
         matches!(
             self.phase,
-            TimerPhase::Working | TimerPhase::Paused { from: ActivePhase::Working }
+            TimerPhase::Working
+                | TimerPhase::Paused {
+                    from: ActivePhase::Working
+                }
         )
     }
 

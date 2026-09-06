@@ -57,10 +57,7 @@ static SAD_IDLE_FRAMES: &[[u8; 8]] = &[
     assets::FACE_BLINK,
 ];
 
-static ANGRY_IDLE_FRAMES: &[[u8; 8]] = &[
-    assets::FACE_ANGRY,
-    assets::FACE_ANGRY,
-];
+static ANGRY_IDLE_FRAMES: &[[u8; 8]] = &[assets::FACE_ANGRY, assets::FACE_ANGRY];
 
 static FEED_REACTION_FRAMES: &[[u8; 8]] = &[
     assets::FACE_HAPPY,

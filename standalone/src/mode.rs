@@ -82,11 +82,7 @@ impl ModeManager {
         if self.current_mode == new_mode {
             return Ok(());
         }
-        log::info!(
-            "Mode: {} -> {}",
-            self.current_mode.name(),
-            new_mode.name()
-        );
+        log::info!("Mode: {} -> {}", self.current_mode.name(), new_mode.name());
         self.current_mode = new_mode;
         self.nvs.set_u8("MODE", new_mode as u8)?;
         Ok(())

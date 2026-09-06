@@ -19,13 +19,7 @@ impl<'d> Display<'d> {
         cs: AnyOutputPin,
         mosi: AnyOutputPin,
     ) -> Result<Self, EspError> {
-        let spi_drv = SpiDriver::new(
-            spi,
-            sclk,
-            mosi,
-            None::<AnyIOPin>,
-            &SpiDriverConfig::new(),
-        )?;
+        let spi_drv = SpiDriver::new(spi, sclk, mosi, None::<AnyIOPin>, &SpiDriverConfig::new())?;
 
         let config = Config::new().baudrate(2.MHz().into()).data_mode(Mode {
             polarity: Polarity::IdleLow,

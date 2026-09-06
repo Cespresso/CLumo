@@ -1,14 +1,10 @@
-# 依存とプラグインの版はここだけで決める。
-# 対応関係に制約があるものは [versions] のコメントに理由を残す。
-
 [versions]
-# AGP 9 系は Kotlin を内蔵する。compose コンパイラプラグインは
-# その内蔵 Kotlin と版を合わせる必要がある。
+# The compose compiler plugin has to match the Kotlin that AGP carries internally.
 agp = "9.3.2"
 composeCompiler = "2.2.21"
 
-# ktlint プラグイン既定のエンジンは 1.5.0 だが、composeRules 0.6.4 が
-# 1.8.0 に対して作られているため、エンジン側を明示的に引き上げる。
+# The plugin's own default engine is older than what composeRules is built against,
+# so the engine is named here rather than left to the plugin.
 ktlintPlugin = "14.2.0"
 ktlintEngine = "1.8.0"
 composeRules = "0.6.4"
@@ -22,8 +18,8 @@ glance = "1.2.0"
 
 junit = "4.13.2"
 coroutinesTest = "1.11.0"
-# Android 同梱の org.json に挙動を合わせるための版。ローカル JVM テストでは
-# 実機の実装がスタブになるため、新しい版に上げると実機から遠ざかる。
+# Android stubs out org.json in local JVM tests, so they need a real implementation.
+# This release is the one that behaves like the copy Android ships.
 json = "20180813"
 androidxTestJunit = "1.3.0"
 androidxTestRunner = "1.7.0"

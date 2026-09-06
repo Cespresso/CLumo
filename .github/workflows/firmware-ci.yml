@@ -1,7 +1,7 @@
 name: Firmware CI
 
-# ファームウェアのホストテスト（lib.rs が公開する純粋モジュールのみ）を毎 push / PR で確認する。
-# ESP32 実機ターゲットのビルドは ESP-IDF 一式が要るため release.yml がタグ起点で別途行う。
+# Only the host tests run here, over the pure modules lib.rs exposes. Building for
+# the ESP32 target needs a whole ESP-IDF install, which release.yml sets up from a tag.
 on:
   push:
     branches:
@@ -20,9 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # rust-toolchain.toml が固定した nightly を使う。.cargo/config.toml の
-      # デフォルトターゲットは ESP32 (riscv32imc-esp-espidf) なので、host 向け
-      # ライブラリテストだけを対象にするには --target で明示的に上書きする。
+      # rustup show installs whatever nightly rust-toolchain.toml pins.
       - name: Install pinned Rust toolchain
         working-directory: companion/firmware
         run: rustup show
@@ -32,6 +30,8 @@ jobs:
         with:
           workspaces: companion/firmware
 
+      # .cargo/config.toml defaults the target to the ESP32, so the host tests
+      # have to name theirs.
       - name: Run host tests
         working-directory: companion/firmware
         run: cargo test --lib --target x86_64-unknown-linux-gnu

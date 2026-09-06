@@ -9,18 +9,14 @@ trim_trailing_whitespace = true
 
 [*.{kt,kts}]
 indent_size = 4
-# kotlin.code.style=official に対応するスタイル。android_studio は末尾カンマを
-# 禁止し、ktlint_official は Android Studio の整形と食い違うため採らない。
+# Matches kotlin.code.style=official in gradle.properties.
 ktlint_code_style = intellij_idea
 ij_kotlin_allow_trailing_comma = true
 ij_kotlin_allow_trailing_comma_on_call_site = true
-# @Composable は宣言的な要素として PascalCase を用いる Compose の規約に従う。
 ktlint_function_naming_ignore_when_annotated_with = Composable
-# enum とリソース ID の対応表のような密な when を1行ずつ空行で割るため、
-# 既存の可読性を落とす。分岐の見通しは字下げで足りているので無効化する。
+# The rule splits the dense enum-to-resource tables one branch per blank line.
 ktlint_standard_blank-line-between-when-conditions = disabled
-# 複数行になる式本体は = の次の行から始める。1行に引き上げると
-# シグネチャと本体が同じ行に混ざって長くなる。
+# Left on the signature line, a multiline body runs past a hundred columns.
 ktlint_function_signature_body_expression_wrapping = multiline
-# 端末ごとの配色をテーマ全体へ配るための CompositionLocal。意図的なもの。
+# Carries the per-device palette down to the whole theme.
 compose_allowed_composition_locals = LocalClumoAccents

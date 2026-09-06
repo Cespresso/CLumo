@@ -1,8 +1,8 @@
 name: Release & Deploy Installer
 
-# - タグ push（v*）→ 3成果物（bin ×2 + APK）をビルドして Release に添付
-# - main への push / 手動実行 → installer/ を GitHub Pages にデプロイ
-#   （github-pages 環境はタグからのデプロイを許可しないため main 起点にする）
+# A v* tag builds the three artifacts and attaches them to a Release. A push to main
+# deploys installer/ to Pages: the github-pages environment refuses a deployment that
+# comes from a tag.
 on:
   push:
     tags:
@@ -12,18 +12,18 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # Release の作成・アセット添付
-  pages: write      # GitHub Pages へのデプロイ
-  id-token: write   # Pages デプロイの OIDC 認証
+  contents: write   # create the Release and attach its assets
+  pages: write
+  id-token: write   # OIDC for the Pages deployment
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  # ───────────────────────────────────────────────
-  # 1. 単独版ファームウェアをビルド（clumo-standalone.bin）
-  # ───────────────────────────────────────────────
+  # ------------------------------------------------------------
+  # 1. Standalone firmware (clumo-standalone.bin)
+  # ------------------------------------------------------------
   build-standalone:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
@@ -31,8 +31,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # esp-rs 公式アクション。riscv32imc ターゲット / ldproxy をセットアップ
-      # （ESP-IDF 本体は cargo build 時に esp-idf-sys が取得）
+      # ESP-IDF itself is not installed here: esp-idf-sys fetches it during the build.
       - name: Install Rust ESP toolchain
         uses: esp-rs/xtensa-toolchain@v1.5
         with:
@@ -40,7 +39,6 @@ jobs:
           buildtargets: esp32c3
           ldproxy: true
 
-      # cargo registry / target / ESP-IDF キャッシュをまとめて面倒みる
       - name: Cache build
         uses: Swatinem/rust-cache@v2
         with:
@@ -56,7 +54,7 @@ jobs:
       - name: Install espflash
         run: cargo install espflash --locked
 
-      # bootloader + partition table + app を 1 ファイルに結合
+      # --merge writes the bootloader, partition table and app as one image.
       - name: Generate merged firmware
         run: |
           espflash save-image \
@@ -73,9 +71,9 @@ jobs:
           name: clumo-standalone
           path: clumo-standalone.bin
 
-  # ───────────────────────────────────────────────
-  # 2. 協調版ファームウェアをビルド（clumo-companion.bin）
-  # ───────────────────────────────────────────────
+  # ------------------------------------------------------------
+  # 2. Companion firmware (clumo-companion.bin)
+  # ------------------------------------------------------------
   build-companion:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
@@ -121,13 +119,13 @@ jobs:
           name: clumo-companion
           path: clumo-companion.bin
 
-  # ───────────────────────────────────────────────
-  # 3. Android アプリをビルド（clumo.apk）
-  # ───────────────────────────────────────────────
+  # ------------------------------------------------------------
+  # 3. Android app (clumo.apk)
+  # ------------------------------------------------------------
   build-apk:
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
-    # 署名材料は android-release Environment（v* タグのみ許可）に限定する
+    # The signing material lives in this environment, which only v* tags may use.
     environment: android-release
     steps:
       - name: Checkout
@@ -142,8 +140,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # Environment Secrets から keystore を復元する。
-      # 材料が一つでも欠けていたらここで失敗させる（未署名 APK を公開しないため）。
+      # A missing secret fails here rather than reaching the point where an
+      # unsigned APK could be published.
       - name: Prepare signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -171,7 +169,6 @@ jobs:
           chmod +x ./gradlew
           ./gradlew assembleRelease
 
-      # 署名の有効性と証明書指紋が期待値と一致することを確認してから成果物にする
       - name: Verify APK signature
         env:
           CLUMO_SIGNING_CERT_SHA256: ${{ vars.SIGNING_CERT_SHA256 }}
@@ -195,9 +192,9 @@ jobs:
           name: clumo-apk
           path: clumo.apk
 
-  # ───────────────────────────────────────────────
-  # 4. 3成果物をまとめて GitHub Release に添付
-  # ───────────────────────────────────────────────
+  # ------------------------------------------------------------
+  # 4. Attach all three artifacts to the GitHub Release
+  # ------------------------------------------------------------
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [build-standalone, build-companion, build-apk]
@@ -218,11 +215,11 @@ jobs:
             dist/clumo.apk
           generate_release_notes: true
 
-  # ───────────────────────────────────────────────
-  # 5. installer/ を GitHub Pages にデプロイ（インストーラページ）
-  # ───────────────────────────────────────────────
+  # ------------------------------------------------------------
+  # 5. Deploy installer/ to GitHub Pages
+  # ------------------------------------------------------------
   deploy-pages:
-    # main への push / 手動実行のときだけ Pages をデプロイ（ビルドには依存しない）
+    # No needs: the page deploys even when no firmware was built.
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment:
@@ -232,10 +229,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 最新 Release の firmware を installer/ に取り込む。
-      # GitHub Release アセットの CDN は CORS ヘッダを返さないため、
-      # ESP Web Tools が fetch() できるよう manifest と同一オリジン（Pages）で配信する。
-      # Release がまだ無い初回はスキップしてページだけデプロイする。
+      # Release asset URLs carry no CORS headers, so ESP Web Tools cannot fetch them.
+      # Serving the binaries from Pages puts them on the manifest's own origin.
+      # The first run, before any Release exists, deploys the page alone.
       - name: Fetch latest firmware into installer/
         env:
           GH_TOKEN: ${{ github.token }}
@@ -243,7 +239,7 @@ jobs:
           for bin in clumo-standalone.bin clumo-companion.bin; do
             if ! gh release download --repo "${{ github.repository }}" \
                 --pattern "$bin" --dir installer --clobber; then
-              echo "::warning::$bin を取得できませんでした（Release 未作成の可能性）。ページのみデプロイします"
+              echo "::warning::could not download $bin; deploying the page only"
             fi
           done
           ls -lh installer/

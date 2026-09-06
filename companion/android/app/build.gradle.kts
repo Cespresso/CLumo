@@ -4,8 +4,8 @@ plugins {
     alias(libs.plugins.ktlint)
 }
 
-// release ビルドは必ず専用鍵で署名する。署名材料が欠けたまま
-// release タスクを要求されたら debug 署名に落とさず失敗させる。
+// A release task without its signing material fails here rather than falling
+// back to the debug key.
 val releaseSigningNames = listOf(
     "CLUMO_KEYSTORE_PATH",
     "CLUMO_KEYSTORE_PASSWORD",
@@ -58,15 +58,12 @@ android {
     }
 
     lint {
-        // 新しく増えた指摘だけを落とすため、警告もエラー扱いにしたうえで
-        // 既存分は lint-baseline.xml に固定する。
+        // Together these leave only newly introduced issues failing the build.
         warningsAsErrors = true
         baseline = file("lint-baseline.xml")
-        // targetSdk を 34 に留めているのは意図した判断で、引き上げは
-        // 実機での見た目確認を伴う別作業。
+        // Fires on the targetSdk above, which is held back on purpose.
         disable += "OldTargetApi"
-        // 依存の版は固定して選んでいる。毎回ネットワークを見に行くのも
-        // CI の再現性を損なう。
+        // Reaches for the network on every run.
         disable += "NewerVersionAvailable"
     }
 
@@ -81,7 +78,6 @@ android {
     }
 }
 
-// ktlint はコードスタイルを、Compose Rules は Composable 固有の作法を見る。
 ktlint {
     version.set(libs.versions.ktlintEngine.get())
 }
@@ -100,7 +96,6 @@ dependencies {
     implementation(libs.androidx.glance.appwidget)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
-    // Android's org.json classes are method stubs in local JVM tests.
     testImplementation(libs.json)
     androidTestImplementation(platform(libs.compose.bom))
     androidTestImplementation(libs.compose.ui.test.junit4)

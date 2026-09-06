@@ -1,7 +1,6 @@
 name: Android CI
 
-# Android アプリの単体テストと全ソースのコンパイルを毎 push / PR で確認する。
-# release.yml はタグ起点のビルド専用なので、そちらでは検証が走らない。
+# release.yml only builds from a tag, so nothing there verifies the app.
 on:
   push:
     branches:
@@ -29,16 +28,15 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # testDebugUnitTest は main と test を、assembleDebugAndroidTest は
-      # 計測テストのソースをコンパイルする。後者は端末を必要としない。
+      # assembleDebugAndroidTest compiles the instrumentation sources without a device.
       - name: Run unit tests
         working-directory: companion/android
         run: |
           chmod +x ./gradlew
           ./gradlew testDebugUnitTest assembleDebugAndroidTest
 
-      # ktlint はコードスタイル、Android Lint は Android API の誤用を見る。
-      # どちらも既存の指摘はベースラインに固定済みなので、新しく増えた分だけが落ちる。
+      # Both tools have their existing findings frozen in a baseline, so only
+      # newly introduced ones fail here.
       - name: Run static checks
         working-directory: companion/android
         run: ./gradlew ktlintCheck lintDebug

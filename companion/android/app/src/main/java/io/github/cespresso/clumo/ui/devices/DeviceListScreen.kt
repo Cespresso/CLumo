@@ -3,11 +3,13 @@ package io.github.cespresso.clumo.ui.devices
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -98,6 +100,14 @@ fun DeviceListScreen(
     var pendingAction by remember { mutableStateOf<PendingBluetoothAction?>(null) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showPrimaryHelp by remember { mutableStateOf(false) }
+    // Tidying the list is rare, so it lives in a mode rather than on every card. Reordering
+    // will join it here, where a long press can mean drag without fighting anything else.
+    var editing by remember { mutableStateOf(false) }
+    var pendingRemoval by remember { mutableStateOf<KnownDeviceCardState?>(null) }
+
+    // Nothing left to tidy, and nothing to leave the mode with.
+    if (editing && knownDevices.isEmpty()) editing = false
+    BackHandler(enabled = editing) { editing = false }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -174,20 +184,27 @@ fun DeviceListScreen(
                         onClick = { showPrimaryHelp = true },
                     )
                 }
+                val accents = LocalClumoAccents.current
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
-                        .background(ClumoColors.White)
-                        .border(1.5.dp, ClumoColors.ChipBorder, RoundedCornerShape(999.dp))
-                        .clickable(onClick = onOpenSettings)
+                        .background(if (editing) accents.accent else ClumoColors.White)
+                        .border(
+                            1.5.dp,
+                            if (editing) accents.accent else ClumoColors.ChipBorder,
+                            RoundedCornerShape(999.dp),
+                        )
+                        .clickable { if (editing) editing = false else onOpenSettings() }
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 ) {
                     Text(
-                        text = stringResource(R.string.list_settings),
+                        text = stringResource(
+                            if (editing) R.string.list_edit_done else R.string.list_settings,
+                        ),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = RoundedFontFamily,
-                        color = ClumoColors.Muted,
+                        color = if (editing) accents.onAccent else ClumoColors.Muted,
                     )
                 }
             }
@@ -211,7 +228,10 @@ fun DeviceListScreen(
                 items(knownDevices, key = { it.device.id }) { item ->
                     KnownDeviceCard(
                         item = item,
+                        editing = editing,
                         onTogglePrimary = { viewModel.togglePrimary(item.device.id) },
+                        onRemove = { pendingRemoval = item },
+                        onStartEditing = { editing = true },
                         onTap = {
                             viewModel.stopScan()
                             runWithBluetoothPermission(
@@ -328,6 +348,19 @@ fun DeviceListScreen(
         )
     }
 
+    pendingRemoval?.let { target ->
+        ClumoActionDialog(
+            title = stringResource(R.string.device_forget_confirm_title),
+            body = stringResource(R.string.device_forget_confirm_body),
+            confirmText = stringResource(R.string.device_forget_confirm),
+            onConfirm = {
+                pendingRemoval = null
+                viewModel.removeDevice(target.device.id)
+            },
+            onDismiss = { pendingRemoval = null },
+        )
+    }
+
     if (showPrimaryHelp) {
         ClumoInfoDialog(
             title = stringResource(R.string.device_primary_marker),
@@ -340,7 +373,10 @@ fun DeviceListScreen(
 @Composable
 private fun KnownDeviceCard(
     item: KnownDeviceCardState,
+    editing: Boolean,
     onTogglePrimary: () -> Unit,
+    onRemove: () -> Unit,
+    onStartEditing: () -> Unit,
     onTap: () -> Unit,
 ) {
     val state = item.connectionState
@@ -353,7 +389,11 @@ private fun KnownDeviceCard(
             .clip(RoundedCornerShape(28.dp))
             .background(ClumoColors.White)
             .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(28.dp))
-            .clickable(onClick = onTap)
+            .combinedClickable(
+                // A card in the mode is a thing being tidied, not a device to open.
+                onClick = { if (!editing) onTap() },
+                onLongClick = onStartEditing,
+            )
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -385,6 +425,26 @@ private fun KnownDeviceCard(
             if (item.isPrimary) {
                 PrimaryBadge(modifier = Modifier.padding(top = 6.dp))
             }
+        }
+        if (editing) {
+            val removeLabel = stringResource(R.string.list_remove_device, item.name)
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(ClumoColors.ErrorBg)
+                    .clickable(role = Role.Button, onClickLabel = removeLabel, onClick = onRemove),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "−",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = RoundedFontFamily,
+                    color = ClumoColors.ErrorText,
+                )
+            }
+            return@Row
         }
         val toggleLabel = stringResource(
             if (item.isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary,

@@ -24,6 +24,8 @@
     <string name="list_passkey">123456</string>
     <string name="list_passkey_suffix"> を入力</string>
     <string name="list_scan_button">CLumoを探す</string>
+    <string name="list_edit_done">完了</string>
+    <string name="list_remove_device">%1$s を削除</string>
     <string name="scan_empty">近くにCLumoが見つかりませんでした。本体の電源と距離を確認してください。</string>
     <string name="scan_error_bluetooth_off">Bluetoothがオフになっています。</string>
     <string name="scan_error_permission">Bluetoothの権限がありません。</string>

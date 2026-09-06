@@ -104,10 +104,11 @@ starred in the device list.
 
 A reflashed device introduces itself as a new one, but the app recognises it as the
 same CLumo, so its name, colors, and main-device setting carry over. Enter the passkey
-within 30 seconds; after that the device gives up on the pairing and you start over. A device you no
-longer use can be removed from the list with "Remove this device" in the device
-screen's menu. The app cannot remove the Android pairing, so forget it in Bluetooth
-settings separately.
+within 30 seconds; after that the device gives up on the pairing and you start over. A device you no longer use
+can be removed from the list: hold its card to start tidying and each card's right edge
+becomes a remove button. "Remove this device" in the device screen's menu does the same.
+The app cannot remove the Android pairing, so forget it in Bluetooth settings separately.
+A device removed by mistake comes back through "Find CLumo" with nothing to re-enter.
 
 For anything else, follow the app's dialogs.
 

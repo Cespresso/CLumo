@@ -23,6 +23,8 @@
     <string name="list_passkey">123456</string>
     <string name="list_passkey_suffix">.</string>
     <string name="list_scan_button">Find CLumo</string>
+    <string name="list_edit_done">Done</string>
+    <string name="list_remove_device">Remove %1$s</string>
     <string name="scan_empty">No CLumo was found nearby. Check that the device is powered on and close to your phone.</string>
     <string name="scan_error_bluetooth_off">Bluetooth is turned off.</string>
     <string name="scan_error_permission">Bluetooth permission has not been granted.</string>

@@ -21,6 +21,7 @@ import io.github.cespresso.clumo.domain.mirrorBitsFor
 import io.github.cespresso.clumo.domain.resolveAppearance
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -180,6 +181,18 @@ class DeviceListViewModel(
     fun connect(address: String, name: String?) {
         stopScan()
         registry.connect(address, name)
+    }
+
+    /**
+     * Drops a device from the app: its session, its record, and everything filed against
+     * its id. The Android bond belongs to the system and is left alone. Mirrors the same
+     * action on the device screen.
+     */
+    fun removeDevice(deviceId: String) {
+        val device = repository.get(deviceId) ?: return
+        registry.disconnect(device.address)
+        repository.remove(deviceId)
+        viewModelScope.launch(NonCancellable) { preferences.clearDeviceSettings(deviceId) }
     }
 
     fun togglePrimary(deviceId: String) {

@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.application") version "9.3.2" apply false
-    id("org.jetbrains.kotlin.plugin.compose") version "2.2.21" apply false
-    id("org.jlleitschuh.gradle.ktlint") version "14.2.0" apply false
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.compose.compiler) apply false
+    alias(libs.plugins.ktlint) apply false
 }

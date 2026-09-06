@@ -1,6 +1,6 @@
 [package]
 name = "clumo-companion"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["naoya.noguchi"]
 edition = "2021"
 resolver = "2"

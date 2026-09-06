@@ -1,15 +1,20 @@
 package io.github.cespresso.clumo.service
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import android.util.Log
 import androidx.glance.appwidget.updateAll
+import io.github.cespresso.clumo.MainActivity
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.appContainer
 import io.github.cespresso.clumo.data.AppPreferences
@@ -86,12 +91,17 @@ class DeviceHubService : Service() {
     private var pendingCommand: WidgetCommand? = null
     private var lastWidgetFailureRealtime: Long? = null
 
+    private var currentStatus: String = ""
+    private var capturingAudio: Boolean = false
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.notif_idle)))
+        currentStatus = getString(R.string.notif_idle)
+        postForeground()
         observeConnections()
         observeVisualizerPreferences()
+        observeAudioCapture()
         observeButtonEvents()
         scope.launch { patterns.ensureSeeded() }
         widgetStore = WidgetSnapshotStore(this)
@@ -237,13 +247,53 @@ class DeviceHubService : Service() {
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(status)
             .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+            .setContentIntent(deviceListIntent())
             .setOngoing(true)
             .build()
 
+    /**
+     * Tapping the notification lands on the device list, the same place the launcher opens.
+     * CLEAR_TOP without SINGLE_TOP is the point: [MainActivity] keeps its back stack in memory,
+     * so only a fresh instance is guaranteed to be showing the list rather than whatever screen
+     * the app was left on.
+     */
+    private fun deviceListIntent(): PendingIntent =
+        PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
     private fun updateNotification(status: String) {
+        currentStatus = status
         getSystemService(NotificationManager::class.java)
             .notify(NOTIFICATION_ID, buildNotification(status))
     }
+
+    /**
+     * Claims the foreground service with the types matching what the hub is doing now.
+     *
+     * A refused claim must not take the hub down with it: the BLE link keeps running on the
+     * types already held, and the visualizer is the only thing that degrades.
+     */
+    private fun postForeground() {
+        val notification = buildNotification(currentStatus)
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    foregroundServiceTypes(capturingAudio, hasRecordAudioPermission()),
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        }.onFailure { failure -> Log.w(TAG, "Foreground service type refused", failure) }
+    }
+
+    private fun hasRecordAudioPermission(): Boolean = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
     /** Keeps the foreground notification text in sync with connection states. */
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -257,6 +307,33 @@ class DeviceHubService : Service() {
                     getString(R.string.notif_idle)
                 }
                 updateNotification(status)
+            }
+            .launchIn(scope)
+    }
+
+    /**
+     * Holds the microphone service type for as long as a session is capturing.
+     *
+     * [android.media.audiofx.Visualizer] draws on RECORD_AUDIO, so a hub without that type is
+     * handed silence the moment the app leaves the foreground. Capture only ever starts from
+     * the device screen, which is why the claim is always made while the app still counts as
+     * foreground and the platform will grant it.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeAudioCapture() {
+        registry.sessions
+            .flatMapLatest { map ->
+                if (map.isEmpty()) {
+                    flowOf(false)
+                } else {
+                    combine(map.values.map { it.visualizerActive }) { active -> active.any { it } }
+                }
+            }
+            .onEach { capturing ->
+                // Also swallows the first emission, which repeats what onCreate already claimed.
+                if (capturing == capturingAudio) return@onEach
+                capturingAudio = capturing
+                postForeground()
             }
             .launchIn(scope)
     }

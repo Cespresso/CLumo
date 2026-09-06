@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -51,6 +50,7 @@ import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.CoralPillButton
+import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.NameInputDialog
@@ -213,7 +213,7 @@ fun PatternEditorScreen(
                     color = ClumoColors.Text,
                     modifier = Modifier.weight(1f),
                 )
-                ToggleSwitch(
+                ClumoToggleSwitch(
                     checked = livePreview,
                     onCheckedChange = { livePreview = it },
                 )
@@ -373,30 +373,6 @@ private fun cellIndexAt(position: Offset, size: IntSize, gapPx: Float): Int? {
 
 private fun setBit(mask: Long, index: Int, on: Boolean): Long =
     if (on) mask or (1L shl index) else mask and (1L shl index).inv()
-
-@Composable
-private fun ToggleSwitch(
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Box(
-        modifier = Modifier
-            .size(width = 48.dp, height = 28.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (checked) ClumoColors.Sage else ClumoColors.SwitchOff)
-            .clickable { onCheckedChange(!checked) }
-            .padding(3.dp),
-        contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .shadow(2.dp, CircleShape)
-                .clip(CircleShape)
-                .background(ClumoColors.White),
-        )
-    }
-}
 
 @Composable
 private fun DeleteConfirmDialog(

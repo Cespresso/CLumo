@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.CLumo" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/clumo_background</item>
+        <item name="android:statusBarColor">@color/clumo_background</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">@color/clumo_background</item>
+    </style>
+</resources>

@@ -88,8 +88,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Main loop
     loop {
-        let red_press = buttons.red.poll();
-        let white_press = buttons.white.poll();
+        let red_pressed = buttons.red.poll();
+        let white_pressed = buttons.white.poll();
 
         // Drain BLE commands
         while let Some(cmd) = ble.take_command() {
@@ -168,13 +168,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Mode-specific button handling
-        if let Some(press) = red_press {
-            log::info!("[{}] Red: {:?}", mode_manager.current().name(), press);
-            handler.on_red_button(press);
+        if red_pressed {
+            log::info!("[{}] Main button", mode_manager.current().name());
+            handler.on_main_button();
         }
-        if let Some(press) = white_press {
-            log::info!("[{}] White: {:?}", mode_manager.current().name(), press);
-            handler.on_white_button(press);
+        if white_pressed {
+            log::info!("[{}] Sub button", mode_manager.current().name());
+            handler.on_sub_button();
         }
 
         // Display update

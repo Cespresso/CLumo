@@ -68,6 +68,14 @@
     <string name="seg_timer">タイマー</string>
     <string name="seg_patterns">マイ表示</string>
     <string name="seg_viz">ビジュアライザ</string>
+    <string name="button_role_pomodoro_main">開始 / 一時停止</string>
+    <string name="button_role_pomodoro_sub">リセット</string>
+    <string name="button_role_timer_main">開始 / 一時停止</string>
+    <string name="button_role_timer_sub">キャンセル</string>
+    <string name="button_role_display_main">次のパターン</string>
+    <string name="button_role_display_sub">前のパターン</string>
+    <string name="button_role_viz_main">感度を上げる</string>
+    <string name="button_role_viz_sub">感度を下げる</string>
 
     <!-- Pomodoro -->
     <string name="pomodoro_phase_work">作業中</string>

@@ -64,7 +64,9 @@ import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.ClumoSlider
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
+import io.github.cespresso.clumo.ui.components.ButtonRoleTags
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
+import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.CoralPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
@@ -406,12 +408,16 @@ fun DeviceScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    DeviceFace(
+                    ClumoDevice(
                         bits = mirrorBits,
                         frameColor = frameColor,
                         size = 188.dp,
                         litAlpha = litAlpha,
                         shadowElevation = 14.dp,
+                    )
+                    ButtonRoleTags(
+                        mode = effectiveMode,
+                        modifier = Modifier.alpha(if (ready) 1f else 0.45f),
                     )
                     Text(
                         text = stateLabel,

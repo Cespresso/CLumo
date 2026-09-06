@@ -6,7 +6,7 @@ use esp32_nimble::utilities::mutex::Mutex;
 use esp32_nimble::{uuid128, BLEAdvertisementData, BLECharacteristic, BLEDevice, NimbleProperties};
 
 use crate::countdown::{parse_timer_duration, DurationSetting};
-use crate::mode::MODE_COUNT;
+use crate::mode::{Mode, MODE_COUNT};
 use crate::utils::device_id::{self, DeviceId};
 
 /// BUTTON characteristic button identifiers.
@@ -305,6 +305,10 @@ impl BluetoothManager {
         // --- Button Characteristic (NOTIFY only) ---
         // Notify: [mode, button]. Sent only for modes whose buttons the firmware
         // does not consume itself, so the app can act on them.
+        // No READ/READ_ENC on purpose: there is nothing worth reading, and a
+        // readable value would outlive the press it describes. Encryption flags
+        // here could not restrict subscribers anyway — NimBLE registers the
+        // auto-generated CCCD with plain READ|WRITE.
         let button_characteristic = service.lock().create_characteristic(
             uuid128!("681285a6-247f-48c6-80ad-68c3dce1858b"),
             NimbleProperties::NOTIFY,
@@ -400,10 +404,10 @@ impl BluetoothManager {
 
     /// Notify subscribers that a physical button was pressed in a mode the
     /// firmware does not handle itself.
-    pub fn notify_button(&self, mode: u8, button: u8) {
+    pub fn notify_button(&self, mode: Mode, button: u8) {
         self.button_characteristic
             .lock()
-            .set_value(&[mode, button])
+            .set_value(&[mode as u8, button])
             .notify();
     }
 }

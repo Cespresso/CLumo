@@ -48,6 +48,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,12 +66,13 @@ import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.ClumoSlider
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
-import io.github.cespresso.clumo.ui.components.ButtonRoleTags
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.CoralPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
+import io.github.cespresso.clumo.ui.components.ModeHelpDialog
+import io.github.cespresso.clumo.ui.components.ModeHelpHeader
 import io.github.cespresso.clumo.ui.components.NameInputDialog
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.components.SegmentedControl
@@ -246,6 +249,7 @@ fun DeviceScreen(
 
     var menuOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
+    var modeHelpOpen by remember { mutableStateOf(false) }
     var dismissedDialogFailure by remember { mutableStateOf<ConnectionFailure?>(null) }
     LaunchedEffect(failure) {
         if (failure == null) dismissedDialogFailure = null
@@ -415,10 +419,6 @@ fun DeviceScreen(
                         litAlpha = litAlpha,
                         shadowElevation = 14.dp,
                     )
-                    ButtonRoleTags(
-                        mode = effectiveMode,
-                        modifier = Modifier.alpha(if (ready) 1f else 0.45f),
-                    )
                     Text(
                         text = stateLabel,
                         fontSize = 12.5.sp,
@@ -428,63 +428,100 @@ fun DeviceScreen(
                     )
                 }
 
-                // Controls: dimmed and non-interactive while disconnected.
-                Box {
-                    Column(modifier = Modifier.alpha(if (ready) 1f else 0.45f)) {
-                        // Brightness
-                        Row(
+                Column {
+                    // Device controls: dimmed and non-interactive while disconnected.
+                    Box {
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 26.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                .alpha(if (ready) 1f else 0.45f)
+                                .then(
+                                    if (ready) Modifier else Modifier.clearAndSetSemantics {
+                                        disabled()
+                                    }
+                                ),
                         ) {
-                            Text(
-                                text = stringResource(R.string.device_brightness),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontFamily = RoundedFontFamily,
-                                color = ClumoColors.Muted,
-                            )
-                            ClumoSlider(
-                                value = brightnessUi,
-                                onValueChange = {
-                                    brightnessDragging = true
-                                    brightnessUi = it
+                            // Brightness
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 26.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.device_brightness),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontFamily = RoundedFontFamily,
+                                    color = ClumoColors.Muted,
+                                )
+                                ClumoSlider(
+                                    value = brightnessUi,
+                                    onValueChange = {
+                                        brightnessDragging = true
+                                        brightnessUi = it
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    enabled = ready,
+                                )
+                            }
+                            LaunchedEffect(brightnessUi) {
+                                // Release the "dragging" hold shortly after the last move.
+                                delay(300)
+                                brightnessDragging = false
+                            }
+
+                            // Mode selector
+                            SegmentedControl(
+                                items = listOf(
+                                    stringResource(R.string.seg_pomodoro),
+                                    stringResource(R.string.seg_timer),
+                                    stringResource(R.string.seg_patterns),
+                                    stringResource(R.string.seg_viz),
+                                ),
+                                selectedIndex = effectiveMode.coerceIn(0, 3),
+                                onSelect = { index ->
+                                    if (index != effectiveMode) {
+                                        pendingMode = index
+                                        connection?.writeMode(index)
+                                    }
                                 },
-                                modifier = Modifier.weight(1f),
-                                enabled = ready,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 22.dp, vertical = 8.dp),
                             )
                         }
-                        LaunchedEffect(brightnessUi) {
-                            // Release the "dragging" hold shortly after the last move.
-                            delay(300)
-                            brightnessDragging = false
+                        if (!ready) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {},
+                                    )
+                                    .clearAndSetSemantics {},
+                            )
                         }
+                    }
 
-                        // Mode selector
-                        SegmentedControl(
-                            items = listOf(
-                                stringResource(R.string.seg_pomodoro),
-                                stringResource(R.string.seg_timer),
-                                stringResource(R.string.seg_patterns),
-                                stringResource(R.string.seg_viz),
-                            ),
-                            selectedIndex = effectiveMode.coerceIn(0, 3),
-                            onSelect = { index ->
-                                if (index != effectiveMode) {
-                                    pendingMode = index
-                                    connection?.writeMode(index)
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 22.dp, vertical = 8.dp),
-                        )
+                    ModeHelpHeader(
+                        mode = effectiveMode,
+                        onHelpClick = { modeHelpOpen = true },
+                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 2.dp),
+                    )
 
+                    // Mode-specific controls remain unavailable while disconnected.
+                    Box {
                         // Function area
                         Box(
                             modifier = Modifier
+                                .alpha(if (ready) 1f else 0.45f)
+                                .then(
+                                    if (ready) Modifier else Modifier.clearAndSetSemantics {
+                                        disabled()
+                                    }
+                                )
                                 .fillMaxWidth()
                                 .padding(start = 22.dp, end = 22.dp, top = 2.dp, bottom = 40.dp),
                         ) {
@@ -535,18 +572,18 @@ fun DeviceScreen(
                                 else -> Unit
                             }
                         }
-                    }
-                    if (!ready) {
-                        // Swallow all input over the controls while disconnected.
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {},
-                                ),
-                        )
+                        if (!ready) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = {},
+                                    )
+                                    .clearAndSetSemantics {},
+                            )
+                        }
                     }
                 }
             }
@@ -593,6 +630,13 @@ fun DeviceScreen(
                 }
             }
         }
+    }
+
+    if (modeHelpOpen) {
+        ModeHelpDialog(
+            mode = effectiveMode,
+            onDismiss = { modeHelpOpen = false },
+        )
     }
 
     val blockingFailure = failure?.takeIf {

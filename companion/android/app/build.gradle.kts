@@ -4,6 +4,25 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// release ビルドは必ず専用鍵で署名する。署名材料が欠けたまま
+// release タスクを要求されたら debug 署名に落とさず失敗させる。
+val releaseSigningNames = listOf(
+    "CLUMO_KEYSTORE_PATH",
+    "CLUMO_KEYSTORE_PASSWORD",
+    "CLUMO_KEY_ALIAS",
+    "CLUMO_KEY_PASSWORD",
+)
+val releaseSigning = releaseSigningNames.associateWith(System::getenv)
+val releaseRequested = gradle.startParameter.taskNames.any {
+    it.contains("release", ignoreCase = true)
+}
+if (releaseRequested) {
+    val missing = releaseSigning.filterValues { it.isNullOrBlank() }.keys
+    require(missing.isEmpty()) {
+        "Missing release signing environment variables: ${missing.joinToString()}"
+    }
+}
+
 android {
     namespace = "io.github.cespresso.clumo"
     compileSdk = 34
@@ -28,6 +47,23 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    signingConfigs {
+        if (releaseSigning.values.all { !it.isNullOrBlank() }) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseSigning["CLUMO_KEYSTORE_PATH"]))
+                storePassword = releaseSigning["CLUMO_KEYSTORE_PASSWORD"]
+                keyAlias = releaseSigning["CLUMO_KEY_ALIAS"]
+                keyPassword = releaseSigning["CLUMO_KEY_PASSWORD"]
+            }
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.findByName("release")
+        }
     }
 }
 

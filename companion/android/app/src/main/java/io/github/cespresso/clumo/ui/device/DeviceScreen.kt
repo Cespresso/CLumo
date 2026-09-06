@@ -75,7 +75,7 @@ fun DeviceScreen(
     val pomodoroStatus = ui.pomodoroStatus
     val timerStatus = ui.timerStatus
     val patterns = ui.patterns
-    val selectedPatternId = ui.appliedPatternId
+    val selectedPatternId = ui.shownPatternId
     val timerBlinkOn = ui.timerBlinkOn
 
     var brightnessUi by remember { mutableFloatStateOf(ui.brightnessPercent) }

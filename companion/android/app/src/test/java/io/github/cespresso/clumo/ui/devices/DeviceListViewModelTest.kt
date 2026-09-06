@@ -17,21 +17,22 @@ import org.junit.Test
 class DeviceListViewModelTest {
 
     @Test
-    fun cardsResolveAppliedPatternPerDevice() {
+    fun cardsMirrorEachDevicesOwnFrame() {
         val first = Device("device-a", "AA", "CLumo-A", 2)
         val second = Device("device-b", "BB", "CLumo-B", 1)
         val firstPattern = Pattern("p1", "One", "1" + "0".repeat(63))
         val secondPattern = Pattern("p2", "Two", "0".repeat(63) + "1")
-        val displayState = DeviceSessionState(
-            link = ConnectionState.Ready,
-            observed = DeviceSnapshot(DeviceMode.DISPLAY, 15),
-        )
+        fun displaying(frame: Long) =
+            DeviceSessionState(
+                link = ConnectionState.Ready,
+                observed = DeviceSnapshot(DeviceMode.DISPLAY, 15, committedFrame = frame),
+            )
 
         val cards = buildKnownDeviceCards(
             devices = listOf(first, second),
             liveStates = mapOf(
-                "AA" to DeviceCardLiveState(displayState),
-                "BB" to DeviceCardLiveState(displayState),
+                "AA" to DeviceCardLiveState(displaying(FaceBits.fromBitsString(firstPattern.bits))),
+                "BB" to DeviceCardLiveState(displaying(FaceBits.fromBitsString(secondPattern.bits))),
             ),
             aliases = emptyMap(),
             appearances = emptyMap(),

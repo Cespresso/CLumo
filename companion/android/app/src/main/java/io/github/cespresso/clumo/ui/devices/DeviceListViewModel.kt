@@ -78,7 +78,6 @@ internal fun buildKnownDeviceCards(
         val live = liveStates[device.address]
         val state = live?.session ?: DeviceSessionState(ConnectionState.Disconnected)
         val observed = state.observed
-        val selectedPattern = patterns.firstOrNull { it.id == appliedPatternIds[device.id] }
         val ready = state.link == ConnectionState.Ready
         KnownDeviceCardState(
             device = device,
@@ -96,7 +95,6 @@ internal fun buildKnownDeviceCards(
                     mode = observed?.mode,
                     pomodoro = observed?.pomodoro,
                     timer = observed?.timer,
-                    selectedPatternBits = selectedPattern?.bits,
                     committedFrame = state.effectiveCommittedFrame,
                     columns = live?.visualizerColumns ?: IntArray(0),
                     visualizerActive = live?.visualizerActive == true,

@@ -15,6 +15,7 @@ import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceSessionState
 import io.github.cespresso.clumo.domain.Pattern
+import io.github.cespresso.clumo.domain.patternFor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -87,9 +88,7 @@ class DeviceViewModel(
         Identity(devices.firstOrNull { it.address == address }, aliases, appearances, primaryId)
     }
 
-    private val library = combine(patterns.patterns, patterns.appliedPatternIds) { list, applied ->
-        Library(list, applied)
-    }
+    private val library = patterns.patterns
 
     private val visualizerPreferences = combine(
         preferences.visualizerSensitivity,
@@ -109,9 +108,7 @@ class DeviceViewModel(
     ) { live, identity, library, visualizerPreferences, transient ->
         val observed = live.state.observed
         val stableId = live.deviceId ?: identity.knownDevice?.id
-        val appliedKey = stableId ?: address
-        val appliedId = library.appliedPatternIds[appliedKey]
-        val appliedPattern = library.patterns.firstOrNull { it.id == appliedId }
+        val shown = patternFor(live.state.effectiveCommittedFrame, library)
         val brightnessLevel = live.state.effectiveBrightnessLevel ?: Brightness.MAX_LEVEL
         DeviceUiStateFactory.create(
             connected = live.connected,
@@ -128,7 +125,6 @@ class DeviceViewModel(
             aliases = identity.aliases,
             appearances = identity.appearances,
             primaryDeviceId = identity.primaryDeviceId,
-            selectedPatternBits = appliedPattern?.bits,
             committedFrame = live.state.effectiveCommittedFrame,
             brightnessUi = Brightness.toPercent(brightnessLevel),
             columns = live.columns,
@@ -140,8 +136,8 @@ class DeviceViewModel(
             timerStatus = observed?.timer ?: io.github.cespresso.clumo.domain.CountdownTimerStatus.DEFAULT,
             brightnessLevel = brightnessLevel,
             brightnessPercent = Brightness.toPercent(brightnessLevel),
-            patterns = library.patterns,
-            appliedPatternId = appliedId,
+            patterns = library,
+            shownPatternId = shown?.id,
             visualizerColumns = live.columns,
             visualizerActive = live.visualizerActive,
             visualizerSensitivity = visualizerPreferences.sensitivity,
@@ -271,11 +267,6 @@ class DeviceViewModel(
         val aliases: Map<String, String>,
         val appearances: Map<String, DeviceAppearance>,
         val primaryDeviceId: String?,
-    )
-
-    private data class Library(
-        val patterns: List<Pattern>,
-        val appliedPatternIds: Map<String, String>,
     )
 
     private data class VisualizerPreferences(

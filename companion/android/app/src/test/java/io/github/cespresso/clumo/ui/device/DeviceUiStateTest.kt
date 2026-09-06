@@ -31,7 +31,6 @@ class DeviceUiStateTest {
         aliases: Map<String, String> = emptyMap(),
         appearances: Map<String, DeviceAppearance> = emptyMap(),
         primaryDeviceId: String? = null,
-        selectedPatternBits: String? = null,
         committedFrame: Long? = null,
         brightnessUi: Float = 100f,
         columns: IntArray = IntArray(8),
@@ -53,7 +52,6 @@ class DeviceUiStateTest {
         aliases = aliases,
         appearances = appearances,
         primaryDeviceId = primaryDeviceId,
-        selectedPatternBits = selectedPatternBits,
         committedFrame = committedFrame,
         brightnessUi = brightnessUi,
         columns = columns,
@@ -281,7 +279,7 @@ class DeviceUiStateTest {
     fun aLinkThatIsNotReadyMirrorsNothing() {
         assertEquals(
             FaceBits.EMPTY,
-            create(state = ConnectionState.Connecting, selectedPatternBits = "1".repeat(64)).mirrorBits,
+            create(state = ConnectionState.Connecting, currentMode = DeviceMode.DISPLAY, committedFrame = -1L).mirrorBits,
         )
     }
 
@@ -295,26 +293,14 @@ class DeviceUiStateTest {
     }
 
     @Test
-    fun displayModeMirrorsTheSelectedPattern() {
-        val bits = "1".repeat(8) + "0".repeat(56)
-        assertEquals(
-            FaceBits.fromBitsString(bits),
-            create(currentMode = DeviceMode.DISPLAY, selectedPatternBits = bits).mirrorBits,
-        )
+    fun displayModeMirrorsTheFrameTheDeviceReports() {
+        val frame = FaceBits.fromBitsString("1".repeat(8) + "0".repeat(56))
+        assertEquals(frame, create(currentMode = DeviceMode.DISPLAY, committedFrame = frame).mirrorBits)
     }
 
     @Test
-    fun displayModePrefersTheDeviceConfirmedFrameOverTheSelectedPattern() {
-        // Another phone committed a different pattern than the one selected locally.
-        val confirmed = FaceBits.fromBitsString("1".repeat(16) + "0".repeat(48))
-        assertEquals(
-            confirmed,
-            create(
-                currentMode = DeviceMode.DISPLAY,
-                selectedPatternBits = "1".repeat(64),
-                committedFrame = confirmed,
-            ).mirrorBits,
-        )
+    fun displayModeWithoutAFrameYetMirrorsNothing() {
+        assertEquals(FaceBits.EMPTY, create(currentMode = DeviceMode.DISPLAY, committedFrame = null).mirrorBits)
     }
 
     @Test
@@ -337,7 +323,7 @@ class DeviceUiStateTest {
             currentMode = DeviceMode.POMODORO,
             pendingMode = DeviceMode.DISPLAY,
             pomodoro = running,
-            selectedPatternBits = "1".repeat(64),
+            committedFrame = -1L,
         )
         // The segment moves at once so the tap feels answered...
         assertEquals(DeviceMode.DISPLAY, s.effectiveMode)

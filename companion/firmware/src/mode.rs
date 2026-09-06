@@ -1,7 +1,9 @@
 use esp_idf_hal::sys::EspError;
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 
-use crate::mode_values::{decode_mode, resolve_boot_mode};
+use crate::mode_values::{
+    decode_mode, resolve_boot_mode, MODE_DISPLAY, MODE_POMODORO, MODE_TIMER, MODE_VISUALIZER,
+};
 use crate::settings_values::decode_brightness;
 
 pub use crate::mode_values::MODE_COUNT;
@@ -24,9 +26,11 @@ pub enum Mode {
 impl Mode {
     pub fn from_u8(value: u8) -> Self {
         match decode_mode(value) {
-            1 => Mode::Timer,
-            2 => Mode::Display,
-            3 => Mode::Visualizer,
+            MODE_POMODORO => Mode::Pomodoro,
+            MODE_TIMER => Mode::Timer,
+            MODE_DISPLAY => Mode::Display,
+            MODE_VISUALIZER => Mode::Visualizer,
+            // Unreachable after decode_mode, which folds anything out of range to MODE_POMODORO.
             _ => Mode::Pomodoro,
         }
     }
@@ -40,6 +44,15 @@ impl Mode {
         }
     }
 }
+
+// The enum and the protocol constants name the same four numbers; a drift between
+// them would route previews and columns to the wrong mode without any error.
+const _: () = assert!(
+    Mode::Pomodoro as u8 == MODE_POMODORO
+        && Mode::Timer as u8 == MODE_TIMER
+        && Mode::Display as u8 == MODE_DISPLAY
+        && Mode::Visualizer as u8 == MODE_VISUALIZER
+);
 
 pub struct ModeManager {
     current_mode: Mode,

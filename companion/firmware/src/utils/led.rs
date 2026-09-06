@@ -53,17 +53,26 @@ impl<'d> Display<'d> {
     /// Set display intensity (brightness). `level` is clamped to 0x00..=0x0F.
     pub fn set_intensity(&mut self, level: u8) {
         let level = level.min(0x0F);
-        self.spi.write(&[0x0A, level]).unwrap();
+        if let Err(e) = self.spi.write(&[0x0A, level]) {
+            log::warn!("Display: failed to set intensity: {:?}", e);
+        }
     }
 
     /// Write 8 bytes of row data to the LED matrix.
     /// Data is rotated 180 degrees to compensate for the upside-down mounted MAX7219.
+    ///
+    /// Stops at the first failed row: UART logging blocks the main loop, so
+    /// logging all eight would cost more than the frames it loses.
     pub fn show(&mut self, data: &[u8; 8]) {
         for addr in 1..=8u8 {
             // Rotate 180 degrees: reverse row order and reverse bits in each row
-            self.spi
+            if let Err(e) = self
+                .spi
                 .write(&[addr, data[(8 - addr) as usize].reverse_bits()])
-                .unwrap();
+            {
+                log::warn!("Display: failed to write row {}: {:?}", addr, e);
+                return;
+            }
         }
     }
 }

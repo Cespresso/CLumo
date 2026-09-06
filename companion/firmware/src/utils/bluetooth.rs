@@ -99,9 +99,11 @@ impl BluetoothManager {
             commands_clone
                 .lock()
                 .push_back(BleCommand::ConnectionChanged(true));
-            server
-                .update_conn_params(clntdesc.conn_handle(), 24, 48, 0, 200)
-                .unwrap();
+            // Runs on the nimble_host task, where a panic aborts and reboots the
+            // device, and whether this call succeeds depends on the peer.
+            if let Err(e) = server.update_conn_params(clntdesc.conn_handle(), 24, 48, 0, 200) {
+                log::warn!("BLE: failed to update connection params: {:?}", e);
+            }
         });
 
         let commands_clone = commands.clone();
@@ -357,9 +359,8 @@ impl BluetoothManager {
                 BLEAdvertisementData::new()
                     .name(&advertising_name)
                     .add_service_uuid(uuid128!("455aa9f0-2999-43de-81b4-54e0de255927")),
-            )
-            .unwrap();
-        ble_advertiser.lock().start().unwrap();
+            )?;
+        ble_advertiser.lock().start()?;
         log::info!("BLE advertising started as '{}'", advertising_name);
 
         Ok(Self {

@@ -36,4 +36,12 @@ class VisualizerStreamPolicyTest {
             )
         )
     }
+
+    @Test
+    fun stopsVisualizerWhenTheReadyLinkIsLost() {
+        assertTrue(shouldStopVisualizerForLinkChange(true, ConnectionState.Reconnecting))
+        assertTrue(shouldStopVisualizerForLinkChange(true, ConnectionState.Disconnected))
+        assertFalse(shouldStopVisualizerForLinkChange(true, ConnectionState.Ready))
+        assertFalse(shouldStopVisualizerForLinkChange(false, ConnectionState.Disconnected))
+    }
 }

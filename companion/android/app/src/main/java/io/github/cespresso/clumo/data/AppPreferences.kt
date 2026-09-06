@@ -42,7 +42,15 @@ internal fun steppedVisualizerSensitivity(current: Float, up: Boolean): Float {
  * and local device aliases keyed by the firmware device id.
  * Aliases are never written to the device.
  */
-class AppPreferences(context: Context) {
+interface AppearancePreferences {
+    val aliases: Flow<Map<String, String>>
+    val deviceAppearances: Flow<Map<String, DeviceAppearance>>
+
+    suspend fun setDeviceAppearance(deviceId: String, appearance: DeviceAppearance)
+    suspend fun resetDeviceAppearance(deviceId: String)
+}
+
+class AppPreferences(context: Context) : AppearancePreferences {
 
     private val store = context.applicationContext.dataStore
 
@@ -67,11 +75,11 @@ class AppPreferences(context: Context) {
     }
 
     /** Map of device id -> user alias. */
-    val aliases: Flow<Map<String, String>> = data.map { prefs ->
+    override val aliases: Flow<Map<String, String>> = data.map { prefs ->
         decodeAliases(prefs[KEY_ALIASES])
     }
 
-    val deviceAppearances: Flow<Map<String, DeviceAppearance>> = data.map { prefs ->
+    override val deviceAppearances: Flow<Map<String, DeviceAppearance>> = data.map { prefs ->
         decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES])
     }
 
@@ -97,7 +105,7 @@ class AppPreferences(context: Context) {
         }
     }
 
-    suspend fun setDeviceAppearance(deviceId: String, appearance: DeviceAppearance) {
+    override suspend fun setDeviceAppearance(deviceId: String, appearance: DeviceAppearance) {
         store.edit { prefs ->
             val updated = updatedDeviceAppearances(
                 current = decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES]),
@@ -108,7 +116,7 @@ class AppPreferences(context: Context) {
         }
     }
 
-    suspend fun resetDeviceAppearance(deviceId: String) {
+    override suspend fun resetDeviceAppearance(deviceId: String) {
         store.edit { prefs ->
             val updated = updatedDeviceAppearances(
                 current = decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES]),

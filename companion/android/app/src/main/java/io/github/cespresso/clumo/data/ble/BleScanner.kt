@@ -9,45 +9,29 @@ import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
+import io.github.cespresso.clumo.domain.DeviceAdvertisement
+import io.github.cespresso.clumo.domain.ScanEvent
+import io.github.cespresso.clumo.domain.ScanFailure
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 
 /**
- * A BLE advertisement of a CLumo device observed during scanning.
- * The stable device id is unknown at scan time (only readable after GATT connect),
- * so only MAC + advertised name are available here.
- */
-data class DeviceAdvertisement(
-    val address: String,
-    val name: String?,
-    val rssi: Int,
-)
-
-sealed interface ScanEvent {
-    data class DeviceFound(val advertisement: DeviceAdvertisement) : ScanEvent
-    data class Failed(val reason: ScanFailure) : ScanEvent
-}
-
-enum class ScanFailure {
-    BluetoothUnavailable,
-    BluetoothDisabled,
-    PermissionDenied,
-    ScanFailed,
-}
-
-/**
  * Continuous scan for CLumo devices, filtered by the CLumo service UUID.
  * Emits each advertisement seen; the caller de-duplicates.
  */
-class BleScanner(private val context: Context) {
+interface DeviceScanner {
+    fun scan(): Flow<ScanEvent>
+}
+
+class BleScanner(private val context: Context) : DeviceScanner {
 
     companion object {
         private const val TAG = "BleScanner"
     }
 
     @SuppressLint("MissingPermission")
-    fun scan(): Flow<ScanEvent> = callbackFlow {
+    override fun scan(): Flow<ScanEvent> = callbackFlow {
         val manager = context.getSystemService(BluetoothManager::class.java)
         val adapter = try {
             manager?.adapter

@@ -21,7 +21,7 @@ import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceNaming
-import io.github.cespresso.clumo.domain.FaceBits
+import io.github.cespresso.clumo.domain.patternFor
 import io.github.cespresso.clumo.domain.resolvePrimaryTarget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -101,29 +101,24 @@ class WidgetStatePublisher(
             identity,
             registry.sessions,
             patterns.patterns,
-            patterns.appliedPatternIds,
-        ) { id, sessions, patternList, appliedPatternIds ->
-            val selectedId = id.target?.id?.let(appliedPatternIds::get)
-            val selected = patternList.firstOrNull { it.id == selectedId }
-            val pattern = PatternSelection(
-                name = selected?.name,
-                bits = selected?.let { FaceBits.fromBitsString(it.bits) } ?: FaceBits.EMPTY,
-            )
-            Triple(id, id.target?.let { sessions[it.address] }, pattern)
+        ) { id, sessions, patternList ->
+            Triple(id, id.target?.let { sessions[it.address] }, patternList)
         }
-            .flatMapLatest { (id, session, pattern) ->
+            .flatMapLatest { (id, session, patternList) ->
                 if (session == null) {
-                    flowOf(Live(id, pattern, ConnectionState.Disconnected, null, null, null, null))
+                    flowOf(Live(id, ConnectionState.Disconnected, null, null, null, null, null))
                 } else {
                     session.state.map { state ->
+                        val frame = state.effectiveCommittedFrame
                         Live(
                             identity = id,
-                            pattern = pattern,
                             connectionState = state.link,
                             mode = state.observed?.mode,
                             pomodoro = state.observed?.pomodoro,
                             timer = state.observed?.timer,
-                            committedFrame = state.effectiveCommittedFrame,
+                            committedFrame = frame,
+                            // Named from the frame, so the caption can never disagree with the face.
+                            patternName = patternFor(frame, patternList)?.name,
                         )
                     }
                 }
@@ -199,7 +194,6 @@ class WidgetStatePublisher(
                     pomodoro = null,
                     timer = null,
                     patternName = null,
-                    patternBits = FaceBits.EMPTY,
                     committedFrame = null,
                     alias = "",
                     appearance = DeviceAppearance.DEFAULT,
@@ -229,8 +223,7 @@ class WidgetStatePublisher(
                     mode = live.mode,
                     pomodoro = live.pomodoro,
                     timer = live.timer,
-                    patternName = live.pattern.name,
-                    patternBits = live.pattern.bits,
+                    patternName = live.patternName,
                     committedFrame = live.committedFrame,
                     alias = target?.let {
                         DeviceNaming.displayName(
@@ -293,13 +286,11 @@ class WidgetStatePublisher(
 
     private data class Live(
         val identity: Identity,
-        val pattern: PatternSelection,
         val connectionState: ConnectionState,
         val mode: Int?,
         val pomodoro: io.github.cespresso.clumo.domain.PomodoroStatus?,
         val timer: io.github.cespresso.clumo.domain.CountdownTimerStatus?,
         val committedFrame: Long?,
+        val patternName: String?,
     )
-
-    data class PatternSelection(val name: String?, val bits: Long)
 }

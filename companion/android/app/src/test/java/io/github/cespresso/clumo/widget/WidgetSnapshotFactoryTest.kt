@@ -25,7 +25,6 @@ class WidgetSnapshotFactoryTest {
         pomodoro: PomodoroStatus? = PomodoroStatus.DEFAULT,
         timer: CountdownTimerStatus? = CountdownTimerStatus.DEFAULT,
         patternName: String? = "ハート",
-        patternBits: Long = FaceBits.EMPTY,
         committedFrame: Long? = null,
         alias: String = "つくえ",
         appearance: DeviceAppearance = DeviceAppearance.DEFAULT,
@@ -38,7 +37,6 @@ class WidgetSnapshotFactoryTest {
         pomodoro = pomodoro,
         timer = timer,
         patternName = patternName,
-        patternBits = patternBits,
         committedFrame = committedFrame,
         alias = alias,
         appearance = appearance,
@@ -159,13 +157,13 @@ class WidgetSnapshotFactoryTest {
     }
 
     @Test
-    fun state7_displayModeMirrorsThePatternAndOffersNoButtons() {
-        val bits = FaceBits.fromBitsString("1".repeat(8) + "0".repeat(56))
-        val s = create(mode = DeviceMode.DISPLAY, patternBits = bits)
+    fun state7_displayModeMirrorsTheDeviceFrameAndOffersNoButtons() {
+        val frame = FaceBits.fromBitsString("1".repeat(8) + "0".repeat(56))
+        val s = create(mode = DeviceMode.DISPLAY, committedFrame = frame)
         assertEquals(WidgetHeadline.MyDisplay, s.headline)
         assertEquals(WidgetSubtitle.PatternName, s.subtitle)
         assertEquals("ハート", s.subtitleText)
-        assertEquals(bits, s.faceBits)
+        assertEquals(frame, s.faceBits)
         assertTrue(s.actions.isEmpty())
     }
 
@@ -297,23 +295,19 @@ class WidgetSnapshotFactoryTest {
     }
 
     @Test
-    fun displayFaceFollowsTheDeviceConfirmedFrameSoTheWidgetMatchesTheAppScreen() {
-        val selected = FaceBits.fromBitsString("1".repeat(64))
+    fun displayFaceIsTheDeviceFrameAndNothingElse() {
         val confirmed = FaceBits.fromBitsString("1".repeat(8) + "0".repeat(56))
-        assertEquals(
-            confirmed,
-            create(
-                mode = DeviceMode.DISPLAY,
-                patternBits = selected,
-                committedFrame = confirmed,
-            ).faceBits,
-        )
-        // Firmware that cannot report one leaves the local selection as the only source.
-        assertEquals(
-            selected,
-            create(mode = DeviceMode.DISPLAY, patternBits = selected, committedFrame = null)
-                .faceBits,
-        )
+        assertEquals(confirmed, create(mode = DeviceMode.DISPLAY, committedFrame = confirmed).faceBits)
+        // No frame reported yet draws nothing rather than a guess.
+        assertEquals(FaceBits.EMPTY, create(mode = DeviceMode.DISPLAY, committedFrame = null).faceBits)
+    }
+
+    @Test
+    fun aFrameTheLibraryLacksShowsNoName() {
+        val s = create(mode = DeviceMode.DISPLAY, patternName = null, committedFrame = -1L)
+        assertEquals(WidgetSubtitle.PatternName, s.subtitle)
+        assertEquals("", s.subtitleText)
+        assertEquals(-1L, s.faceBits)
     }
 
     @Test

@@ -19,7 +19,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -111,6 +115,7 @@ fun OnboardingBluetoothScreen(
     onDone: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    var permissionDenied by remember { mutableStateOf(false) }
 
     fun finish() {
         scope.launch {
@@ -121,7 +126,9 @@ fun OnboardingBluetoothScreen(
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { finish() }
+    ) { results ->
+        if (results.values.all { it }) finish() else permissionDenied = true
+    }
 
     Column(
         modifier = Modifier
@@ -188,6 +195,17 @@ fun OnboardingBluetoothScreen(
             lineHeight = 27.sp,
             modifier = Modifier.padding(top = 12.dp),
         )
+        if (permissionDenied) {
+            Text(
+                text = stringResource(R.string.ob2_permission_denied),
+                fontSize = 12.5.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = RoundedFontFamily,
+                color = ClumoColors.Coral,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 10.dp),
+            )
+        }
         Spacer(modifier = Modifier.weight(1f))
         CoralPillButton(
             text = stringResource(R.string.ob2_allow),

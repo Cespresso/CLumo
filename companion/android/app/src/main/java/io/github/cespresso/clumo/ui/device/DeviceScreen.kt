@@ -1,8 +1,11 @@
 package io.github.cespresso.clumo.ui.device
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -53,11 +56,13 @@ import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.data.ble.DeviceConnection
+import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.TimerStatus
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.ClumoSlider
+import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.CoralPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
@@ -65,7 +70,6 @@ import io.github.cespresso.clumo.ui.components.NameInputDialog
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.components.SegmentedControl
 import io.github.cespresso.clumo.ui.components.connectionFrameColor
-import io.github.cespresso.clumo.ui.components.connectionLabel
 import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
@@ -106,10 +110,18 @@ fun DeviceScreen(
     onOpenEditor: (patternId: String?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val connections by service.registry.connections.collectAsState()
     val connection = connections[address]
+    val settingsLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        connection?.connect()
+    }
 
     val state = connection?.connectionState?.collectAsState()?.value ?: ConnectionState.Disconnected
+    val failure = connection?.connectionFailure?.collectAsState()?.value
+    val reconnectAttempt = connection?.reconnectAttempt?.collectAsState()?.value ?: 0
     val currentMode = connection?.currentMode?.collectAsState()?.value
     val timerStatus = connection?.timerStatus?.collectAsState()?.value
     val deviceId = connection?.deviceId?.collectAsState()?.value
@@ -169,10 +181,40 @@ fun DeviceScreen(
 
     val mirrorBits = liveMirrorBits(connection, selectedPattern?.bits)
     val frameColor = connectionFrameColor(state)
-    val (stateLabel, stateLabelColor) = connectionLabel(state)
+    val stateLabel = when (state) {
+        ConnectionState.Connecting -> stringResource(R.string.state_connecting)
+        ConnectionState.Reconnecting -> stringResource(R.string.state_reconnecting, reconnectAttempt)
+        ConnectionState.Bonding -> stringResource(R.string.state_pairing)
+        ConnectionState.Connected -> stringResource(R.string.state_discovering)
+        ConnectionState.Synchronizing -> stringResource(R.string.state_synchronizing)
+        ConnectionState.Ready -> stringResource(R.string.state_connected)
+        ConnectionState.Error -> stringResource(R.string.state_error)
+        ConnectionState.Disconnected -> stringResource(R.string.state_disconnected)
+    }
+    val stateLabelColor = when (state) {
+        ConnectionState.Ready -> ClumoColors.Sage
+        ConnectionState.Error -> ClumoColors.Coral
+        else -> ClumoColors.Muted
+    }
+    val failureMessage = when (failure) {
+        ConnectionFailure.BluetoothUnavailable -> stringResource(R.string.connection_error_unavailable)
+        ConnectionFailure.BluetoothDisabled -> stringResource(R.string.connection_error_bluetooth_off)
+        ConnectionFailure.PermissionDenied -> stringResource(R.string.connection_error_permission)
+        ConnectionFailure.ConnectionTimedOut -> stringResource(R.string.connection_error_timeout)
+        ConnectionFailure.PairingFailed -> stringResource(R.string.connection_error_pairing)
+        ConnectionFailure.ServiceDiscoveryFailed -> stringResource(R.string.connection_error_services)
+        ConnectionFailure.IncompatibleDevice -> stringResource(R.string.connection_error_incompatible)
+        ConnectionFailure.SynchronizationFailed -> stringResource(R.string.connection_error_sync)
+        ConnectionFailure.ConnectionLost -> stringResource(R.string.device_error_banner)
+        null -> stringResource(R.string.device_error_banner)
+    }
 
     var menuOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
+    var dismissedDialogFailure by remember { mutableStateOf<ConnectionFailure?>(null) }
+    LaunchedEffect(failure) {
+        if (failure == null) dismissedDialogFailure = null
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -226,8 +268,37 @@ fun DeviceScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
             ) {
-                // Connection-lost banner
-                if (state == ConnectionState.Error) {
+                if (state == ConnectionState.Bonding) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 22.dp, vertical = 6.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(ClumoColors.White)
+                            .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(18.dp))
+                            .padding(horizontal = 14.dp, vertical = 11.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "i",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontFamily = RoundedFontFamily,
+                            color = ClumoColors.Sage,
+                        )
+                        Text(
+                            text = stringResource(R.string.connection_pairing_hint),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = RoundedFontFamily,
+                            color = ClumoColors.Text,
+                        )
+                    }
+                }
+
+                // Automatic reconnect progress and terminal connection failures.
+                if (state == ConnectionState.Error || state == ConnectionState.Reconnecting) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -246,29 +317,50 @@ fun DeviceScreen(
                                 .background(ClumoColors.Coral),
                         )
                         Text(
-                            text = stringResource(R.string.device_error_banner),
+                            text = if (state == ConnectionState.Reconnecting) {
+                                stringResource(R.string.connection_reconnecting_banner, reconnectAttempt)
+                            } else {
+                                failureMessage
+                            },
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = RoundedFontFamily,
                             color = ClumoColors.ErrorText,
                             modifier = Modifier.weight(1f),
                         )
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(999.dp))
-                                .background(ClumoColors.Coral)
-                                .clickable {
-                                    service.registry.connect(address, scannedName)
-                                }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.device_error_retry),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = RoundedFontFamily,
-                                color = ClumoColors.White,
-                            )
+                        if (state == ConnectionState.Error) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(ClumoColors.Coral)
+                                    .clickable {
+                                        when (failure) {
+                                            ConnectionFailure.PermissionDenied -> settingsLauncher.launch(
+                                                Intent(
+                                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                    Uri.parse("package:${context.packageName}"),
+                                                )
+                                            )
+                                            ConnectionFailure.BluetoothDisabled -> settingsLauncher.launch(
+                                                Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                                            )
+                                            else -> service.registry.connect(address, scannedName)
+                                        }
+                                    }
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                            ) {
+                                Text(
+                                    text = when (failure) {
+                                        ConnectionFailure.PermissionDenied,
+                                        ConnectionFailure.BluetoothDisabled -> stringResource(R.string.action_open_settings)
+                                        else -> stringResource(R.string.device_error_retry)
+                                    },
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = RoundedFontFamily,
+                                    color = ClumoColors.White,
+                                )
+                            }
                         }
                     }
                 }
@@ -432,6 +524,53 @@ fun DeviceScreen(
                 }
             }
         }
+    }
+
+    val blockingFailure = failure?.takeIf {
+        it == ConnectionFailure.BluetoothUnavailable ||
+            it == ConnectionFailure.PermissionDenied ||
+            it == ConnectionFailure.BluetoothDisabled ||
+            it == ConnectionFailure.PairingFailed ||
+            it == ConnectionFailure.IncompatibleDevice
+    }
+    if (state == ConnectionState.Error &&
+        blockingFailure != null &&
+        dismissedDialogFailure != blockingFailure
+    ) {
+        val confirmText = when (blockingFailure) {
+            ConnectionFailure.PermissionDenied,
+            ConnectionFailure.BluetoothDisabled,
+            ConnectionFailure.PairingFailed -> stringResource(R.string.action_open_settings)
+            ConnectionFailure.BluetoothUnavailable,
+            ConnectionFailure.IncompatibleDevice -> stringResource(R.string.action_back_to_list)
+            else -> stringResource(R.string.action_retry)
+        }
+        ClumoActionDialog(
+            title = stringResource(R.string.connection_dialog_title),
+            body = failureMessage,
+            confirmText = confirmText,
+            onConfirm = {
+                dismissedDialogFailure = blockingFailure
+                when (blockingFailure) {
+                    ConnectionFailure.PermissionDenied -> settingsLauncher.launch(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:${context.packageName}"),
+                        )
+                    )
+                    ConnectionFailure.BluetoothDisabled -> settingsLauncher.launch(
+                        Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                    )
+                    ConnectionFailure.PairingFailed -> settingsLauncher.launch(
+                        Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                    )
+                    ConnectionFailure.BluetoothUnavailable,
+                    ConnectionFailure.IncompatibleDevice -> onBack()
+                    else -> service.registry.connect(address, scannedName)
+                }
+            },
+            onDismiss = { dismissedDialogFailure = blockingFailure },
+        )
     }
 
     if (renameOpen) {

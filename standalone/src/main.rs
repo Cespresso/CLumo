@@ -40,9 +40,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     log::info!("Buttons initialized (red=GPIO3, white=GPIO4)");
 
-    // Create handler for current mode
-    let mut handler = handlers::create_handler(mode_manager.current());
-    display.show(&handler.on_enter());
+    let mut runtime = handlers::Runtime::new();
+    display.show(&runtime.on_enter(mode_manager.current()));
 
     // Main loop
     loop {
@@ -55,11 +54,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Err(e) = mode_manager.switch_to(next) {
                 log::error!("Failed to switch mode: {:?}", e);
             }
-            handler = handlers::create_handler(mode_manager.current());
             // Mode icon splash, then hand over to the handler
             display.show(&mode_manager.current().icon());
             FreeRtos::delay_ms(500);
-            display.show(&handler.on_enter());
+            display.show(&runtime.on_enter(mode_manager.current()));
             None // consume the press
         } else {
             white_press
@@ -68,15 +66,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Mode-specific button handling
         if let Some(press) = red_press {
             log::info!("[{}] Red: {:?}", mode_manager.current().name(), press);
-            handler.on_red_button(press);
+            runtime.on_red_button(mode_manager.current(), press);
         }
         if let Some(press) = white_press {
             log::info!("[{}] White: {:?}", mode_manager.current().name(), press);
-            handler.on_white_button(press);
+            runtime.on_white_button(mode_manager.current(), press);
         }
 
         // Display update
-        if let Some(frame) = handler.tick() {
+        if let Some(frame) = runtime.tick(mode_manager.current()) {
             display.show(&frame);
         }
 

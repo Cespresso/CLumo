@@ -18,7 +18,7 @@ Works with just the two buttons; no Bluetooth or phone setup.
 - Pomodoro timer: 25/5 work-break cycles on the LED matrix
 - Dice: roll a die with one press
 
-Hold one of the two buttons to cycle between modes; the [standalone README](standalone/) lists what each button does in each mode. Your current mode and pet state survive power cycles.
+Hold one of the two buttons to cycle between modes; the [standalone README](standalone/) lists what each button does in each mode. A running pomodoro and the pet's mood carry across a mode switch, and the mode itself survives a power cycle.
 
 ### 2. Companion firmware + Android app
 

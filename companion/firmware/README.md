@@ -4,7 +4,7 @@ Firmware for CLumo, an ESP32-C3 desk gadget with an 8x8 LED matrix (MAX7219)
 and two physical buttons. It pairs with the CLumo Android companion app over
 BLE; the device's four modes map 1:1 to the app's functions.
 
-This document is the source of truth for the BLE protocol (v2).
+This document is the source of truth for the BLE protocol (v3).
 
 ## Hardware
 
@@ -20,8 +20,8 @@ This document is the source of truth for the BLE protocol (v2).
 |-------|------------|-------------|---------|
 | 0     | Pomodoro   | Work/break countdown with app-settable durations. The matrix is a 64-pixel progress bar. | Main: start/pause/resume. Sub: reset. |
 | 1     | Timer      | One-shot countdown configurable from `00:01` to `59:59`. At `00:00`, the matrix blinks every 400 ms until operated. | Main: start/pause/resume/restart. Sub: cancel. |
-| 2     | Display    | Shows the last 8-byte bitmap committed to the DISPLAY characteristic (see preview/commit below). Persisted in NVS across reboots; blank until the first bitmap arrives. | Reported over BUTTON; the app cycles its saved patterns. |
-| 3     | Visualizer | Bar visualizer driven by column heights streamed to the DISPLAY characteristic. The matrix stays blank until data arrives; bars rise instantly, fall smoothly, and decay to zero when data stops. | Reported over BUTTON; the app steps visualizer sensitivity. |
+| 2     | Display    | Shows the 8-byte bitmap last committed over DISPLAY_FRAME, with DISPLAY_PREVIEW frames drawn on top until they expire. Persisted in NVS across reboots; blank until the first commit arrives. | Reported over BUTTON; the app cycles its saved patterns. |
+| 3     | Visualizer | Bar visualizer driven by column heights streamed to the VISUALIZER characteristic. The matrix stays blank until data arrives; bars rise instantly, fall smoothly, and decay to zero when data stops. | Reported over BUTTON; the app steps visualizer sensitivity. |
 
 Modes are selected by the Android companion app through the MODE characteristic;
 buttons never change the mode. A mode change immediately shows the selected
@@ -70,8 +70,8 @@ cargo run
 
 ## Testing
 
-`lib.rs` exposes the mode-agnostic modules (`countdown`, `display_state`,
-`display_commit_policy`, `mode_values`, `settings_values`, `visualizer_values`) so
+`lib.rs` exposes the mode-agnostic modules (`countdown`, `display_routing`,
+`display_state`, `mode_values`, `settings_values`, `visualizer_values`) so
 they can be unit tested on the host, without ESP-IDF. `--target` must override the
 crate's default ESP32 target:
 
@@ -94,7 +94,7 @@ CI runs this on every push and PR (`firmware-ci.yml`). `handlers/`, `mode.rs`, a
   CLumo's app at all) is force-disconnected after 60s, so a real client isn't
   locked out until power-cycle.
 
-## BLE protocol v2
+## BLE protocol v3
 
 ### State ownership
 
@@ -104,7 +104,7 @@ a fresh read on every reconnect. Everything the app owns locally never reaches t
 device at all. Nothing is owned by both sides: where two representations of the
 same fact exist (Display's live preview vs. its committed frame), one is always an
 explicit, expiring projection of the other, never an independent second source
-(see preview/commit below).
+(see "Commit, preview and streams" below).
 
 | State | Owner | On reconnect |
 |---|---|---|
@@ -112,7 +112,7 @@ explicit, expiring projection of the other, never an independent second source
 | Brightness | Device (NVS `STATE`) | Same as Mode |
 | Pomodoro/Timer: running state, phase, remaining time | Device only; not persisted, resets to idle on reboot | App re-reads POMODORO/TIMER |
 | Pomodoro durations, Timer configured duration | Device (NVS, one namespace per handler) | App re-reads POMODORO/TIMER |
-| Display: which 8-byte frame is on the matrix | Device (NVS `DISPLAY`, committed frame only; a live preview is never persisted) | App re-reads DISPLAY, which returns the committed frame (see preview/commit below) |
+| Display: which 8-byte frame is on the matrix | Device (NVS `DISPLAY`, committed frame only; a live preview is never persisted) | App subscribes to DISPLAY_FRAME and re-reads it; the value is the committed frame, never a live preview |
 | Display: pattern names and the app's saved-pattern library | App only; the device has no concept of a pattern, only bytes | Not applicable; the app matches its library against the frame it reads by content |
 | Visualizer sensitivity, automatic low-volume boost | App only; a local audio-processing parameter, never sent to the device | Not applicable |
 | Device alias, appearance (colors) | App only; cosmetic and local | Not applicable |
@@ -132,15 +132,31 @@ pattern's name), the app owns it and never sends it.
 
 ### Characteristics
 
-| Name       | UUID | Properties | Payload |
-|------------|------|------------|---------|
-| MODE       | `681285a6-247f-48c6-80ad-68c3dce18586` | READ, WRITE, NOTIFY | 1 byte: mode `0..=3`. Write switches mode. A same-value Display write commits the current preview. Firmware notifies after an accepted mode change. Invalid values are ignored. |
-| DISPLAY    | `681285a6-247f-48c6-80ad-68c3dce18585` | READ, WRITE, WRITE_NR | 8 bytes, interpreted by the current mode (see below). Ignored in Pomodoro and Timer modes. READ returns the last **committed** frame, never a live preview. |
-| POMODORO   | `681285a6-247f-48c6-80ad-68c3dce18587` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 6-byte status (below). |
-| BRIGHTNESS | `681285a6-247f-48c6-80ad-68c3dce18588` | READ, WRITE, NOTIFY | 1 byte: MAX7219 intensity, clamped to `0..=15`. Firmware echoes the applied value via notify. |
-| DEVICE_ID  | `681285a6-247f-48c6-80ad-68c3dce18589` | READ | 16 bytes: stable UUIDv4 device identifier, generated on first boot and persisted in NVS. |
-| TIMER      | `681285a6-247f-48c6-80ad-68c3dce1858a` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 5-byte status (below). |
-| BUTTON     | `681285a6-247f-48c6-80ad-68c3dce1858b` | NOTIFY | 2 bytes `[mode, button]`: a button press in a mode the firmware does not handle itself (see below). |
+| Name            | UUID | Properties | Payload |
+|-----------------|------|------------|---------|
+| MODE            | `681285a6-247f-48c6-80ad-68c3dce18586` | READ, WRITE, NOTIFY | 1 byte: mode `0..=3`. Write switches mode; a same-value write is a no-op. Firmware notifies after an accepted mode change. Invalid values are ignored. |
+| DISPLAY_PREVIEW | `681285a6-247f-48c6-80ad-68c3dce1858d` | WRITE_NR | 8 bytes: a row bitmap shown at once and never persisted. Ignored outside Display mode. |
+| DISPLAY_FRAME   | `681285a6-247f-48c6-80ad-68c3dce1858c` | READ, WRITE, NOTIFY | 8 bytes: the committed row bitmap. Write commits in any mode (see below). READ returns the committed frame, never a live preview. Notifies on every commit. |
+| VISUALIZER      | `681285a6-247f-48c6-80ad-68c3dce1858e` | WRITE_NR | 8 bytes: column heights `0..=8`. Ignored outside Visualizer mode. |
+| POMODORO        | `681285a6-247f-48c6-80ad-68c3dce18587` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 6-byte status (below). |
+| TIMER           | `681285a6-247f-48c6-80ad-68c3dce1858a` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 5-byte status (below). |
+| BRIGHTNESS      | `681285a6-247f-48c6-80ad-68c3dce18588` | READ, WRITE, NOTIFY | 1 byte: MAX7219 intensity, clamped to `0..=15`. Firmware echoes the applied value via notify. |
+| DEVICE_ID       | `681285a6-247f-48c6-80ad-68c3dce18589` | READ | 16 bytes: stable UUIDv4 device identifier, generated on first boot and persisted in NVS. |
+| BUTTON          | `681285a6-247f-48c6-80ad-68c3dce1858b` | NOTIFY | 2 bytes `[mode, button]`: a button press in a mode the firmware does not handle itself (see below). |
+
+Characteristics are created in the table's order, and ATT handles follow creation
+order. The v2 `DISPLAY` characteristic (`…8585`) is gone, and DISPLAY_FRAME's notify
+adds a CCCD, so every handle after MODE differs from v2. A client that rediscovers
+services finds `…8585` missing and rejects the device (the Android app refreshes its
+GATT cache once when a required characteristic is missing, then gives up); a v3 app
+does the same on v2 firmware. A bonded client that trusts a stale cache instead
+writes at the handles it remembers. Its DISPLAY value handle is now DISPLAY_PREVIEW's
+value: volatile, ignored outside Display mode, never persisted. Its POMODORO command
+handle is now DISPLAY_FRAME's value, where every v2 command is shorter than 8 bytes
+and is rejected with `0x0D` instead of committed. And its TIMER read lands on
+VISUALIZER's value, which cannot be read, so its initial sync never completes and it
+never streams. Either way no v2 display data can reach NVS, which is the failure v3
+exists to remove.
 
 **Add new characteristics at the end of the service, never in the middle.** NimBLE
 assigns ATT handles in creation order, so inserting a characteristic ahead of an
@@ -150,38 +166,51 @@ wrong attribute. This is what broke reconnection entirely when BUTTON was first
 added ahead of DEVICE_ID. Appending leaves every existing handle untouched, so clients
 upgrading from older firmware keep working; they just do not see the new
 characteristic until their cache is refreshed. The companion app forces exactly one
-refresh when a known-optional characteristic is missing, which is how the new
-features come alive after a firmware upgrade without re-pairing.
+refresh when a characteristic it requires or knows as optional is missing from its
+cache, which is how the new features come alive after a firmware upgrade without
+re-pairing. v3 broke this rule once, on purpose: the three display characteristics
+were placed together after MODE, with the preview stream first so that a v2 client
+keeping its cached handles writes its frames into a volatile stream and its short
+commands into a characteristic that rejects them, instead of committing into
+DISPLAY_FRAME. Three characteristics replace one, so every handle from DISPLAY_FRAME
+on was moving regardless. From v3 on, the rule holds again.
 
-### DISPLAY payload interpretation
+### Frame payloads
 
-- **Display mode (2)**: row bitmap. Byte 0 = top row, byte 7 = bottom row.
-  Within a byte, bit 7 (MSB) = leftmost column, bit 0 = rightmost column.
-- **Visualizer mode (3)**: column heights. Byte 0 = leftmost column, byte 7 =
-  rightmost column. Each byte is a height `0..=8` (values above 8 are clamped).
-- **Pomodoro (0) and Timer (1)**: ignored.
+- **DISPLAY_FRAME and DISPLAY_PREVIEW**: row bitmap. Byte 0 = top row, byte 7 = bottom
+  row. Within a byte, bit 7 (MSB) = leftmost column, bit 0 = rightmost column.
+- **VISUALIZER**: column heights. Byte 0 = leftmost column, byte 7 = rightmost column.
+  Each byte is a height `0..=8` (values above 8 are clamped).
 
-Use WRITE_NR (write without response) for high-rate visualizer and Display-preview
-streaming.
+A DISPLAY_FRAME write shorter than 8 bytes is rejected with ATT error `0x0D` (invalid
+attribute value length), so the readable committed frame is never replaced by a short
+payload. It is also what keeps a stale v2 client's POMODORO commands, which land on
+this handle, out of NVS. Short writes to the two streams are logged and dropped; they
+have no readable value and write-without-response carries no error. Longer writes are
+accepted and only the first 8 bytes are used.
 
-### Display preview and commit
+### Commit, preview and streams
 
-Legacy v2 clients get the original behavior: every DISPLAY write is persisted.
+A write to DISPLAY_FRAME is a commit: the frame becomes the committed frame in any
+mode, is written to NVS when it differs from the previous one, replaces any pending
+preview, and is pushed to DISPLAY_FRAME subscribers whether or not it changed, so a
+client's pending write is always answered. Display repaints on its next tick if it
+is already on the matrix, and shows the frame on entry otherwise. A commit whose NVS
+write fails is still notified as accepted: the frame is committed in memory and
+shown, and the failure surfaces only as the previous frame returning after a reboot,
+with a warning in the firmware log.
 
-A client that supports high-rate preview opts in, once per Display entry, by writing
-the current `MODE = 2` value after initial sync, or by writing `MODE = 2` twice when
-entering Display. The opt-in does not carry across a mode change: leaving and
-re-entering Display resets it, and the next preview write auto-commits until the
-client repeats the handshake. Once opted in, later DISPLAY writes are visible
-immediately but are not persisted. Another same-value `MODE = 2` write commits the
-current preview. An uncommitted preview is discarded on disconnect, mode change, or
-after 5 seconds without another preview, and the last committed bitmap is restored.
-The Android companion performs this handshake automatically.
+A write to DISPLAY_PREVIEW is shown at once while Display is on the matrix and is
+never persisted. It expires 5 seconds after the last preview, on a mode change, and
+on disconnect, each time restoring the committed frame. Clients keep an edit alive by
+re-sending it inside that window.
 
-ESP-NimBLE does not expose request-vs-command metadata to the server callback, so
-the explicit same-mode MODE write is the commit boundary. Leaving legacy writes
-durable lets live preview avoid wearing NVS without changing the behavior of
-already-installed v2 clients.
+A write to VISUALIZER moves the bars while Visualizer is on the matrix and is
+otherwise dropped.
+
+Nothing rides on MODE besides the mode: there is no announce handshake and no
+same-value commit. Of the three display characteristics, only DISPLAY_FRAME
+reaches NVS.
 
 ### BUTTON notify payload (2 bytes)
 

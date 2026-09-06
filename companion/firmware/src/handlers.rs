@@ -1,4 +1,5 @@
 pub mod display;
+pub mod pomodoro;
 pub mod timer;
 pub mod visualizer;
 
@@ -6,7 +7,7 @@ use esp_idf_hal::sys::EspError;
 use esp_idf_svc::nvs::EspDefaultNvsPartition;
 
 use crate::mode::Mode;
-use crate::utils::bluetooth::TimerCommand;
+use crate::utils::bluetooth::{PomodoroCommand, TimerCommand};
 use crate::utils::button::PressType;
 
 /// Common interface for mode-specific behavior.
@@ -18,18 +19,27 @@ pub trait ModeHandler {
     /// Called on red button press.
     fn on_red_button(&mut self, _press: PressType) {}
 
-    /// Called on white button press (short only; long is consumed by mode cycling).
+    /// Called on white button press. No companion mode currently assigns an action.
     fn on_white_button(&mut self, _press: PressType) {}
 
     /// Called when BLE display data is received.
     fn on_ble_data(&mut self, _data: [u8; 8]) {}
 
-    /// Called when a BLE timer command is received. Only Timer mode reacts.
+    /// Called when a BLE pomodoro command is received. Only Pomodoro mode reacts.
+    fn on_pomodoro_command(&mut self, _cmd: PomodoroCommand) {}
+
+    /// Returns a pomodoro status frame pending delivery to BLE clients, if any.
+    /// Only Pomodoro mode produces status frames.
+    fn poll_pomodoro_status(&mut self) -> Option<[u8; 6]> {
+        None
+    }
+
+    /// Called when a BLE countdown timer command is received. Only Timer mode reacts.
     fn on_timer_command(&mut self, _cmd: TimerCommand) {}
 
-    /// Returns a timer status frame pending delivery to BLE clients, if any.
+    /// Returns a countdown timer status frame pending delivery to BLE clients, if any.
     /// Only Timer mode produces status frames.
-    fn poll_timer_status(&mut self) -> Option<[u8; 6]> {
+    fn poll_timer_status(&mut self) -> Option<[u8; 5]> {
         None
     }
 
@@ -43,7 +53,8 @@ pub fn create_handler(
     nvs_partition: EspDefaultNvsPartition,
 ) -> Result<Box<dyn ModeHandler>, EspError> {
     let handler: Box<dyn ModeHandler> = match mode {
-        Mode::Timer => Box::new(timer::TimerHandler::new(nvs_partition)?),
+        Mode::Pomodoro => Box::new(pomodoro::PomodoroHandler::new(nvs_partition)?),
+        Mode::Timer => Box::new(timer::TimerHandler::new()),
         Mode::Display => Box::new(display::DisplayHandler::new(nvs_partition)?),
         Mode::Visualizer => Box::new(visualizer::VisualizerHandler::new()),
     };

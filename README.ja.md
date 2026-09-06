@@ -24,7 +24,8 @@ CLumo には独立した2種類のファームウェアがあります。どち�
 
 BLE で Android アプリ「**CLumo**」と連携し、より多機能に使えます。
 
-- **タイマー** — 時間はアプリから設定。残り時間に応じてピクセルが少しずつ消えていく表示
+- **ポモドーロ** — 作業・休憩時間をアプリから設定し、残り時間を64ピクセルで表示
+- **タイマー** — `00:01`〜`59:59`を指定できる1回式カウントダウン。開始・一時停止・再開・キャンセルに対応
 - **マイ表示** — アプリで描いた 8x8 パターンをデバイスに送信
 - **オーディオビジュアライザ** — スマホの音に合わせてマトリクスが踊ります
 
@@ -40,7 +41,7 @@ BLE で Android アプリ「**CLumo**」と連携し、より多機能に使え�
 | パス | 内容 |
 |---|---|
 | [`standalone/`](standalone/) | 単独版ファームウェア（Rust・BLE なし）: ペット / ポモドーロ / サイコロ |
-| [`companion/firmware/`](companion/firmware/) | 協調版ファームウェア（Rust + BLE）: タイマー / マイ表示 / ビジュアライザ |
+| [`companion/firmware/`](companion/firmware/) | 協調版ファームウェア（Rust + BLE）: ポモドーロ / タイマー / マイ表示 / ビジュアライザ |
 | [`companion/android/`](companion/android/) | CLumo Android アプリ（Kotlin・Gradle） |
 | [`installer/`](installer/) | ブラウザ書き込みページ（ESP Web Tools・GitHub Pages で配信） |
 | [`hardware/`](hardware/) | 外装 3D モデル・配線図 — 近日公開 |

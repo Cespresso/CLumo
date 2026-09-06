@@ -63,19 +63,32 @@
     <string name="action_retry">もう一度試す</string>
     <string name="action_back_to_list">一覧に戻る</string>
     <string name="device_brightness">明るさ</string>
+    <string name="seg_pomodoro">ポモドーロ</string>
     <string name="seg_timer">タイマー</string>
     <string name="seg_patterns">マイ表示</string>
     <string name="seg_viz">ビジュアライザ</string>
 
+    <!-- Pomodoro -->
+    <string name="pomodoro_phase_work">作業中</string>
+    <string name="pomodoro_phase_break">休憩中</string>
+    <string name="pomodoro_work_label">作業</string>
+    <string name="pomodoro_break_label">休憩</string>
+    <string name="pomodoro_minutes_unit">分</string>
+    <string name="pomodoro_start">開始</string>
+    <string name="pomodoro_pause">一時停止</string>
+    <string name="pomodoro_reset">リセット</string>
+
     <!-- Timer -->
-    <string name="timer_phase_work">作業中</string>
-    <string name="timer_phase_break">休憩中</string>
-    <string name="timer_work_label">作業</string>
-    <string name="timer_break_label">休憩</string>
-    <string name="timer_minutes_unit">分</string>
+    <string name="timer_state_idle">準備完了</string>
+    <string name="timer_state_running">実行中</string>
+    <string name="timer_state_paused">一時停止中</string>
+    <string name="timer_state_completed">完了</string>
+    <string name="timer_minutes_label">分</string>
+    <string name="timer_seconds_label">秒</string>
     <string name="timer_start">開始</string>
     <string name="timer_pause">一時停止</string>
-    <string name="timer_reset">リセット</string>
+    <string name="timer_resume">再開</string>
+    <string name="timer_cancel">キャンセル</string>
 
     <!-- Patterns -->
     <string name="patterns_add_new">あたらしい表示</string>

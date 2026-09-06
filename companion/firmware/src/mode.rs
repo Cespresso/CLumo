@@ -1,44 +1,39 @@
 use esp_idf_hal::sys::EspError;
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 
-use crate::assets;
+use crate::mode_values::{decode_mode, migrate_legacy_mode};
+
+pub use crate::mode_values::MODE_COUNT;
+
+const MODE_KEY: &str = "MODE";
+const MODE_SCHEMA_KEY: &str = "MODE_SCHEMA";
+const MODE_SCHEMA_VERSION: u8 = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Mode {
-    Timer = 0,
-    Display = 1,
-    Visualizer = 2,
+    Pomodoro = 0,
+    Timer = 1,
+    Display = 2,
+    Visualizer = 3,
 }
-
-pub const MODE_COUNT: u8 = 3;
 
 impl Mode {
     pub fn from_u8(value: u8) -> Self {
-        match value {
-            1 => Mode::Display,
-            2 => Mode::Visualizer,
-            _ => Mode::Timer,
+        match decode_mode(value) {
+            1 => Mode::Timer,
+            2 => Mode::Display,
+            3 => Mode::Visualizer,
+            _ => Mode::Pomodoro,
         }
     }
 
     pub fn name(&self) -> &'static str {
         match self {
+            Mode::Pomodoro => "Pomodoro",
             Mode::Timer => "Timer",
             Mode::Display => "Display",
             Mode::Visualizer => "Visualizer",
-        }
-    }
-
-    pub fn next(self) -> Self {
-        Mode::from_u8((self as u8 + 1) % MODE_COUNT)
-    }
-
-    pub fn icon(&self) -> [u8; 8] {
-        match self {
-            Mode::Timer => assets::ICON_TIMER,
-            Mode::Display => assets::ICON_DISPLAY,
-            Mode::Visualizer => assets::ICON_VISUALIZER,
         }
     }
 }
@@ -50,15 +45,27 @@ pub struct ModeManager {
 
 impl ModeManager {
     pub fn new(nvs: EspNvs<NvsDefault>) -> Result<Self, EspError> {
-        let current_mode = match nvs.get_u8("MODE")? {
-            Some(v) => {
-                let mode = Mode::from_u8(v);
+        let stored_mode = nvs.get_u8(MODE_KEY)?;
+        let schema = nvs.get_u8(MODE_SCHEMA_KEY)?.unwrap_or(1);
+        let mode_value = if schema < MODE_SCHEMA_VERSION {
+            let migrated = stored_mode.map(migrate_legacy_mode).unwrap_or(0);
+            if stored_mode.is_some() {
+                nvs.set_u8(MODE_KEY, migrated)?;
+            }
+            nvs.set_u8(MODE_SCHEMA_KEY, MODE_SCHEMA_VERSION)?;
+            migrated
+        } else {
+            stored_mode.unwrap_or(0)
+        };
+        let current_mode = match stored_mode {
+            Some(_) => {
+                let mode = Mode::from_u8(mode_value);
                 log::info!("Loaded mode from NVS: {}", mode.name());
                 mode
             }
             None => {
-                log::info!("No saved mode, defaulting to Timer");
-                Mode::Timer
+                log::info!("No saved mode, defaulting to Pomodoro");
+                Mode::Pomodoro
             }
         };
         Ok(Self { current_mode, nvs })
@@ -74,7 +81,7 @@ impl ModeManager {
         }
         log::info!("Mode: {} -> {}", self.current_mode.name(), new_mode.name());
         self.current_mode = new_mode;
-        self.nvs.set_u8("MODE", new_mode as u8)?;
+        self.nvs.set_u8(MODE_KEY, new_mode as u8)?;
         Ok(())
     }
 }

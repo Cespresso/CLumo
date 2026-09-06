@@ -2,7 +2,23 @@ package io.github.cespresso.clumo.data.ble
 
 import java.util.UUID
 
-/** BLE protocol v1 identifiers for the CLumo firmware. */
+internal enum class GattCompatibilityAction {
+    ACCEPT,
+    REFRESH_CACHE,
+    REJECT,
+}
+
+internal fun gattCompatibilityAction(
+    discovered: Set<UUID>,
+    required: Set<UUID>,
+    cacheRefreshAttempted: Boolean,
+): GattCompatibilityAction = when {
+    discovered.containsAll(required) -> GattCompatibilityAction.ACCEPT
+    !cacheRefreshAttempted -> GattCompatibilityAction.REFRESH_CACHE
+    else -> GattCompatibilityAction.REJECT
+}
+
+/** BLE protocol v2 identifiers for the CLumo firmware. */
 object BleUuids {
     const val DEVICE_NAME_PREFIX = "CLumo"
 
@@ -14,8 +30,11 @@ object BleUuids {
     /** READ | WRITE | NOTIFY: u8 mode. */
     val MODE: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18586")
 
-    /** READ | WRITE | NOTIFY: timer commands / 6-byte status. */
-    val TIMER: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18587")
+    /** READ | WRITE | NOTIFY: pomodoro commands / 6-byte status. */
+    val POMODORO: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18587")
+
+    /** READ | WRITE | NOTIFY: countdown timer commands / 5-byte status. */
+    val TIMER: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce1858a")
 
     /** READ | WRITE | NOTIFY: u8 0..15. */
     val BRIGHTNESS: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18588")
@@ -25,12 +44,25 @@ object BleUuids {
 
     val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
-    const val MODE_TIMER = 0
-    const val MODE_DISPLAY = 1
-    const val MODE_VISUALIZER = 2
+    const val MODE_POMODORO = 0
+    const val MODE_TIMER = 1
+    const val MODE_DISPLAY = 2
+    const val MODE_VISUALIZER = 3
+    val MODE_ORDER = listOf(MODE_POMODORO, MODE_TIMER, MODE_DISPLAY, MODE_VISUALIZER)
+
+    const val POMODORO_CMD_START = 0x01
+    const val POMODORO_CMD_PAUSE = 0x02
+    const val POMODORO_CMD_RESET = 0x03
+    const val POMODORO_CMD_SET_DURATIONS = 0x10
 
     const val TIMER_CMD_START = 0x01
     const val TIMER_CMD_PAUSE = 0x02
-    const val TIMER_CMD_RESET = 0x03
-    const val TIMER_CMD_SET_DURATIONS = 0x10
+    const val TIMER_CMD_CANCEL = 0x03
+    const val TIMER_CMD_SET_DURATION = 0x10
+
+    fun timerSetDurationPayloadOrNull(minutes: Int, seconds: Int): ByteArray? {
+        if (minutes !in 0..59 || seconds !in 0..59) return null
+        if (minutes == 0 && seconds == 0) return null
+        return byteArrayOf(TIMER_CMD_SET_DURATION.toByte(), minutes.toByte(), seconds.toByte())
+    }
 }

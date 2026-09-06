@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use crate::assets;
+use crate::visualizer_values;
 
 use super::ModeHandler;
 
@@ -52,7 +52,7 @@ impl VisualizerHandler {
 
 impl ModeHandler for VisualizerHandler {
     fn on_enter(&mut self) -> [u8; 8] {
-        assets::ICON_VISUALIZER
+        visualizer_values::idle_frame()
     }
 
     fn on_ble_data(&mut self, data: [u8; 8]) {

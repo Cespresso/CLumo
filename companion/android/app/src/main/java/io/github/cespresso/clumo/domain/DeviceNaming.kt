@@ -13,10 +13,10 @@ object DeviceNaming {
     private const val PREFIX = "CLumo-"
 
     /**
-     * A name is CLumo's own only if it looks like one. Firmware that leaves the GAP
-     * name at NimBLE's default, so a phone that read it over GATT stored "nimble" against
-     * the bond and hands that back on every reconnect. Dropping it lets the name derived
-     * from the device id stand instead, without the user having to pair again.
+     * A name is CLumo's own only if it looks like one. A phone stores whatever GAP name it
+     * read over GATT against the bond and hands that back on every reconnect, so firmware
+     * that left the name at NimBLE's default is remembered as "nimble". Dropping such a
+     * name lets the one derived from the device id stand instead.
      */
     fun ownName(raw: String?): String? = raw?.takeIf { it.startsWith(PREFIX) }
 

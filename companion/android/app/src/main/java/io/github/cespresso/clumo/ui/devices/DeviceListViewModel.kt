@@ -183,11 +183,7 @@ class DeviceListViewModel(
         registry.connect(address, name)
     }
 
-    /**
-     * Drops a device from the app: its session, its record, and everything filed against
-     * its id. The Android bond belongs to the system and is left alone. Mirrors the same
-     * action on the device screen.
-     */
+    /** The device screen's own forget action, reachable from the list. */
     fun removeDevice(deviceId: String) {
         val device = repository.get(deviceId) ?: return
         registry.disconnect(device.address)

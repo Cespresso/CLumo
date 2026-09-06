@@ -43,7 +43,7 @@ class DeviceSessionRegistry(
         DeviceConnection(context.applicationContext, address, name)
     },
     private val nowRealtime: () -> Long = SystemClock::elapsedRealtime,
-    /** Called with the old and new firmware id when a known address comes back reset. */
+    /** Called when a known address comes back carrying a different firmware id. */
     private val onIdentitySuperseded: suspend (oldId: String, newId: String) -> Unit = { _, _ -> },
 ) {
     private val _sessions = MutableStateFlow<Map<String, DeviceSession>>(emptyMap())
@@ -89,8 +89,8 @@ class DeviceSessionRegistry(
     private fun wireRepositoryUpsert(session: DeviceSession) =
         scope.launch {
             session.deviceId.filterNotNull().collect { id ->
-                // The same MAC reporting a different id is the same CLumo after a flash erase:
-                // its settings move before the record is replaced, so nothing dangles.
+                // The settings move before the record is replaced; the other order leaves
+                // them filed against an id nothing points at any more.
                 repository.getByAddress(session.address)
                     ?.takeIf { it.id != id }
                     ?.let { onIdentitySuperseded(it.id, id) }

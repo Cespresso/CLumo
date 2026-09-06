@@ -110,9 +110,8 @@ impl TimerHandler {
         )
     }
 
-    /// The frame for the current state: the icon while idle, the bar otherwise.
-    /// Every path out of idle sets `dirty`, so the switch to the bar is drawn even
-    /// though the pixel count does not change.
+    /// Every path out of idle sets `dirty`, so the switch from the icon to the bar
+    /// is drawn even though the pixel count does not change.
     fn frame(&self, lit: u8) -> [u8; 8] {
         if self.timer.state() == CountdownState::Idle {
             assets::ICON_TIMER

@@ -100,12 +100,9 @@ fun DeviceListScreen(
     var pendingAction by remember { mutableStateOf<PendingBluetoothAction?>(null) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showPrimaryHelp by remember { mutableStateOf(false) }
-    // Tidying the list is rare, so it lives in a mode rather than on every card. Reordering
-    // will join it here, where a long press can mean drag without fighting anything else.
     var editing by remember { mutableStateOf(false) }
     var pendingRemoval by remember { mutableStateOf<KnownDeviceCardState?>(null) }
 
-    // Nothing left to tidy, and nothing to leave the mode with.
     if (editing && knownDevices.isEmpty()) editing = false
     BackHandler(enabled = editing) { editing = false }
 
@@ -390,7 +387,6 @@ private fun KnownDeviceCard(
             .background(ClumoColors.White)
             .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(28.dp))
             .combinedClickable(
-                // A card in the mode is a thing being tidied, not a device to open.
                 onClick = { if (!editing) onTap() },
                 onLongClick = onStartEditing,
             )

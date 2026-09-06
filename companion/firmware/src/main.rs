@@ -27,8 +27,6 @@ mod visualizer_values;
 /// Blink interval for the disconnected icon during connection setup (ms).
 const CONNECTION_BLINK_MS: u128 = 400;
 /// Briefly show link loss, then return the matrix to its standalone mode frame.
-/// A device that has never been paired has no app to lose: it keeps the icon up
-/// until a phone pairs or a button puts it to standalone use.
 const DISCONNECTED_NOTICE_MS: u128 = 1_200;
 /// NimBLE advertises only while unconnected, so a client that connects and never
 /// completes the encrypted initial sync locks every other client out until the
@@ -254,6 +252,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
+        // A device that has never bonded has no app to lose, so the notice stays up
+        // until a phone pairs or a button puts the device to standalone use.
         if !ble_connected
             && disconnected_notice_started.is_some_and(|started| {
                 (ble_bonded && started.elapsed().as_millis() >= DISCONNECTED_NOTICE_MS)

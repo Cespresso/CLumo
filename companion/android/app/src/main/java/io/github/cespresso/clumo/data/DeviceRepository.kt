@@ -53,8 +53,6 @@ class DeviceRepository(context: Context) {
                 Device(
                     id = obj.getString("id"),
                     address = obj.getString("address"),
-                    // Filtered on the way in, so a "nimble" stored by an older build stops
-                    // being this device's name without the user having to pair again.
                     name = DeviceNaming.ownName(obj.optString("name")),
                     lastSeenAt = obj.optLong("lastSeenAt"),
                 )

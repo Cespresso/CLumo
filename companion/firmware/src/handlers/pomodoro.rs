@@ -124,7 +124,6 @@ impl PomodoroHandler {
         lit.min(PIXELS_TOTAL) as u8
     }
 
-    /// The frame for the current state: the icon while idle, the bar otherwise.
     fn frame(&self, lit: u8) -> [u8; 8] {
         if self.state == PomodoroState::Idle {
             assets::ICON_POMODORO
@@ -170,8 +169,8 @@ impl PomodoroHandler {
                 self.remaining_ms = self.active_total_secs as u64 * 1000;
                 self.state = PomodoroState::Running;
                 self.last_tick = Instant::now();
-                // The bar starts full, the same pixel count the icon left behind
-                // in last_lit, so only the dirty flag gets it drawn.
+                // last_lit already holds the full bar the icon was standing in for,
+                // so nothing but this flag gets the bar drawn.
                 self.dirty = true;
             }
             PomodoroState::Paused => {

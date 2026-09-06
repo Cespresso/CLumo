@@ -401,9 +401,8 @@ impl BluetoothManager {
 
         // Configure and start advertising
         let advertising_name = format!("CLumo-{}", device_id::short(&device_id));
-        // The GAP name is what a phone stores against the bond and shows in its
-        // Bluetooth settings; NimBLE's default is "nimble", which is what the OS
-        // and the app would otherwise display once they read it over GATT.
+        // A phone reads the GAP name over GATT and stores it against the bond.
+        // NimBLE's default is "nimble", which is what it would otherwise remember.
         if let Err(e) = BLEDevice::set_device_name(&advertising_name) {
             log::warn!("Failed to set GAP device name: {:?}", e);
         }

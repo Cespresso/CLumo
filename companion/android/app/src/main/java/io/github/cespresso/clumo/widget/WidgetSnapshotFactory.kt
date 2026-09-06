@@ -41,18 +41,7 @@ object WidgetSnapshotFactory {
         commandFailed: Boolean,
         nowRealtime: Long,
     ): WidgetSnapshot {
-        val base = WidgetSnapshot(
-            link = WidgetLink.Ready,
-            headline = WidgetHeadline.Connecting,
-            subtitle = WidgetSubtitle.None,
-            alias = alias,
-            enclosureArgb = argb(appearance.enclosureColor.value),
-            ctaArgb = argb(appearance.buttonAColor.value),
-            onCtaArgb = contentArgb(accentContentToneFor(appearance.buttonAColor)),
-            knobArgb = argb(appearance.buttonBColor.value),
-            ledArgb = argb(appearance.ledColor.value),
-            updatedAtRealtime = nowRealtime,
-        )
+        val base = identity(alias, appearance, nowRealtime)
 
         // Neither block can be cleared from a widget, so both outrank the connection state.
         if (block != null) {
@@ -88,14 +77,7 @@ object WidgetSnapshotFactory {
 
         // Disconnected is not an attempt in progress, so it must not read as one, and it is
         // the one non-Ready state a widget can act on.
-        if (connectionState == ConnectionState.Disconnected) {
-            return base.copy(
-                link = WidgetLink.Connecting,
-                headline = WidgetHeadline.NotConnected,
-                subtitle = WidgetSubtitle.TapToReconnect,
-                actions = listOf(WidgetAction.Retry),
-            )
-        }
+        if (connectionState == ConnectionState.Disconnected) return base.asDisconnected()
 
         if (connectionState != ConnectionState.Ready) {
             return base.copy(
@@ -140,6 +122,25 @@ object WidgetSnapshotFactory {
             )
         }
     }
+
+    /**
+     * The part of a snapshot the link has no say in: who the device is and what it looks like.
+     * Every state [create] produces is a copy of this, and so is what a widget draws once a
+     * snapshot has aged out.
+     */
+    fun identity(alias: String, appearance: DeviceAppearance, nowRealtime: Long): WidgetSnapshot =
+        WidgetSnapshot(
+            link = WidgetLink.Ready,
+            headline = WidgetHeadline.Connecting,
+            subtitle = WidgetSubtitle.None,
+            alias = alias,
+            enclosureArgb = argb(appearance.enclosureColor.value),
+            ctaArgb = argb(appearance.buttonAColor.value),
+            onCtaArgb = contentArgb(accentContentToneFor(appearance.buttonAColor)),
+            knobArgb = argb(appearance.buttonBColor.value),
+            ledArgb = argb(appearance.ledColor.value),
+            updatedAtRealtime = nowRealtime,
+        )
 
     private fun pomodoroState(
         base: WidgetSnapshot,

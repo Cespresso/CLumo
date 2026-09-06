@@ -1,5 +1,6 @@
 package io.github.cespresso.clumo.widget
 
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.FaceBits
 
 /** How usable the link to the primary device is right now. */
@@ -123,18 +124,30 @@ fun WidgetSnapshot.isStale(nowRealtime: Long): Boolean =
     nowRealtime < updatedAtRealtime ||
         nowRealtime - updatedAtRealtime > STALE_THRESHOLD_MS
 
-/** What a widget draws before the service has ever published, and once a snapshot goes stale. */
-fun disconnectedSnapshot(): WidgetSnapshot =
-    WidgetSnapshot(
+/**
+ * This snapshot's device with its link gone. Identity — the alias and the appearance colors —
+ * stays, since preferences do not expire; everything the link was reporting is dropped. The
+ * factory and the staleness path both end here, so a widget draws the same thing whether the
+ * publisher said "disconnected" or simply went quiet.
+ */
+fun WidgetSnapshot.asDisconnected(): WidgetSnapshot =
+    copy(
         link = WidgetLink.Connecting,
         headline = WidgetHeadline.NotConnected,
         subtitle = WidgetSubtitle.TapToReconnect,
+        subtitleText = "",
+        subtitleArgA = 0,
+        subtitleArgB = 0,
+        faceBits = FaceBits.EMPTY,
+        faceDimmed = false,
+        facePlaceholder = false,
+        backgroundTimerActive = false,
+        family = WidgetFamily.Neither,
         actions = listOf(WidgetAction.Retry),
-        enclosureArgb = 0xFF7E9E7C.toInt(),
-        ctaArgb = 0xFFE8907E.toInt(),
-        // The default coral sits below the light-content threshold, so its label is white.
-        onCtaArgb = 0xFFFFFFFF.toInt(),
-        knobArgb = 0xFFFFFFFF.toInt(),
-        ledArgb = 0xFFF0A35E.toInt(),
-        updatedAtRealtime = 0L,
     )
+
+/** What a widget draws before the service has ever published: no device to name, default colors. */
+fun disconnectedSnapshot(): WidgetSnapshot =
+    WidgetSnapshotFactory
+        .identity(alias = "", appearance = DeviceAppearance.DEFAULT, nowRealtime = 0L)
+        .asDisconnected()

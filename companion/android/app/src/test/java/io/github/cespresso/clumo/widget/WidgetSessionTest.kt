@@ -1,5 +1,6 @@
 package io.github.cespresso.clumo.widget
 
+import io.github.cespresso.clumo.domain.FaceBits
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -33,7 +34,7 @@ class WidgetSessionTest {
         clock: () -> Long = { now },
     ): List<WidgetSnapshot?> =
         runBlocking {
-            flowOf(*emissions).freshContentOnly(clock).toList()
+            flowOf(*emissions).agedContentOnly(clock).toList()
         }
 
     @Test
@@ -60,18 +61,32 @@ class WidgetSessionTest {
 
     @Test
     fun goingStaleStillReachesTheWidget() {
-        // The staleness check runs before the timestamp filter, so an unchanged snapshot
-        // whose clock has run out still flips the widget to the disconnected fallback.
+        // The aging runs before the timestamp filter, so an unchanged snapshot whose clock
+        // has run out still moves the widget, to its device with the link gone.
         var now = 1_000L
         val emitted = collect(snapshot(500L), snapshot(500L), clock = {
             now.also { now += STALE_THRESHOLD_MS }
         })
-        assertEquals(listOf(snapshot(500L), null), emitted)
+        assertEquals(listOf(snapshot(500L), snapshot(500L).asDisconnected()), emitted)
     }
 
     @Test
-    fun aStaleSeedIsNotDrawn() {
-        assertEquals(null, snapshot(500L).freshOrNull(500L + STALE_THRESHOLD_MS + 1L))
-        assertEquals(snapshot(500L), snapshot(500L).freshOrNull(600L))
+    fun aStaleSeedIsDrawnAsItsDeviceDisconnected() {
+        val aged = snapshot(500L).aged(500L + STALE_THRESHOLD_MS + 1L)
+        assertEquals(snapshot(500L).asDisconnected(), aged)
+        assertEquals(snapshot(500L), snapshot(500L).aged(600L))
+    }
+
+    @Test
+    fun agingKeepsTheIdentityAndDropsTheLink() {
+        val aged = snapshot(500L).aged(500L + STALE_THRESHOLD_MS + 1L)
+        // The colors and the name came from preferences, which do not expire.
+        assertEquals("つくえ", aged.alias)
+        assertEquals(0xFF7E9E7C.toInt(), aged.enclosureArgb)
+        assertEquals(0xFFE8907E.toInt(), aged.ctaArgb)
+        // The pomodoro the link was reporting is what went stale.
+        assertEquals(WidgetHeadline.NotConnected, aged.headline)
+        assertEquals(listOf(WidgetAction.Retry), aged.actions)
+        assertEquals(FaceBits.EMPTY, aged.faceBits)
     }
 }

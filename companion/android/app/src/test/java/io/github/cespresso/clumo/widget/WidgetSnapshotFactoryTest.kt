@@ -203,6 +203,16 @@ class WidgetSnapshotFactoryTest {
     }
 
     @Test
+    fun disconnectedIsWhatAgingALiveSnapshotProduces() {
+        // The factory and the staleness path share one definition, so a widget cannot tell
+        // "the publisher said disconnected" from "the publisher went quiet".
+        assertEquals(
+            create(connectionState = ConnectionState.Disconnected),
+            create(pomodoro = running).asDisconnected(),
+        )
+    }
+
+    @Test
     fun state10_errorOffersRetry() {
         val s = create(connectionState = ConnectionState.Error)
         assertEquals(WidgetLink.Failed, s.link)

@@ -2,6 +2,7 @@ package io.github.cespresso.clumo.widget
 
 import io.github.cespresso.clumo.design.ContentTone
 import io.github.cespresso.clumo.design.accentContentToneFor
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.RgbColor
 import org.junit.Assert.assertEquals
@@ -81,14 +82,47 @@ class WidgetSnapshotTest {
     }
 
     @Test
-    fun theFallbackAgreesWithTheFactoryOnItsOwnCtaTone() {
-        // The fallback hardcodes its colors, so nothing else checks that its label tone
-        // is the one the appearance rule would have produced for that fill.
-        val fallback = disconnectedSnapshot()
-        val expected = when (accentContentToneFor(RgbColor.of(fallback.ctaArgb))) {
-            ContentTone.Dark -> 0xFF3E3A36.toInt()
-            ContentTone.Light -> 0xFFFFFFFF.toInt()
-        }
-        assertEquals(expected, fallback.onCtaArgb)
+    fun theFallbackIsTheDefaultAppearanceDisconnected() {
+        // One definition of the disconnected layout, one source for the default colors.
+        val expected = WidgetSnapshotFactory
+            .identity(alias = "", appearance = DeviceAppearance.DEFAULT, nowRealtime = 0L)
+            .asDisconnected()
+        assertEquals(expected, disconnectedSnapshot())
+        assertEquals(
+            ContentTone.Light,
+            accentContentToneFor(RgbColor.of(disconnectedSnapshot().ctaArgb)),
+        )
+    }
+
+    @Test
+    fun asDisconnectedKeepsIdentityAndClearsEverythingTheLinkReported() {
+        val live = snapshot(1_000L).copy(
+            alias = "つくえ",
+            subtitleArgA = 25,
+            subtitleArgB = 5,
+            faceDimmed = true,
+            backgroundTimerActive = true,
+            family = WidgetFamily.Pomodoro,
+        )
+        val gone = live.asDisconnected()
+        assertEquals("つくえ", gone.alias)
+        assertEquals(live.enclosureArgb, gone.enclosureArgb)
+        assertEquals(live.ctaArgb, gone.ctaArgb)
+        assertEquals(live.onCtaArgb, gone.onCtaArgb)
+        assertEquals(live.knobArgb, gone.knobArgb)
+        assertEquals(live.ledArgb, gone.ledArgb)
+        assertEquals(live.updatedAtRealtime, gone.updatedAtRealtime)
+
+        assertEquals(WidgetLink.Connecting, gone.link)
+        assertEquals(WidgetHeadline.NotConnected, gone.headline)
+        assertEquals(WidgetSubtitle.TapToReconnect, gone.subtitle)
+        assertEquals("", gone.subtitleText)
+        assertEquals(0, gone.subtitleArgA)
+        assertEquals(0, gone.subtitleArgB)
+        assertEquals(FaceBits.EMPTY, gone.faceBits)
+        assertFalse(gone.faceDimmed)
+        assertFalse(gone.backgroundTimerActive)
+        assertEquals(WidgetFamily.Neither, gone.family)
+        assertEquals(listOf(WidgetAction.Retry), gone.actions)
     }
 }

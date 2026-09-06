@@ -17,10 +17,9 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.service.DeviceHubService
-import io.github.cespresso.clumo.ui.HubViewModel
 import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceScreen
 import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.device.DeviceScreen
@@ -54,36 +53,37 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
         )
+        // Connections have to outlive this activity, so the hub runs as its own foreground
+        // service. Nothing waits on it: the graph it drives is already in the container.
+        DeviceHubService.start(this)
+        val container = appContainer
         setContent {
-            val viewModel: HubViewModel = viewModel()
-            val service by viewModel.service.collectAsState()
-            ClumoTheme(appearance = primaryDeviceAppearance(service)) {
+            ClumoTheme(appearance = primaryDeviceAppearance(container.preferences)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(ClumoColors.Background),
                 ) {
-                    service?.let { AppRoot(it) }
+                    AppRoot(container)
                 }
             }
         }
     }
 }
 
-/** DEFAULT until the service binds and preferences load. */
+/** DEFAULT until preferences load. */
 @Composable
-private fun primaryDeviceAppearance(service: DeviceHubService?): DeviceAppearance {
-    if (service == null) return DeviceAppearance.DEFAULT
-    val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
-    val primaryId by service.preferences.primaryDeviceId.collectAsState(initial = null)
+private fun primaryDeviceAppearance(preferences: AppPreferences): DeviceAppearance {
+    val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
+    val primaryId by preferences.primaryDeviceId.collectAsState(initial = null)
     return resolveAppearance(primaryId, appearances)
 }
 
 @Composable
-private fun AppRoot(service: DeviceHubService) {
+private fun AppRoot(container: AppContainer) {
     // null while the onboarding flag is loading, then the start destination.
-    val startScreen by produceState<Screen?>(initialValue = null, service) {
-        val done = service.preferences.onboardingDone.first()
+    val startScreen by produceState<Screen?>(initialValue = null, container) {
+        val done = container.preferences.onboardingDone.first()
         value = if (done) Screen.DeviceList else Screen.OnboardingWelcome
     }
     val start = startScreen ?: return
@@ -110,18 +110,25 @@ private fun AppRoot(service: DeviceHubService) {
         )
 
         is Screen.OnboardingBluetooth -> OnboardingBluetoothScreen(
-            service = service,
+            preferences = container.preferences,
             onDone = { replaceAll(Screen.DeviceList) },
         )
 
         is Screen.DeviceList -> DeviceListScreen(
-            service = service,
+            registry = container.registry,
+            repository = container.repository,
+            preferences = container.preferences,
+            patternRepository = container.patterns,
+            scanner = container.scanner,
             onOpenDevice = { address -> push(Screen.Device(address)) },
             onOpenSettings = { push(Screen.Settings) },
         )
 
         is Screen.Device -> DeviceScreen(
-            service = service,
+            registry = container.registry,
+            repository = container.repository,
+            preferences = container.preferences,
+            patternRepository = container.patterns,
             address = current.address,
             onBack = { pop() },
             onOpenSettings = { push(Screen.Settings) },
@@ -132,14 +139,18 @@ private fun AppRoot(service: DeviceHubService) {
         )
 
         is Screen.Editor -> PatternEditorScreen(
-            service = service,
+            registry = container.registry,
+            repository = container.repository,
+            preferences = container.preferences,
+            patternRepository = container.patterns,
             address = current.address,
             patternId = current.patternId,
             onBack = { pop() },
         )
 
         is Screen.Appearance -> DeviceAppearanceScreen(
-            service = service,
+            repository = container.repository,
+            preferences = container.preferences,
             deviceId = current.deviceId,
             onBack = { pop() },
         )

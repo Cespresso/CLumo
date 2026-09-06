@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">CLumo</string>
+
+    <!-- Onboarding -->
+    <string name="ob1_title">Welcome to CLumo</string>
+    <string name="ob1_subtitle">Your little desk companion.</string>
+    <string name="ob1_cta">Get started</string>
+    <string name="ob2_title">About Bluetooth</string>
+    <string name="ob2_body">Bluetooth is used to find and connect to nearby CLumo devices.\\n</string>
+    <string name="ob2_allow">Allow</string>
+    <string name="ob2_later">Not now</string>
+
+    <!-- Device list -->
+    <string name="list_title">My Devices</string>
+    <string name="list_settings">Settings</string>
+    <string name="list_empty_title">No devices yet</string>
+    <string name="list_empty_body">Turn one on and place it nearby</string>
+    <string name="list_scanning">Scanning…</string>
+    <string name="list_found">Discovered devices</string>
+    <string name="list_connect">Connect</string>
+    <string name="list_passkey_prefix">For the first connection, enter passkey </string>
+    <string name="list_passkey">123456</string>
+    <string name="list_passkey_suffix">.</string>
+    <string name="list_scan_button">Find CLumo</string>
+
+    <!-- Connection states -->
+    <string name="state_connected">Connected</string>
+    <string name="state_connecting">Connecting…</string>
+    <string name="state_disconnected">Not connected</string>
+    <string name="state_error">Connection error</string>
+
+    <!-- Device screen -->
+    <string name="device_menu_rename">Rename</string>
+    <string name="device_menu_settings">Settings</string>
+    <string name="device_menu_disconnect">Disconnect</string>
+    <string name="device_error_banner">Connection lost</string>
+    <string name="device_error_retry">Reconnect</string>
+    <string name="device_brightness">Brightness</string>
+    <string name="seg_timer">Timer</string>
+    <string name="seg_patterns">My Displays</string>
+    <string name="seg_viz">Visualizer</string>
+
+    <!-- Timer -->
+    <string name="timer_phase_work">Working</string>
+    <string name="timer_phase_break">On break</string>
+    <string name="timer_work_label">Work</string>
+    <string name="timer_break_label">Break</string>
+    <string name="timer_minutes_unit">min</string>
+    <string name="timer_start">Start</string>
+    <string name="timer_pause">Pause</string>
+    <string name="timer_reset">Reset</string>
+
+    <!-- Patterns -->
+    <string name="patterns_add_new">New display</string>
+    <string name="patterns_edit_selected">Edit selected display</string>
+
+    <!-- Visualizer -->
+    <string name="viz_start">Start</string>
+    <string name="viz_stop">Stop</string>
+    <string name="viz_sensitivity">Sensitivity</string>
+    <string name="viz_caption">The display above mirrors the device live.</string>
+
+    <!-- Pattern editor -->
+    <string name="editor_new_title">New display</string>
+    <string name="editor_save">Save</string>
+    <string name="editor_clear">Clear</string>
+    <string name="editor_invert">Invert</string>
+    <string name="editor_live_preview">Preview on device</string>
+    <string name="editor_sending">Sending to device</string>
+    <string name="editor_save_dialog_title">Save with a name</string>
+    <string name="editor_name_placeholder">Display name</string>
+    <string name="editor_delete">Delete this display</string>
+    <string name="editor_delete_confirm_title">Delete this display?</string>
+    <string name="editor_delete_confirm_body">This can’t be undone.</string>
+    <string name="editor_delete_confirm">Delete</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="dialog_save">Save</string>
+
+    <!-- Rename dialog -->
+    <string name="rename_title">Rename</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_licenses">Open-source licenses</string>
+    <string name="settings_github" translatable="false">GitHub</string>
+    <string name="licenses_title">Open-source licenses</string>
+
+    <!-- Default pattern names -->
+    <string name="pattern_default_heart">Heart</string>
+    <string name="pattern_default_smile">Smile</string>
+    <string name="pattern_default_star">Star</string>
+    <string name="pattern_default_name_prefix">My Display </string>
+
+    <!-- Foreground service notification -->
+    <string name="notif_channel_name">Device connection</string>
+    <string name="notif_title" translatable="false">CLumo</string>
+    <string name="notif_idle">Idle</string>
+    <string name="notif_connected">Connected to a device</string>
+</resources>

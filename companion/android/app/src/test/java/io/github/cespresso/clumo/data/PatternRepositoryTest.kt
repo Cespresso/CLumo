@@ -143,4 +143,11 @@ class PatternRepositoryTest {
     fun cyclePatternReturnsNullWhenThereAreNoPatterns() {
         assertNull(cyclePattern(emptyList(), null, forward = true))
     }
+
+    @Test
+    fun theCycleStartsFromTheShownPatternAndFallsBackToTheRecordedIntent() {
+        assertEquals("shown", cycleOrigin(shownPatternId = "shown", appliedPatternId = "applied"))
+        assertEquals("applied", cycleOrigin(shownPatternId = null, appliedPatternId = "applied"))
+        assertEquals(null, cycleOrigin(shownPatternId = null, appliedPatternId = null))
+    }
 }

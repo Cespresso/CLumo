@@ -26,6 +26,7 @@ import io.github.cespresso.clumo.data.steppedVisualizerSensitivity
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceMode
+import io.github.cespresso.clumo.domain.patternFor
 import io.github.cespresso.clumo.domain.resolvePrimaryTarget
 import io.github.cespresso.clumo.widget.GateDecision
 import io.github.cespresso.clumo.widget.WidgetCommand
@@ -453,11 +454,17 @@ class DeviceHubService : Service() {
         }
     }
 
+    /**
+     * Steps from the pattern CLumo's committed frame matches, so a press follows what is on
+     * the matrix rather than the last selection this phone made. The recorded intent is the
+     * fallback for a frame the library cannot name.
+     */
     private suspend fun cycleDisplayPattern(connection: DeviceSession, forward: Boolean) {
         val deviceId = connection.deviceId.value
             ?: repository.getByAddress(connection.address)?.id
             ?: connection.address
-        val next = patterns.cycleApplied(deviceId, forward) ?: return
+        val shown = patternFor(connection.state.value.effectiveCommittedFrame, patterns.patterns.first())
+        val next = patterns.cycleApplied(deviceId, shown?.id, forward) ?: return
         connection.commitPattern(next)
     }
 

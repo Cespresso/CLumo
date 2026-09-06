@@ -79,6 +79,12 @@ internal fun decodeAppliedPatternIds(raw: String?): Map<String, String> {
 }
 
 /**
+ * Where a button cycle starts. What CLumo is showing wins when the library can name it;
+ * the recorded intent covers a frame the library does not have.
+ */
+internal fun cycleOrigin(shownPatternId: String?, appliedPatternId: String?): String? = shownPatternId ?: appliedPatternId
+
+/**
  * The pattern one step after [currentId] in list order, wrapping at both ends.
  * Returns the first pattern when [currentId] is missing from [patterns], and null
  * when there is nothing to select.
@@ -235,14 +241,17 @@ class PatternRepository(
         }
     }
 
-    suspend fun cycleApplied(deviceId: String, forward: Boolean): Pattern? {
+    /**
+     * The pattern after [cycleOrigin] in library order, recorded as applied to [deviceId].
+     */
+    suspend fun cycleApplied(deviceId: String, shownPatternId: String?, forward: Boolean): Pattern? {
         var selected: Pattern? = null
         store.edit { prefs ->
             val current = decode(prefs[KEY_PATTERNS])
             val applied = decodeAppliedPatternIds(prefs[KEY_APPLIED])
-            val currentId = applied[deviceId]
-            val next = cyclePattern(current, currentId, forward) ?: return@edit
-            if (next.id == currentId) return@edit
+            val from = cycleOrigin(shownPatternId, applied[deviceId])
+            val next = cyclePattern(current, from, forward) ?: return@edit
+            if (next.id == from) return@edit
             selected = next
             prefs[KEY_APPLIED] = encodeAppliedPatternIds(applied + (deviceId to next.id))
         }

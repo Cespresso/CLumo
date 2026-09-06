@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use crate::handlers::{pomodoro, timer};
 use crate::mode::Mode;
-use crate::utils::bluetooth::{BleCommand, BluetoothManager};
+use crate::utils::bluetooth::{BleCommand, BluetoothManager, BUTTON_MAIN, BUTTON_SUB};
 use crate::utils::button::Buttons;
 use crate::utils::device_id;
 use crate::utils::led::Display;
@@ -167,14 +167,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Mode-specific button handling
-        if main_pressed {
-            log::info!("[{}] Main button", mode_manager.current().name());
-            handler.on_main_button();
-        }
-        if sub_pressed {
-            log::info!("[{}] Sub button", mode_manager.current().name());
-            handler.on_sub_button();
+        // Pomodoro and Timer own their state, so they handle their own presses.
+        // Display and Visualizer content lives in the app, so their presses are
+        // forwarded and the app decides what they mean.
+        for (pressed, button) in [(main_pressed, BUTTON_MAIN), (sub_pressed, BUTTON_SUB)] {
+            if !pressed {
+                continue;
+            }
+            let mode = mode_manager.current();
+            log::info!("[{}] Button {}", mode.name(), button);
+            match mode {
+                Mode::Pomodoro | Mode::Timer => {
+                    if button == BUTTON_MAIN {
+                        handler.on_main_button();
+                    } else {
+                        handler.on_sub_button();
+                    }
+                }
+                Mode::Display | Mode::Visualizer => ble.notify_button(mode as u8, button),
+            }
         }
 
         // Display update

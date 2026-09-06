@@ -306,8 +306,16 @@ class DeviceHubService : Service() {
             startForeground(NOTIFICATION_ID, notification)
             return
         }
-        val wanted = foregroundServiceTypes(capturingAudio, hasRecordAudioPermission())
-        val base = foregroundServiceTypes(capturingAudio = false, recordAudioGranted = false)
+        val wanted = foregroundServiceTypes(
+            capturingAudio = capturingAudio,
+            recordAudioGranted = holds(Manifest.permission.RECORD_AUDIO),
+            bluetoothConnectGranted = holds(Manifest.permission.BLUETOOTH_CONNECT),
+        )
+        val base = foregroundServiceTypes(
+            capturingAudio = false,
+            recordAudioGranted = false,
+            bluetoothConnectGranted = false,
+        )
         try {
             startForeground(NOTIFICATION_ID, notification, wanted)
         } catch (refused: Exception) {
@@ -325,7 +333,7 @@ class DeviceHubService : Service() {
         }
     }
 
-    private fun hasRecordAudioPermission(): Boolean = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    private fun holds(permission: String): Boolean = checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 
     /**
      * Stops the service once no link has work and no command is in flight, after

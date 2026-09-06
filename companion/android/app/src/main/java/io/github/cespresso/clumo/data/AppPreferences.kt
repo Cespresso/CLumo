@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import java.io.IOException
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.Flow
@@ -48,6 +49,7 @@ class AppPreferences(context: Context) {
     companion object {
         private val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         private val KEY_ALIASES = stringPreferencesKey("device_aliases_json")
+        private val KEY_DEVICE_APPEARANCES = stringPreferencesKey("device_appearances_json")
         private val KEY_VISUALIZER_SENSITIVITY = floatPreferencesKey("visualizer_sensitivity")
         private val KEY_VISUALIZER_AUTO_LOW_VOLUME_BOOST =
             booleanPreferencesKey("visualizer_auto_low_volume_boost")
@@ -68,6 +70,10 @@ class AppPreferences(context: Context) {
         decodeAliases(prefs[KEY_ALIASES])
     }
 
+    val deviceAppearances: Flow<Map<String, DeviceAppearance>> = data.map { prefs ->
+        decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES])
+    }
+
     val visualizerSensitivity: Flow<Float> =
         data.map { interpretStoredVisualizerSensitivity(it[KEY_VISUALIZER_SENSITIVITY]) }
 
@@ -79,6 +85,28 @@ class AppPreferences(context: Context) {
             val current = decodeAliases(prefs[KEY_ALIASES]).toMutableMap()
             if (alias.isNullOrBlank()) current.remove(deviceId) else current[deviceId] = alias.trim()
             prefs[KEY_ALIASES] = JSONObject(current as Map<*, *>).toString()
+        }
+    }
+
+    suspend fun setDeviceAppearance(deviceId: String, appearance: DeviceAppearance) {
+        store.edit { prefs ->
+            val updated = updatedDeviceAppearances(
+                current = decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES]),
+                deviceId = deviceId,
+                appearance = appearance,
+            )
+            prefs[KEY_DEVICE_APPEARANCES] = encodeDeviceAppearances(updated)
+        }
+    }
+
+    suspend fun resetDeviceAppearance(deviceId: String) {
+        store.edit { prefs ->
+            val updated = updatedDeviceAppearances(
+                current = decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES]),
+                deviceId = deviceId,
+                appearance = null,
+            )
+            prefs[KEY_DEVICE_APPEARANCES] = encodeDeviceAppearances(updated)
         }
     }
 

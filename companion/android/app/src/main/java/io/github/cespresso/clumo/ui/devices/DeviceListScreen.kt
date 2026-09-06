@@ -53,6 +53,7 @@ import io.github.cespresso.clumo.data.ble.ScanEvent
 import io.github.cespresso.clumo.data.ble.ScanFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.BrandCorner
 import io.github.cespresso.clumo.ui.components.CoralPillButton
@@ -60,7 +61,7 @@ import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
-import io.github.cespresso.clumo.ui.components.connectionFrameColor
+import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.components.connectionLabel
 import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.device.liveMirrorBits
@@ -93,6 +94,7 @@ fun DeviceListScreen(
     val knownDevices by service.repository.devices.collectAsState()
     val activeConnections by service.registry.connections.collectAsState()
     val aliases by service.preferences.aliases.collectAsState(initial = emptyMap())
+    val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
     val patterns by service.patterns.patterns.collectAsState(initial = emptyList())
     val selectedPatternId by service.patterns.selectedId.collectAsState(initial = null)
 
@@ -238,6 +240,7 @@ fun DeviceListScreen(
                     KnownDeviceCard(
                         device = device,
                         alias = aliases[device.id],
+                        appearance = resolveAppearance(device.id, appearances),
                         connection = connection,
                         selectedPatternBits = selectedPatternBits,
                         onTap = {
@@ -351,13 +354,13 @@ fun DeviceListScreen(
 private fun KnownDeviceCard(
     device: Device,
     alias: String?,
+    appearance: DeviceAppearance,
     connection: DeviceConnection?,
     selectedPatternBits: String?,
     onTap: () -> Unit,
 ) {
     val state = connection?.connectionState?.collectAsState()?.value ?: ConnectionState.Disconnected
     val (label, labelColor) = connectionLabel(state)
-    val frameColor = connectionFrameColor(state)
     val bits = liveMirrorBits(connection, selectedPatternBits)
     val brightness = connection?.brightness?.collectAsState()?.value ?: 15
     val litAlpha = 0.4f + (brightness / 15f) * 0.6f
@@ -376,8 +379,9 @@ private fun KnownDeviceCard(
     ) {
         ClumoDevice(
             bits = if (state == ConnectionState.Ready) bits else FaceBits.EMPTY,
-            frameColor = frameColor,
             size = 94.dp,
+            appearance = appearance,
+            connectionState = state,
             litAlpha = litAlpha,
             glow = false,
         )

@@ -85,6 +85,17 @@ cargo run
 | TIMER      | `681285a6-247f-48c6-80ad-68c3dce1858a` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 5-byte status (below). |
 | BUTTON     | `681285a6-247f-48c6-80ad-68c3dce1858b` | NOTIFY | 2 bytes `[mode, button]`: a button press in a mode the firmware does not handle itself (see below). |
 
+**Add new characteristics at the end of the service, never in the middle.** NimBLE
+assigns ATT handles in creation order, so inserting a characteristic ahead of an
+existing one shifts that one's handle. A client that already bonded reconnects from
+its cached GATT database and keeps using the old handles, so it silently reads the
+wrong attribute — which broke reconnection entirely when BUTTON was first added
+ahead of DEVICE_ID. Appending leaves every existing handle untouched, so clients
+upgrading from older firmware keep working; they just do not see the new
+characteristic until their cache is refreshed. The companion app forces exactly one
+refresh when a known-optional characteristic is missing, which is how the new
+features come alive after a firmware upgrade without re-pairing.
+
 ### DISPLAY payload interpretation
 
 - **Display mode (2)** — row bitmap: byte 0 = top row, byte 7 = bottom row.

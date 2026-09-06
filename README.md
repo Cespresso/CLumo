@@ -63,6 +63,14 @@ Each subproject is self-contained and has its own README with full instructions:
 
 The enclosure is five 3D-printed parts. There are no screws or glue: the XIAO snaps into a printed frame, every wire ends in a JST XH connector, and the only soldering is three pin headers. The [assembly guide](hardware/assembly/) walks through the build with photos and includes the parts list and wiring diagram. The 3D model is in [`hardware/models/`](hardware/models/).
 
+## About the AI in this project
+
+CLumo is a one-person project, made with the help of AI tools. The firmware, the Android
+app, these READMEs, the installer page, the commit messages and the like were written with
+that help: I set the design and the direction, the assistant wrote, and I read it back and
+ran it on real CLumo units before every release. The hardware, on the other hand, is
+essentially my own hands: designed in a CAD tool, printed, assembled and photographed by me.
+
 ## License
 
 [MIT](LICENSE)

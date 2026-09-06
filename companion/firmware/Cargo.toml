@@ -29,6 +29,8 @@ embassy = ["esp-idf-svc/embassy-sync", "esp-idf-svc/critical-section", "esp-idf-
 
 [dependencies]
 log = { version = "0.4", default-features = false }
+
+[target.'cfg(target_os = "espidf")'.dependencies]
 esp-idf-svc = { version = "0.51", default-features = false }
 esp-idf-hal = { version = "0.45", default-features = false }
 embedded-hal = "1.0.0"

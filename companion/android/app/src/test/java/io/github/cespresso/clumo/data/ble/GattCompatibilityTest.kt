@@ -77,4 +77,26 @@ class GattCompatibilityTest {
             gattCompatibilityAction(required, required, emptySet(), cacheRefreshAttempted = false),
         )
     }
+
+    @Test
+    fun v2FirmwareIsRejectedAfterOneCacheRefresh() {
+        val v2Firmware = setOf(
+            BleUuids.MODE,
+            UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18585"), // the v2 DISPLAY
+            BleUuids.POMODORO,
+            BleUuids.TIMER,
+            BleUuids.BRIGHTNESS,
+            BleUuids.DEVICE_ID,
+            BleUuids.BUTTON,
+        )
+
+        assertEquals(
+            GattCompatibilityAction.REFRESH_CACHE,
+            gattCompatibilityAction(v2Firmware, BleUuids.REQUIRED, BleUuids.OPTIONAL, cacheRefreshAttempted = false),
+        )
+        assertEquals(
+            GattCompatibilityAction.REJECT,
+            gattCompatibilityAction(v2Firmware, BleUuids.REQUIRED, BleUuids.OPTIONAL, cacheRefreshAttempted = true),
+        )
+    }
 }

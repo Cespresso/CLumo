@@ -3,8 +3,10 @@ package io.github.cespresso.clumo.data.ble
 import io.github.cespresso.clumo.domain.DeviceMode
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.util.UUID
 
 class BleProtocolTest {
     @Test
@@ -29,5 +31,12 @@ class BleProtocolTest {
         assertNull(BleUuids.timerSetDurationPayloadOrNull(0, 0))
         assertNull(BleUuids.timerSetDurationPayloadOrNull(60, 0))
         assertNull(BleUuids.timerSetDurationPayloadOrNull(0, 60))
+    }
+
+    @Test
+    fun theLegacyDisplayUuidIsNotKeptAsAnAlias() {
+        val legacyDisplay = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18585")
+        assertFalse(legacyDisplay in BleUuids.REQUIRED)
+        assertFalse(legacyDisplay in BleUuids.OPTIONAL)
     }
 }

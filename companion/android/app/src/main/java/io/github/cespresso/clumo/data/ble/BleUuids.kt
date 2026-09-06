@@ -30,7 +30,7 @@ internal fun gattCompatibilityAction(
         else -> GattCompatibilityAction.ACCEPT
     }
 
-/** BLE protocol v2 identifiers for the CLumo firmware. */
+/** BLE protocol v3 identifiers for the CLumo firmware. */
 object BleUuids {
     const val DEVICE_NAME_PREFIX = "CLumo"
 
@@ -56,6 +56,22 @@ object BleUuids {
 
     /** NOTIFY: 2 bytes [mode, button] for presses the firmware does not handle itself. */
     val BUTTON: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce1858b")
+
+    /** READ | WRITE | NOTIFY: 8-byte committed row bitmap. A write commits and persists it in any mode; every commit notifies. */
+    val DISPLAY_FRAME: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce1858c")
+
+    /** WRITE_NR: 8-byte row bitmap shown at once and never persisted. Ignored outside Display mode. */
+    val DISPLAY_PREVIEW: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce1858d")
+
+    /** WRITE_NR: 8 column heights 0..8. Ignored outside Visualizer mode. */
+    val VISUALIZER: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce1858e")
+
+    /** What a CLumo has to expose to be usable at all; a device missing any of these is incompatible. */
+    val REQUIRED: Set<UUID> =
+        setOf(MODE, DISPLAY_FRAME, DISPLAY_PREVIEW, VISUALIZER, POMODORO, TIMER, BRIGHTNESS, DEVICE_ID)
+
+    /** Not needed to accept a device. */
+    val OPTIONAL: Set<UUID> = setOf(BUTTON)
 
     val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 

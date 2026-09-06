@@ -1,5 +1,13 @@
-# Hardware (coming soon / 近日公開)
+# Hardware
 
-3D-printable enclosure models, a wiring diagram, and a parts list for CLumo will be published here.
+| Path | Contents |
+|---|---|
+| [`assembly/`](assembly/) | Step-by-step assembly guide with photos and the wiring diagram ([English](assembly/README.md) / [日本語](assembly/README.ja.md)) |
+| [`models/`](models/) | 3D-printable enclosure |
 
-CLumo の 3D プリント可能な外装モデル・配線図・部品リストをここで公開予定です。
+---
+
+| パス | 内容 |
+|---|---|
+| [`assembly/`](assembly/) | 写真と配線図付きの組み立てガイド（[English](assembly/README.md) / [日本語](assembly/README.ja.md)） |
+| [`models/`](models/) | 3D プリント用の外装データ |

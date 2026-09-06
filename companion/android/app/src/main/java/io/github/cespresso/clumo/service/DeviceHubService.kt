@@ -103,7 +103,6 @@ class DeviceHubService : Service() {
         observeVisualizerPreferences()
         observeAudioCapture()
         observeButtonEvents()
-        scope.launch { patterns.ensureSeeded() }
         widgetStore = WidgetSnapshotStore(this)
         publisher = WidgetStatePublisher(
             context = this,

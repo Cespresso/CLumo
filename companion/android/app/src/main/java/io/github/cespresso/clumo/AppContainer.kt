@@ -6,6 +6,10 @@ import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.data.ble.BleScanner
 import io.github.cespresso.clumo.data.session.DeviceSessionRegistry
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * The app's object graph.
@@ -21,6 +25,9 @@ class AppContainer(context: Context) {
 
     private val appContext: Context = context.applicationContext
 
+    /** Work that belongs to the graph itself rather than to any screen or service start. */
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     val repository: DeviceRepository by lazy { DeviceRepository(appContext) }
     val registry: DeviceSessionRegistry by lazy {
         DeviceSessionRegistry(appContext, repository)
@@ -28,6 +35,10 @@ class AppContainer(context: Context) {
     val scanner: BleScanner by lazy { BleScanner(appContext) }
     val preferences: AppPreferences by lazy { AppPreferences(appContext) }
     val patterns: PatternRepository by lazy {
-        PatternRepository(appContext, preferences, repository)
+        PatternRepository(appContext, preferences, repository).also { patterns ->
+            // Seeding used to ride on the hub service's onCreate. The defaults belong to the
+            // graph, not to whether a service happens to be running.
+            scope.launch { patterns.ensureSeeded() }
+        }
     }
 }

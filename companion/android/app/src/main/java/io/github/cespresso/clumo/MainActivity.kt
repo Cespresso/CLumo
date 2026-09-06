@@ -71,7 +71,7 @@ private fun AppContainer.deviceViewModelFactory(address: String): ViewModelProvi
 private fun AppContainer.deviceListViewModelFactory(): ViewModelProvider.Factory =
     viewModelFactory {
         initializer {
-            DeviceListViewModel(registry, repository, preferences, patterns, scanner)
+            DeviceListViewModel(registry, repository, preferences, scanner)
         }
     }
 

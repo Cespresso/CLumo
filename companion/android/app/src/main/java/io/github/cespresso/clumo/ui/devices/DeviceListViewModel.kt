@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.data.DeviceRepository
-import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.data.ble.DeviceScanner
 import io.github.cespresso.clumo.data.session.DeviceSession
 import io.github.cespresso.clumo.data.session.DeviceSessionRegistry
@@ -16,7 +15,6 @@ import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.DeviceSessionState
 import io.github.cespresso.clumo.domain.FaceBits
-import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.ScanEvent
 import io.github.cespresso.clumo.domain.ScanFailure
 import io.github.cespresso.clumo.domain.mirrorBitsFor
@@ -71,8 +69,6 @@ internal fun buildKnownDeviceCards(
     aliases: Map<String, String>,
     appearances: Map<String, DeviceAppearance>,
     primaryDeviceId: String?,
-    patterns: List<Pattern>,
-    appliedPatternIds: Map<String, String>,
 ): List<KnownDeviceCardState> =
     devices.map { device ->
         val live = liveStates[device.address]
@@ -121,7 +117,6 @@ class DeviceListViewModel(
     private val registry: DeviceSessionRegistry,
     private val repository: DeviceRepository,
     private val preferences: AppPreferences,
-    patterns: PatternRepository,
     private val scanner: DeviceScanner,
 ) : ViewModel() {
     private val scanState = MutableStateFlow(DeviceScanState())
@@ -135,12 +130,9 @@ class DeviceListViewModel(
     ) { devices, aliases, appearances, primaryId ->
         Identity(devices, aliases, appearances, primaryId)
     }
-    private val library = combine(patterns.patterns, patterns.appliedPatternIds) { list, applied ->
-        Library(list, applied)
-    }
     private val liveStates = registry.sessions.flatMapLatest(::cardLiveStateMap)
 
-    val uiState = combine(identity, library, liveStates, scanState) { identity, library, liveStates, scan ->
+    val uiState = combine(identity, liveStates, scanState) { identity, liveStates, scan ->
         val knownAddresses = identity.devices.mapTo(mutableSetOf()) { it.address }
         DeviceListUiState(
             knownDevices = buildKnownDeviceCards(
@@ -149,8 +141,6 @@ class DeviceListViewModel(
                 aliases = identity.aliases,
                 appearances = identity.appearances,
                 primaryDeviceId = identity.primaryDeviceId,
-                patterns = library.patterns,
-                appliedPatternIds = library.appliedPatternIds,
             ),
             foundDevices = scan.advertisements.values
                 .filter { it.address !in knownAddresses }
@@ -223,10 +213,6 @@ class DeviceListViewModel(
         val aliases: Map<String, String>,
         val appearances: Map<String, DeviceAppearance>,
         val primaryDeviceId: String?,
-    )
-    private data class Library(
-        val patterns: List<Pattern>,
-        val appliedPatternIds: Map<String, String>,
     )
 
     private companion object {

@@ -75,7 +75,7 @@ fun DeviceScreen(
     val pomodoroStatus = ui.pomodoroStatus
     val timerStatus = ui.timerStatus
     val patterns = ui.patterns
-    val selectedPatternId = ui.shownPatternId
+    val shownPatternId = ui.shownPatternId
     val timerBlinkOn = ui.timerBlinkOn
 
     var brightnessUi by remember { mutableFloatStateOf(ui.brightnessPercent) }
@@ -260,12 +260,12 @@ fun DeviceScreen(
                             when (effectiveMode) {
                                 DeviceMode.DISPLAY -> PatternsSection(
                                     patterns = patterns,
-                                    selectedId = selectedPatternId,
+                                    selectedId = shownPatternId,
                                     appearance = appearance,
                                     onSelect = viewModel::onPatternApplied,
                                     onAddNew = { onOpenEditor(null) },
                                     onEdit = {
-                                        selectedPatternId?.let { onOpenEditor(it) }
+                                        shownPatternId?.let { onOpenEditor(it) }
                                     },
                                 )
 

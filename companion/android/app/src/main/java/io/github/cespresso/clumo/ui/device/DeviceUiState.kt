@@ -13,6 +13,7 @@ import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.domain.effectiveModeOf
 import io.github.cespresso.clumo.domain.mirrorBitsFor
+import io.github.cespresso.clumo.domain.patternFor
 import io.github.cespresso.clumo.domain.resolveAppearance
 
 /** The connection line under the device figure. Resolved to a string by the screen. */
@@ -89,7 +90,7 @@ data class DeviceUiState(
     val brightnessLevel: Int = Brightness.MAX_LEVEL,
     val brightnessPercent: Float = Brightness.toPercent(Brightness.MAX_LEVEL),
     val patterns: List<Pattern> = emptyList(),
-    /** The library pattern CLumo's committed frame matches, or null when it shows something the library lacks. */
+    /** The library pattern CLumo's committed frame matches over a Ready link; null when the link is not Ready or the frame is not in the library. */
     val shownPatternId: String? = null,
     val visualizerColumns: IntArray = IntArray(0),
     val visualizerActive: Boolean = false,
@@ -121,6 +122,7 @@ object DeviceUiStateFactory {
             appearances = emptyMap(),
             primaryDeviceId = null,
             committedFrame = null,
+            library = emptyList(),
             brightnessUi = Brightness.toPercent(Brightness.MAX_LEVEL),
             columns = IntArray(0),
             visualizerActive = false,
@@ -154,6 +156,7 @@ object DeviceUiStateFactory {
         appearances: Map<String, DeviceAppearance>,
         primaryDeviceId: String?,
         committedFrame: Long?,
+        library: List<Pattern>,
         brightnessUi: Float,
         columns: IntArray,
         visualizerActive: Boolean,
@@ -216,6 +219,7 @@ object DeviceUiStateFactory {
             },
             litAlpha = Brightness.litAlphaForPercent(brightnessUi),
             link = state,
+            shownPatternId = if (connected && ready) patternFor(committedFrame, library)?.id else null,
         )
     }
 

@@ -15,7 +15,6 @@ import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceSessionState
 import io.github.cespresso.clumo.domain.Pattern
-import io.github.cespresso.clumo.domain.patternFor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -108,7 +107,6 @@ class DeviceViewModel(
     ) { live, identity, library, visualizerPreferences, transient ->
         val observed = live.state.observed
         val stableId = live.deviceId ?: identity.knownDevice?.id
-        val shown = patternFor(live.state.effectiveCommittedFrame, library)
         val brightnessLevel = live.state.effectiveBrightnessLevel ?: Brightness.MAX_LEVEL
         DeviceUiStateFactory.create(
             connected = live.connected,
@@ -126,6 +124,7 @@ class DeviceViewModel(
             appearances = identity.appearances,
             primaryDeviceId = identity.primaryDeviceId,
             committedFrame = live.state.effectiveCommittedFrame,
+            library = library,
             brightnessUi = Brightness.toPercent(brightnessLevel),
             columns = live.columns,
             visualizerActive = live.visualizerActive,
@@ -137,7 +136,6 @@ class DeviceViewModel(
             brightnessLevel = brightnessLevel,
             brightnessPercent = Brightness.toPercent(brightnessLevel),
             patterns = library,
-            shownPatternId = shown?.id,
             visualizerColumns = live.columns,
             visualizerActive = live.visualizerActive,
             visualizerSensitivity = visualizerPreferences.sensitivity,

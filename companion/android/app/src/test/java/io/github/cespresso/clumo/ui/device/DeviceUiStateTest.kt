@@ -7,6 +7,7 @@ import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
+import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -32,6 +33,7 @@ class DeviceUiStateTest {
         appearances: Map<String, DeviceAppearance> = emptyMap(),
         primaryDeviceId: String? = null,
         committedFrame: Long? = null,
+        library: List<Pattern> = emptyList(),
         brightnessUi: Float = 100f,
         columns: IntArray = IntArray(8),
         visualizerActive: Boolean = false,
@@ -53,6 +55,7 @@ class DeviceUiStateTest {
         appearances = appearances,
         primaryDeviceId = primaryDeviceId,
         committedFrame = committedFrame,
+        library = library,
         brightnessUi = brightnessUi,
         columns = columns,
         visualizerActive = visualizerActive,
@@ -342,6 +345,34 @@ class DeviceUiStateTest {
             FaceBits.fromColumns(columns),
             create(currentMode = DeviceMode.VISUALIZER, columns = columns, visualizerActive = true).mirrorBits,
         )
+    }
+
+    // --- the name beside the mirror ---
+
+    @Test
+    fun theShownPatternIsNamedOnlyOverAReadyLink() {
+        val heart = Pattern("heart", "Heart", "1".repeat(8) + "0".repeat(56))
+        val frame = FaceBits.fromBitsString(heart.bits)
+
+        assertEquals(
+            "heart",
+            create(currentMode = DeviceMode.DISPLAY, committedFrame = frame, library = listOf(heart)).shownPatternId,
+        )
+        // Same frame still known to the session, but the link is on its way back.
+        assertNull(
+            create(
+                state = ConnectionState.Reconnecting,
+                currentMode = DeviceMode.DISPLAY,
+                committedFrame = frame,
+                library = listOf(heart),
+            ).shownPatternId,
+        )
+    }
+
+    @Test
+    fun aFrameTheLibraryLacksNamesNothing() {
+        val heart = Pattern("heart", "Heart", "1".repeat(8) + "0".repeat(56))
+        assertNull(create(currentMode = DeviceMode.DISPLAY, committedFrame = -1L, library = listOf(heart)).shownPatternId)
     }
 
     @Test

@@ -37,8 +37,6 @@ class DeviceListViewModelTest {
             aliases = emptyMap(),
             appearances = emptyMap(),
             primaryDeviceId = "device-a",
-            patterns = listOf(firstPattern, secondPattern),
-            appliedPatternIds = mapOf("device-a" to "p1", "device-b" to "p2"),
         )
 
         assertEquals(FaceBits.fromBitsString(firstPattern.bits), cards[0].mirrorBits)

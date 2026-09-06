@@ -211,7 +211,7 @@ reaches NVS.
 | Index | Field    | Values |
 |-------|----------|--------|
 | 0     | `mode`   | mode the press happened in: `2` = Display, `3` = Visualizer |
-| 1     | `button` | 0 = main (red), 1 = sub (white) |
+| 1     | `button` | 0 = main, 1 = sub |
 
 Emitted only in Display and Visualizer mode. Pomodoro and Timer presses are
 consumed by the firmware and never notified. The firmware holds no state for

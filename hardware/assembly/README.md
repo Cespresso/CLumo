@@ -206,7 +206,7 @@ Figure 15: The back panel fits with the USB-C slot downward.
 
 ## 11. Flash the firmware
 
-Plug a USB-C cable in through the back and flash the firmware. When the display comes on, you are done (Figure 16).
+Plug a USB-C cable in through the back and flash the firmware from the [installer page](https://cespresso.github.io/CLumo/). When the display comes on, you are done (Figure 16).
 
 ![The finished CLumo with a USB cable attached, showing a heart on the matrix](img/16-done.jpg)
 

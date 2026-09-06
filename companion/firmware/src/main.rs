@@ -3,6 +3,7 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs};
 use std::time::Instant;
 
+use crate::display_commit_policy::should_auto_commit_display;
 use crate::handlers::Runtime;
 use crate::mode::Mode;
 use crate::utils::bluetooth::{BleCommand, BluetoothManager, BUTTON_MAIN, BUTTON_SUB};
@@ -12,6 +13,8 @@ use crate::utils::led::Display;
 
 mod assets;
 mod countdown;
+mod display_commit_policy;
+mod display_state;
 mod handlers;
 mod mode;
 mod mode_values;
@@ -79,6 +82,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client_ready = false;
     let mut connection_icon_on = true;
     let mut last_connection_blink = Instant::now();
+    let mut explicit_display_commit = false;
 
     // Main loop
     loop {
@@ -91,8 +95,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::ConnectionChanged(connected) => {
                     ble_connected = connected;
                     client_ready = false;
+                    explicit_display_commit = false;
                     connection_icon_on = true;
                     last_connection_blink = Instant::now();
+                    if !connected {
+                        runtime.cancel_display_preview();
+                    }
                     display.show(disconnected_icon(ble_bonded));
                 }
                 BleCommand::BondChanged(bonded) => {
@@ -104,6 +112,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::AuthenticationFailed => {
                     ble_connected = false;
                     client_ready = false;
+                    explicit_display_commit = false;
+                    runtime.cancel_display_preview();
                     display.show(disconnected_icon(ble_bonded));
                 }
                 BleCommand::ClientReady => {
@@ -115,8 +125,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::SwitchMode(m) => {
                     let new_mode = Mode::from_u8(m);
                     if new_mode == mode_manager.current() {
+                        if new_mode == Mode::Display {
+                            runtime.commit_display_preview();
+                            explicit_display_commit = true;
+                        }
                         continue;
                     }
+                    explicit_display_commit = false;
+                    runtime.cancel_display_preview();
                     if let Err(e) = mode_manager.switch_to(new_mode) {
                         log::error!("BLE switch_to failed: {:?}", e);
                     }
@@ -126,7 +142,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 BleCommand::SetDisplayData(data) => {
-                    runtime.on_display_data(mode_manager.current(), data);
+                    let mode = mode_manager.current();
+                    runtime.on_display_data(mode, data);
+                    if mode == Mode::Display && should_auto_commit_display(explicit_display_commit)
+                    {
+                        runtime.commit_display_preview();
+                    }
                 }
                 BleCommand::SetBrightness(level) => match mode_manager.set_brightness(level) {
                     Ok(applied) => {

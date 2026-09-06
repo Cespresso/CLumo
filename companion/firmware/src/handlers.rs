@@ -97,6 +97,14 @@ impl Runtime {
         }
     }
 
+    pub fn commit_display_preview(&mut self) {
+        self.display.commit_preview();
+    }
+
+    pub fn cancel_display_preview(&mut self) {
+        self.display.cancel_preview();
+    }
+
     pub fn on_pomodoro_command(&mut self, command: PomodoroCommand) {
         self.pomodoro.on_pomodoro_command(command);
     }

@@ -9,6 +9,10 @@ use crate::countdown::{parse_timer_duration, DurationSetting};
 use crate::mode::MODE_COUNT;
 use crate::utils::device_id::{self, DeviceId};
 
+/// BUTTON characteristic button identifiers.
+pub const BUTTON_MAIN: u8 = 0;
+pub const BUTTON_SUB: u8 = 1;
+
 /// Pomodoro control commands received over BLE (POMODORO characteristic writes).
 #[derive(Debug, Clone, Copy)]
 pub enum PomodoroCommand {
@@ -49,6 +53,7 @@ pub struct BluetoothManager {
     pomodoro_characteristic: Arc<Mutex<BLECharacteristic>>,
     timer_characteristic: Arc<Mutex<BLECharacteristic>>,
     brightness_characteristic: Arc<Mutex<BLECharacteristic>>,
+    button_characteristic: Arc<Mutex<BLECharacteristic>>,
 }
 
 impl BluetoothManager {
@@ -297,6 +302,14 @@ impl BluetoothManager {
                 .push_back(BleCommand::SetBrightness(level));
         });
 
+        // --- Button Characteristic (NOTIFY only) ---
+        // Notify: [mode, button]. Sent only for modes whose buttons the firmware
+        // does not consume itself, so the app can act on them.
+        let button_characteristic = service.lock().create_characteristic(
+            uuid128!("681285a6-247f-48c6-80ad-68c3dce1858b"),
+            NimbleProperties::NOTIFY,
+        );
+
         // --- Device ID Characteristic (READ only) ---
         let device_id_characteristic = service.lock().create_characteristic(
             uuid128!("681285a6-247f-48c6-80ad-68c3dce18589"),
@@ -333,6 +346,7 @@ impl BluetoothManager {
             pomodoro_characteristic,
             timer_characteristic,
             brightness_characteristic,
+            button_characteristic,
         })
     }
 
@@ -382,5 +396,14 @@ impl BluetoothManager {
     /// Update the Timer Characteristic value without notifying.
     pub fn set_timer_status(&self, status: &[u8; 5]) {
         self.timer_characteristic.lock().set_value(status);
+    }
+
+    /// Notify subscribers that a physical button was pressed in a mode the
+    /// firmware does not handle itself.
+    pub fn notify_button(&self, mode: u8, button: u8) {
+        self.button_characteristic
+            .lock()
+            .set_value(&[mode, button])
+            .notify();
     }
 }

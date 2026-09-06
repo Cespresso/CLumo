@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
+import android.util.Log
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.data.DeviceRegistry
@@ -18,6 +19,7 @@ import io.github.cespresso.clumo.data.ble.ButtonEvent
 import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.data.steppedVisualizerSensitivity
 import io.github.cespresso.clumo.domain.ConnectionState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,6 +44,7 @@ import kotlinx.coroutines.launch
 class DeviceHubService : Service() {
 
     companion object {
+        private const val TAG = "DeviceHubService"
         private const val CHANNEL_ID = "clumo_hub"
         private const val NOTIFICATION_ID = 1
     }
@@ -171,10 +174,20 @@ class DeviceHubService : Service() {
             .launchIn(scope)
     }
 
+    /**
+     * A failed preference write must cost one press, not the whole collector: an
+     * exception escaping here would cancel the observer for the service's lifetime.
+     */
     private suspend fun applyButtonEvent(connection: DeviceConnection, event: ButtonEvent) {
-        when (event.mode) {
-            BleUuids.MODE_DISPLAY -> cycleDisplayPattern(connection, event.isMain)
-            BleUuids.MODE_VISUALIZER -> stepVisualizerSensitivity(event.isMain)
+        try {
+            when (event.mode) {
+                BleUuids.MODE_DISPLAY -> cycleDisplayPattern(connection, event.isMain)
+                BleUuids.MODE_VISUALIZER -> stepVisualizerSensitivity(event.isMain)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w(TAG, "Button action failed", e)
         }
     }
 

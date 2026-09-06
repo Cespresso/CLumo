@@ -16,7 +16,7 @@ pub trait ModeHandler {
     fn on_enter(&mut self) -> [u8; 8];
 
     /// Called on a main (red) button press. Display and Visualizer never receive
-    /// button presses; the firmware forwards theirs to the app instead.
+    /// button presses; the firmware forwards theirs to the app when one is synced.
     fn on_main_button(&mut self) {}
 
     /// Called on a sub (white) button press.

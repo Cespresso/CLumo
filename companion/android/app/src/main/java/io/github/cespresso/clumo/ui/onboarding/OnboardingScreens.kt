@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.data.ble.bluetoothPermissions
+import io.github.cespresso.clumo.ui.components.bluetoothPermissions
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.ui.components.BrandCorner

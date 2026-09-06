@@ -28,7 +28,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.ui.components.CtaPillButton
@@ -38,9 +37,12 @@ import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
 @Composable
 internal fun CountdownTimerSection(
-    connection: DeviceConnection?,
     status: CountdownTimerStatus,
     completionBlinkOn: Boolean,
+    onDurationChanged: (Int, Int) -> Unit,
+    onStart: () -> Unit,
+    onPause: () -> Unit,
+    onCancel: () -> Unit,
 ) {
     var minutes by remember { mutableIntStateOf(status.configuredMin.coerceIn(0, 59)) }
     var seconds by remember { mutableIntStateOf(status.configuredSec.coerceIn(0, 59)) }
@@ -116,12 +118,12 @@ internal fun CountdownTimerSection(
                     onDecrement = {
                         val next = minutes - 1
                         minutes = next
-                        connection?.timerSetDuration(next, seconds)
+                        onDurationChanged(next, seconds)
                     },
                     onIncrement = {
                         val next = minutes + 1
                         minutes = next
-                        connection?.timerSetDuration(next, seconds)
+                        onDurationChanged(next, seconds)
                     },
                 )
                 TimerStepperRow(
@@ -132,12 +134,12 @@ internal fun CountdownTimerSection(
                     onDecrement = {
                         val next = seconds - 1
                         seconds = next
-                        connection?.timerSetDuration(minutes, next)
+                        onDurationChanged(minutes, next)
                     },
                     onIncrement = {
                         val next = seconds + 1
                         seconds = next
-                        connection?.timerSetDuration(minutes, next)
+                        onDurationChanged(minutes, next)
                     },
                 )
             }
@@ -150,7 +152,7 @@ internal fun CountdownTimerSection(
             CtaPillButton(
                 text = primaryLabel,
                 onClick = {
-                    if (status.isRunning) connection?.timerPause() else connection?.timerStart()
+                    if (status.isRunning) onPause() else onStart()
                 },
                 fontSize = 15.sp,
                 verticalPadding = 14.dp,
@@ -158,7 +160,7 @@ internal fun CountdownTimerSection(
             )
             OutlinePillButton(
                 text = stringResource(R.string.timer_cancel),
-                onClick = { connection?.timerCancel() },
+                onClick = onCancel,
                 fontSize = 15.sp,
                 verticalPadding = 14.dp,
                 modifier = Modifier.weight(1f),

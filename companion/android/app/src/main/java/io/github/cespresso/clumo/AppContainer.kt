@@ -2,10 +2,10 @@ package io.github.cespresso.clumo
 
 import android.content.Context
 import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.data.DeviceRegistry
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.data.ble.BleScanner
+import io.github.cespresso.clumo.data.session.DeviceSessionRegistry
 
 /**
  * The app's object graph.
@@ -22,8 +22,13 @@ class AppContainer(context: Context) {
     private val appContext: Context = context.applicationContext
 
     val repository: DeviceRepository by lazy { DeviceRepository(appContext) }
-    val registry: DeviceRegistry by lazy { DeviceRegistry(appContext, repository) }
+    val registry: DeviceSessionRegistry by lazy {
+        DeviceSessionRegistry(appContext, repository)
+    }
     val scanner: BleScanner by lazy { BleScanner(appContext) }
-    val patterns: PatternRepository by lazy { PatternRepository(appContext) }
     val preferences: AppPreferences by lazy { AppPreferences(appContext) }
+    val patterns: PatternRepository by lazy {
+        PatternRepository(appContext, preferences, repository)
+    }
+
 }

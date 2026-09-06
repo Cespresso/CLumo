@@ -28,15 +28,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,16 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.data.DeviceRegistry
-import io.github.cespresso.clumo.data.DeviceRepository
-import io.github.cespresso.clumo.data.PatternRepository
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.design.ContentTone
 import io.github.cespresso.clumo.design.contentToneFor
 import io.github.cespresso.clumo.domain.FaceBits
-import io.github.cespresso.clumo.domain.Pattern
-import io.github.cespresso.clumo.domain.resolveAppearance
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.CtaPillButton
@@ -73,68 +64,25 @@ import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
-import java.util.UUID
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.conflate
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.launch
 
 @Composable
 fun PatternEditorScreen(
-    registry: DeviceRegistry,
-    repository: DeviceRepository,
-    preferences: AppPreferences,
-    patternRepository: PatternRepository,
-    address: String?,
-    patternId: String?,
+    viewModel: PatternEditorViewModel,
     onBack: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-    val patterns by patternRepository.patterns.collectAsState(initial = emptyList())
-    val existing = patternId?.let { id -> patterns.firstOrNull { it.id == id } }
-    val connection = address?.let { registry.get(it) }
-    val connectedDeviceId = connection?.deviceId?.collectAsState()?.value
-    val knownDeviceId = address?.let(repository::getByAddress)?.id
-    val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
-    val appearance = resolveAppearance(connectedDeviceId ?: knownDeviceId, appearances)
-
-    var cells by remember(patternId) {
-        mutableLongStateOf(existing?.let { FaceBits.fromBitsString(it.bits) } ?: FaceBits.EMPTY)
-    }
-    var initialized by remember(patternId) { mutableStateOf(existing != null || patternId == null) }
-    // Patterns may load after first composition; seed the grid once they arrive.
-    LaunchedEffect(existing?.id) {
-        if (!initialized && existing != null) {
-            cells = FaceBits.fromBitsString(existing.bits)
-            initialized = true
-        }
-    }
-
-    var livePreview by remember { mutableStateOf(false) }
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    val existing = ui.existing
+    val appearance = ui.appearance
+    val cells = ui.cells
+    val livePreview = ui.livePreview
+    val updating = ui.updating
+    val operationFailed = ui.operationFailed
     var saveOpen by remember { mutableStateOf(false) }
     var deleteOpen by remember { mutableStateOf(false) }
-    var updating by remember { mutableStateOf(false) }
-    var operationFailed by remember { mutableStateOf(false) }
-    var retryOperation by remember { mutableStateOf<(suspend () -> Unit)?>(null) }
 
-    fun runPersistence(operation: suspend () -> Unit) {
-        if (updating) return
-        retryOperation = operation
-        operationFailed = false
-        updating = true
-        scope.launch {
-            runPatternEditorOperation(
-                persist = operation,
-                onSuccess = {
-                    updating = false
-                    retryOperation = null
-                    onBack()
-                },
-                onFailure = {
-                    updating = false
-                    operationFailed = true
-                },
-            )
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            if (event == PatternEditorEvent.Close) onBack()
         }
     }
 
@@ -142,18 +90,6 @@ fun PatternEditorScreen(
     // the parent handler can remove this screen during persistence.
     BackHandler {
         if (!updating) onBack()
-    }
-
-    // Stream edits to the device while live preview is on (throttled, change-only).
-    LaunchedEffect(livePreview, connection) {
-        if (!livePreview || connection == null) return@LaunchedEffect
-        snapshotFlow { cells }
-            .distinctUntilChanged()
-            .conflate()
-            .collect { mask ->
-                connection.writeDisplay(Pattern.bitsToRowBytes(FaceBits.toBitsString(mask)), stream = true)
-                delay(100)
-            }
     }
 
     val title = existing?.name ?: stringResource(R.string.editor_new_title)
@@ -236,7 +172,7 @@ fun PatternEditorScreen(
                 EditorGrid(
                     cells = cells,
                     ledColor = appearance.ledColor.toComposeColor(),
-                    onCellsChange = { cells = it },
+                    onCellsChange = viewModel::onCellsChanged,
                 )
             }
 
@@ -247,14 +183,14 @@ fun PatternEditorScreen(
             ) {
                 OutlinePillButton(
                     text = stringResource(R.string.editor_clear),
-                    onClick = { cells = FaceBits.EMPTY },
+                    onClick = { viewModel.onCellsChanged(FaceBits.EMPTY) },
                     fontSize = 14.sp,
                     verticalPadding = 13.dp,
                     modifier = Modifier.weight(1f),
                 )
                 OutlinePillButton(
                     text = stringResource(R.string.editor_invert),
-                    onClick = { cells = cells.inv() },
+                    onClick = { viewModel.onCellsChanged(cells.inv()) },
                     fontSize = 14.sp,
                     verticalPadding = 13.dp,
                     modifier = Modifier.weight(1f),
@@ -282,7 +218,7 @@ fun PatternEditorScreen(
                 )
                 ClumoToggleSwitch(
                     checked = livePreview,
-                    onCheckedChange = { livePreview = it },
+                    onCheckedChange = viewModel::onLivePreviewChanged,
                 )
             }
 
@@ -342,15 +278,7 @@ fun PatternEditorScreen(
             placeholder = stringResource(R.string.editor_name_placeholder),
             onConfirm = { rawName ->
                 saveOpen = false
-                val name = rawName.trim().ifEmpty { fallbackPrefix + (patterns.size + 1) }
-                val pattern = Pattern(
-                    id = existing?.id ?: UUID.randomUUID().toString(),
-                    name = name,
-                    bits = FaceBits.toBitsString(cells),
-                )
-                runPersistence {
-                    patternRepository.saveAndSelect(pattern)
-                }
+                viewModel.save(rawName, fallbackPrefix)
             },
             onDismiss = { saveOpen = false },
         )
@@ -360,7 +288,7 @@ fun PatternEditorScreen(
         DeleteConfirmDialog(
             onConfirm = {
                 deleteOpen = false
-                runPersistence { patternRepository.remove(existing.id) }
+                viewModel.delete()
             },
             onDismiss = { deleteOpen = false },
         )
@@ -371,13 +299,8 @@ fun PatternEditorScreen(
             title = stringResource(R.string.editor_operation_error_title),
             body = stringResource(R.string.editor_operation_error_body),
             confirmText = stringResource(R.string.action_retry),
-            onConfirm = {
-                retryOperation?.let { runPersistence(it) }
-            },
-            onDismiss = {
-                operationFailed = false
-                retryOperation = null
-            },
+            onConfirm = viewModel::retry,
+            onDismiss = viewModel::dismissFailure,
         )
     }
 }

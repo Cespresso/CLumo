@@ -10,6 +10,8 @@ import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
+import io.github.cespresso.clumo.domain.Pattern
+import io.github.cespresso.clumo.domain.effectiveModeOf
 import io.github.cespresso.clumo.domain.mirrorBitsFor
 import io.github.cespresso.clumo.domain.resolveAppearance
 
@@ -80,6 +82,18 @@ data class DeviceUiState(
     val dialog: DeviceFailureDialog?,
     val mirrorBits: Long,
     val litAlpha: Float,
+    val link: ConnectionState = ConnectionState.Disconnected,
+    val pomodoroStatus: PomodoroStatus = PomodoroStatus.DEFAULT,
+    val timerStatus: CountdownTimerStatus = CountdownTimerStatus.DEFAULT,
+    val brightnessLevel: Int = Brightness.MAX_LEVEL,
+    val brightnessPercent: Float = Brightness.toPercent(Brightness.MAX_LEVEL),
+    val patterns: List<Pattern> = emptyList(),
+    val appliedPatternId: String? = null,
+    val visualizerColumns: IntArray = IntArray(0),
+    val visualizerActive: Boolean = false,
+    val visualizerSensitivity: Float = 0.6f,
+    val automaticLowVolumeBoost: Boolean = false,
+    val timerBlinkOn: Boolean = true,
 )
 
 /**
@@ -91,10 +105,30 @@ data class DeviceUiState(
  * Pomodoro. Exposed because the screen needs it before the state is built, to decide whether
  * a completed timer should be blinking.
  */
-fun effectiveModeOf(pendingMode: Int?, currentMode: Int?): Int =
-    pendingMode ?: currentMode ?: DeviceMode.POMODORO
-
 object DeviceUiStateFactory {
+
+    fun initial(displayName: String): DeviceUiState = create(
+        connected = false,
+        state = ConnectionState.Disconnected,
+        failure = null,
+        reconnectAttempt = 0,
+        currentMode = null,
+        pendingMode = null,
+        pomodoro = null,
+        timer = null,
+        deviceId = null,
+        scannedName = null,
+        knownDevice = null,
+        aliases = emptyMap(),
+        appearances = emptyMap(),
+        primaryDeviceId = null,
+        selectedPatternBits = null,
+        brightnessUi = Brightness.toPercent(Brightness.MAX_LEVEL),
+        columns = IntArray(0),
+        visualizerActive = false,
+        timerBlinkOn = true,
+        dismissedDialogFailure = null,
+    ).copy(displayName = displayName)
 
     /** The five failures no amount of retrying from this screen can clear. */
     private val BLOCKING = setOf(
@@ -183,6 +217,7 @@ object DeviceUiStateFactory {
                 )
             },
             litAlpha = Brightness.litAlphaForPercent(brightnessUi),
+            link = state,
         )
     }
 

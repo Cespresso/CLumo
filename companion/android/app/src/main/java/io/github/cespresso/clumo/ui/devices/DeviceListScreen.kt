@@ -28,14 +28,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,25 +54,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.data.DeviceRegistry
-import io.github.cespresso.clumo.data.DeviceRepository
-import io.github.cespresso.clumo.data.PatternRepository
-import io.github.cespresso.clumo.data.ble.BleScanner
-import io.github.cespresso.clumo.data.ble.DeviceAdvertisement
-import io.github.cespresso.clumo.data.ble.DeviceConnection
-import io.github.cespresso.clumo.data.ble.ScanEvent
-import io.github.cespresso.clumo.data.ble.ScanFailure
-import io.github.cespresso.clumo.data.ble.bluetoothPermissions
 import io.github.cespresso.clumo.design.ClumoColors
-import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionState
-import io.github.cespresso.clumo.domain.Device
-import io.github.cespresso.clumo.domain.DeviceAppearance
-import io.github.cespresso.clumo.domain.DeviceNaming
+import io.github.cespresso.clumo.domain.DeviceAdvertisement
 import io.github.cespresso.clumo.domain.FaceBits
-import io.github.cespresso.clumo.domain.resolveAppearance
+import io.github.cespresso.clumo.domain.ScanFailure
 import io.github.cespresso.clumo.ui.components.BrandCorner
+import io.github.cespresso.clumo.ui.components.bluetoothPermissions
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.ClumoInfoDialog
@@ -85,20 +70,9 @@ import io.github.cespresso.clumo.ui.components.HelpBadge
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
 import io.github.cespresso.clumo.ui.components.connectionLabel
 import io.github.cespresso.clumo.ui.components.dashedBorder
-import io.github.cespresso.clumo.ui.components.liveMirrorBits
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 
-private const val SCAN_TIMEOUT_MS = 20_000L
 private val LIST_ITEM_GAP = 16.dp
 private val LIST_OVERLAY_CLEARANCE = 120.dp
 
@@ -109,28 +83,17 @@ private sealed interface PendingBluetoothAction {
 
 @Composable
 fun DeviceListScreen(
-    registry: DeviceRegistry,
-    repository: DeviceRepository,
-    preferences: AppPreferences,
-    patternRepository: PatternRepository,
-    scanner: BleScanner,
+    viewModel: DeviceListViewModel,
     onOpenDevice: (address: String) -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     val context = LocalContext.current
-    val knownDevices by repository.devices.collectAsState()
-    val activeConnections by registry.connections.collectAsState()
-    val aliases by preferences.aliases.collectAsState(initial = emptyMap())
-    val appearances by preferences.deviceAppearances.collectAsState(initial = emptyMap())
-    val primaryDeviceId by preferences.primaryDeviceId.collectAsState(initial = null)
-    val scope = rememberCoroutineScope()
-    val patterns by patternRepository.patterns.collectAsState(initial = emptyList())
-    val selectedPatternId by patternRepository.selectedId.collectAsState(initial = null)
-
-    var scanning by remember { mutableStateOf(false) }
-    val scanResults = remember { mutableStateOf(emptyMap<String, DeviceAdvertisement>()) }
-    var scanFailure by remember { mutableStateOf<ScanFailure?>(null) }
-    var scanFinishedEmpty by remember { mutableStateOf(false) }
+    val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    val knownDevices = ui.knownDevices
+    val foundDevices = ui.foundDevices
+    val scanning = ui.scanning
+    val scanFailure = ui.scanFailure
+    val scanFinishedEmpty = ui.scanFinishedEmpty
     var pendingAction by remember { mutableStateOf<PendingBluetoothAction?>(null) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showPrimaryHelp by remember { mutableStateOf(false) }
@@ -141,13 +104,10 @@ fun DeviceListScreen(
         if (results.values.all { it }) {
             when (val action = pendingAction) {
                 PendingBluetoothAction.Scan -> {
-                    scanResults.value = emptyMap()
-                    scanFailure = null
-                    scanFinishedEmpty = false
-                    scanning = true
+                    viewModel.startScan()
                 }
                 is PendingBluetoothAction.Connect -> {
-                    registry.connect(action.address, action.name)
+                    viewModel.connect(action.address, action.name)
                     onOpenDevice(action.address)
                 }
                 null -> Unit
@@ -168,13 +128,10 @@ fun DeviceListScreen(
         } else {
             when (action) {
                 PendingBluetoothAction.Scan -> {
-                    scanResults.value = emptyMap()
-                    scanFailure = null
-                    scanFinishedEmpty = false
-                    scanning = true
+                    viewModel.startScan()
                 }
                 is PendingBluetoothAction.Connect -> {
-                    registry.connect(action.address, action.name)
+                    viewModel.connect(action.address, action.name)
                     onOpenDevice(action.address)
                 }
             }
@@ -182,44 +139,6 @@ fun DeviceListScreen(
     }
 
     fun startScan() = runWithBluetoothPermission(PendingBluetoothAction.Scan)
-
-    // Scan lifecycle: runs while `scanning` is true, auto-stops after a timeout.
-    DisposableEffect(scanning) {
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-        val job: Job? = if (scanning) {
-            scanner.scan()
-                .onEach { event ->
-                    when (event) {
-                        is ScanEvent.DeviceFound -> {
-                            val adv = event.advertisement
-                            scanResults.value = scanResults.value + (adv.address to adv)
-                        }
-                        is ScanEvent.Failed -> {
-                            scanFailure = event.reason
-                            scanning = false
-                        }
-                    }
-                }
-                .launchIn(scope)
-        } else null
-        onDispose {
-            job?.cancel()
-            scope.cancel()
-        }
-    }
-    LaunchedEffect(scanning) {
-        if (scanning) {
-            delay(SCAN_TIMEOUT_MS)
-            scanning = false
-            scanFinishedEmpty = scanResults.value.isEmpty()
-        }
-    }
-
-    val knownAddresses = knownDevices.map { it.address }.toSet()
-    val foundDevices = scanResults.value.values
-        .filter { it.address !in knownAddresses }
-        .sortedByDescending { it.rssi }
-    val selectedPatternBits = patterns.firstOrNull { it.id == selectedPatternId }?.bits
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -288,27 +207,17 @@ fun DeviceListScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(LIST_ITEM_GAP),
             ) {
-                items(knownDevices, key = { it.id }) { device ->
-                    val connection = activeConnections[device.address]
+                items(knownDevices, key = { it.device.id }) { item ->
                     KnownDeviceCard(
-                        device = device,
-                        name = DeviceNaming.displayName(
-                            deviceId = device.id,
-                            aliases = aliases,
-                            fallbackName = device.fallbackName,
-                        ),
-                        appearance = resolveAppearance(device.id, appearances),
-                        connection = connection,
-                        selectedPatternBits = selectedPatternBits,
-                        isPrimary = device.id == primaryDeviceId,
-                        onTogglePrimary = {
-                            val next = if (device.id == primaryDeviceId) null else device.id
-                            scope.launch { preferences.setPrimaryDeviceId(next) }
-                        },
+                        item = item,
+                        onTogglePrimary = { viewModel.togglePrimary(item.device.id) },
                         onTap = {
-                            scanning = false
+                            viewModel.stopScan()
                             runWithBluetoothPermission(
-                                PendingBluetoothAction.Connect(device.address, device.name)
+                                PendingBluetoothAction.Connect(
+                                    item.device.address,
+                                    item.device.name,
+                                )
                             )
                         },
                     )
@@ -360,7 +269,7 @@ fun DeviceListScreen(
                         FoundDeviceRow(
                             advertisement = adv,
                             onConnect = {
-                                scanning = false
+                                viewModel.stopScan()
                                 runWithBluetoothPermission(
                                     PendingBluetoothAction.Connect(adv.address, adv.name)
                                 )
@@ -429,20 +338,12 @@ fun DeviceListScreen(
 
 @Composable
 private fun KnownDeviceCard(
-    device: Device,
-    name: String,
-    appearance: DeviceAppearance,
-    connection: DeviceConnection?,
-    selectedPatternBits: String?,
-    isPrimary: Boolean,
+    item: KnownDeviceCardState,
     onTogglePrimary: () -> Unit,
     onTap: () -> Unit,
 ) {
-    val state = connection?.connectionState?.collectAsState()?.value ?: ConnectionState.Disconnected
+    val state = item.connectionState
     val (label, labelColor) = connectionLabel(state)
-    val bits = liveMirrorBits(connection, selectedPatternBits)
-    val brightness = connection?.brightness?.collectAsState()?.value ?: Brightness.MAX_LEVEL
-    val litAlpha = Brightness.litAlpha(brightness)
 
     Row(
         modifier = Modifier
@@ -457,16 +358,16 @@ private fun KnownDeviceCard(
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ClumoDevice(
-            bits = if (state == ConnectionState.Ready) bits else FaceBits.EMPTY,
+            bits = if (state == ConnectionState.Ready) item.mirrorBits else FaceBits.EMPTY,
             size = 94.dp,
-            appearance = appearance,
+            appearance = item.appearance,
             connectionState = state,
-            litAlpha = litAlpha,
+            litAlpha = item.litAlpha,
             glow = false,
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = name,
+                text = item.name,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = RoundedFontFamily,
@@ -480,12 +381,12 @@ private fun KnownDeviceCard(
                 color = labelColor,
                 modifier = Modifier.padding(top = 5.dp),
             )
-            if (isPrimary) {
+            if (item.isPrimary) {
                 PrimaryBadge(modifier = Modifier.padding(top = 6.dp))
             }
         }
         val toggleLabel = stringResource(
-            if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary
+            if (item.isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary
         )
         val primaryStateLabel = stringResource(R.string.device_primary_marker)
         Box(
@@ -493,14 +394,18 @@ private fun KnownDeviceCard(
                 .size(44.dp)
                 .clip(CircleShape)
                 .clickable(role = Role.Button, onClickLabel = toggleLabel, onClick = onTogglePrimary)
-                .semantics { if (isPrimary) stateDescription = primaryStateLabel },
+                .semantics { if (item.isPrimary) stateDescription = primaryStateLabel },
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = if (isPrimary) "★" else "☆",
+                text = if (item.isPrimary) "★" else "☆",
                 fontSize = 18.sp,
                 fontFamily = RoundedFontFamily,
-                color = if (isPrimary) LocalClumoAccents.current.accent else ClumoColors.Chevron,
+                color = if (item.isPrimary) {
+                    LocalClumoAccents.current.accent
+                } else {
+                    ClumoColors.Chevron
+                },
             )
         }
         Text(

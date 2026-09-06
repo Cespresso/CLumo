@@ -16,3 +16,7 @@ object DeviceMode {
 
     val ORDER = listOf(POMODORO, TIMER, DISPLAY, VISUALIZER)
 }
+
+/** Pending user intent wins until CLumo reports its canonical mode. */
+fun effectiveModeOf(pendingMode: Int?, observedMode: Int?): Int =
+    pendingMode ?: observedMode ?: DeviceMode.POMODORO

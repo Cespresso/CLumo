@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -32,26 +31,25 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.ui.components.ClumoSlider
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
-import kotlinx.coroutines.launch
 
 @Composable
 internal fun VisualizerSection(
-    connection: DeviceConnection?,
+    visualizerActive: Boolean,
     visualizerSensitivity: Float,
     automaticLowVolumeBoost: Boolean,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
     onVisualizerSensitivityChange: (Float) -> Unit,
     onVisualizerSensitivityChangeFinished: (Float) -> Unit,
     onAutomaticLowVolumeBoostChange: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
-    val vizActive = connection?.audioVisualizer?.isActive?.collectAsState()?.value ?: false
     var sensitivity by remember(visualizerSensitivity) {
         mutableFloatStateOf(visualizerSensitivity * 100f)
     }
@@ -60,14 +58,13 @@ internal fun VisualizerSection(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         if (results[Manifest.permission.RECORD_AUDIO] == true) {
-            connection?.startAudioVisualizer()
+            onStart()
         }
     }
 
     fun toggle() {
-        if (connection == null) return
-        if (vizActive) {
-            connection.stopAudioVisualizer(clearDisplay = true)
+        if (visualizerActive) {
+            onStop()
             return
         }
         val needed = buildList {
@@ -82,7 +79,7 @@ internal fun VisualizerSection(
         if (needed.isNotEmpty()) {
             audioPermissionLauncher.launch(needed.toTypedArray())
         } else {
-            connection.startAudioVisualizer()
+            onStart()
         }
     }
 
@@ -96,7 +93,7 @@ internal fun VisualizerSection(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
-        if (vizActive) {
+        if (visualizerActive) {
             OutlinePillButton(
                 text = stringResource(R.string.viz_stop),
                 onClick = { toggle() },

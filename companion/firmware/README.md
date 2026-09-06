@@ -35,10 +35,15 @@ Pomodoro and Timer the firmware acts on the press itself, so those modes stay
 usable while disconnected. In Display and Visualizer the firmware only notifies
 BUTTON, so those presses do nothing while disconnected.
 
-Mode handlers are recreated on every mode switch. Leaving Pomodoro or Timer
-discards its current execution state and notifies an idle status. Pomodoro work
-and break durations remain persisted in NVS. Timer duration and execution state
-are not persisted; Timer starts at `05:00` after boot or handler recreation.
+All mode handlers live for the process lifetime. Pomodoro and Timer continue
+counting while another mode is visible and resume from the same state when selected
+again. Pomodoro work/break durations, Timer configured duration, brightness, Display
+bitmap, and current mode are persisted in NVS. Countdown execution state is not
+persisted across reboot; both countdowns boot idle with their stored durations.
+
+While disconnected, the matrix briefly shows the link-loss icon and then returns
+to the current mode's standalone frame. The connection icon keeps blinking until a
+connected client finishes its encrypted GATT initial sync.
 
 ## Build & flash
 
@@ -77,7 +82,7 @@ cargo run
 
 | Name       | UUID | Properties | Payload |
 |------------|------|------------|---------|
-| MODE       | `681285a6-247f-48c6-80ad-68c3dce18586` | READ, WRITE, NOTIFY | 1 byte: mode `0..=3`. Write switches mode. Firmware notifies after an accepted change. Invalid values are ignored. |
+| MODE       | `681285a6-247f-48c6-80ad-68c3dce18586` | READ, WRITE, NOTIFY | 1 byte: mode `0..=3`. Write switches mode. A same-value Display write commits the current preview. Firmware notifies after an accepted mode change. Invalid values are ignored. |
 | DISPLAY    | `681285a6-247f-48c6-80ad-68c3dce18585` | READ, WRITE, WRITE_NR | 8 bytes, interpreted by the current mode (see below). Ignored in Pomodoro and Timer modes. |
 | POMODORO   | `681285a6-247f-48c6-80ad-68c3dce18587` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 6-byte status (below). |
 | BRIGHTNESS | `681285a6-247f-48c6-80ad-68c3dce18588` | READ, WRITE, NOTIFY | 1 byte: MAX7219 intensity, clamped to `0..=15`. Firmware echoes the applied value via notify. |
@@ -100,12 +105,29 @@ features come alive after a firmware upgrade without re-pairing.
 
 - **Display mode (2)**: row bitmap. Byte 0 = top row, byte 7 = bottom row.
   Within a byte, bit 7 (MSB) = leftmost column, bit 0 = rightmost column.
-  The last bitmap is persisted in NVS and restored on reboot.
 - **Visualizer mode (3)**: column heights. Byte 0 = leftmost column, byte 7 =
   rightmost column. Each byte is a height `0..=8` (values above 8 are clamped).
 - **Pomodoro (0) and Timer (1)**: ignored.
 
-Use WRITE_NR (write without response) for high-rate visualizer streaming.
+Use WRITE_NR (write without response) for high-rate visualizer and Display-preview
+streaming.
+
+### Display preview and commit
+
+Legacy v2 clients get the original behavior: every DISPLAY write is persisted.
+
+A client that supports high-rate preview opts in once per connection by writing the
+current `MODE = 2` value after initial sync, or by writing `MODE = 2` twice when
+entering Display. Its later DISPLAY writes are visible immediately but are not
+persisted. Another same-value `MODE = 2` write commits the current preview. An
+uncommitted preview is discarded on disconnect, mode change, or after 5 seconds
+without another preview, and the last committed bitmap is restored. The Android
+companion performs this handshake automatically.
+
+ESP-NimBLE does not expose request-vs-command metadata to the server callback, so
+the explicit same-mode MODE write is the commit boundary. Leaving legacy writes
+durable lets live preview avoid wearing NVS without changing the behavior of
+already-installed v2 clients.
 
 ### BUTTON notify payload (2 bytes)
 
@@ -155,7 +177,7 @@ full-screen blink, switches phase, and keeps running.
 | `[0x01]` | Start from idle, resume from paused, or restart the configured duration after completion. No-op while running. |
 | `[0x02]` | Pause. No-op unless running. |
 | `[0x03]` | Cancel: state = idle and remaining = configured duration. The configured duration is retained. |
-| `[0x10, minutes, seconds]` | Set duration while idle. Minutes and seconds must each be `0..=59`, and `00:00` is rejected. While running, paused, or completed, the setting is left unchanged and the current status is echoed. The value is not persisted. |
+| `[0x10, minutes, seconds]` | Set duration while idle. Minutes and seconds must each be `0..=59`, and `00:00` is rejected. While running, paused, or completed, the setting is left unchanged and the current status is echoed. Accepted values are persisted in NVS. |
 
 Every accepted command results in a status notify, including no-ops as a status
 echo. Timer commands are processed only while the device is in Timer mode.

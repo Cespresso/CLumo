@@ -17,7 +17,6 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
-import io.github.cespresso.clumo.audio.AudioVisualizerManager
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
@@ -35,20 +34,22 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+internal fun displayWriteMayBeCoalesced(noResponse: Boolean): Boolean = noResponse
+
 /**
  * Per-device GATT connection and state for BLE protocol v2.
- * Owns its coroutine scope, audio visualizer, and reconnect job.
+ * Owns its coroutine scope and reconnect job.
  * One instance per CLumo device; created and disposed by
- * [io.github.cespresso.clumo.data.DeviceRegistry].
+ * [io.github.cespresso.clumo.data.session.DeviceSessionRegistry].
  *
  * GATT only allows one outstanding operation, so reads/writes/subscribes go
  * through a small FIFO queue that advances on each completion callback.
  */
 class DeviceConnection(
     private val context: Context,
-    val address: String,
+    override val address: String,
     initialName: String?,
-) {
+) : DeviceTransport {
 
     companion object {
         private const val TAG = "DeviceConnection"
@@ -57,7 +58,6 @@ class DeviceConnection(
         private const val BOND_TIMEOUT_MS = 45_000L
         private const val SYNC_TIMEOUT_MS = 12_000L
         private const val GATT_CACHE_REFRESH_DELAY_MS = 600L
-        private const val AUDIO_SEND_INTERVAL_MS = 80L
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -65,36 +65,37 @@ class DeviceConnection(
     // --- Public state ---
 
     private val _connectionState = MutableStateFlow(ConnectionState.Disconnected)
-    val connectionState = _connectionState.asStateFlow()
+    override val connectionState = _connectionState.asStateFlow()
 
     private val _connectionFailure = MutableStateFlow<ConnectionFailure?>(null)
-    val connectionFailure = _connectionFailure.asStateFlow()
+    override val connectionFailure = _connectionFailure.asStateFlow()
 
     private val _reconnectAttempt = MutableStateFlow(0)
-    val reconnectAttempt = _reconnectAttempt.asStateFlow()
+    override val reconnectAttempt = _reconnectAttempt.asStateFlow()
 
     private val _currentMode = MutableStateFlow<Int?>(null)
-    val currentMode = _currentMode.asStateFlow()
+    override val currentMode = _currentMode.asStateFlow()
 
     private val _pomodoroStatus = MutableStateFlow<PomodoroStatus?>(null)
-    val pomodoroStatus = _pomodoroStatus.asStateFlow()
+    override val pomodoroStatus = _pomodoroStatus.asStateFlow()
 
     private val _timerStatus = MutableStateFlow<CountdownTimerStatus?>(null)
-    val timerStatus = _timerStatus.asStateFlow()
+    override val timerStatus = _timerStatus.asStateFlow()
 
-    private val _brightness = MutableStateFlow(0x0F)
-    val brightness = _brightness.asStateFlow()
+    private val _brightness = MutableStateFlow<Int?>(null)
+    override val brightness = _brightness.asStateFlow()
 
     private val _deviceId = MutableStateFlow<String?>(null)
-    val deviceId = _deviceId.asStateFlow()
+    override val deviceId = _deviceId.asStateFlow()
 
     private val _deviceName = MutableStateFlow(initialName)
-    val deviceName = _deviceName.asStateFlow()
+    override val deviceName = _deviceName.asStateFlow()
 
     private val _buttonEvents = MutableSharedFlow<ButtonEvent>(extraBufferCapacity = 8)
-    val buttonEvents = _buttonEvents.asSharedFlow()
+    override val buttonEvents = _buttonEvents.asSharedFlow()
 
-    val audioVisualizer = AudioVisualizerManager()
+    private val _observations = MutableSharedFlow<DeviceObservation>(extraBufferCapacity = 16)
+    override val observations = _observations.asSharedFlow()
 
     // --- GATT operation queue ---
 
@@ -112,7 +113,6 @@ class DeviceConnection(
 
     @Volatile private var gatt: BluetoothGatt? = null
     private val characteristics = mutableMapOf<UUID, BluetoothGattCharacteristic>()
-    private var audioSendJob: Job? = null
     private var reconnectJob: Job? = null
     private var phaseTimeoutJob: Job? = null
     private var reconnectAttempts = 0
@@ -164,7 +164,7 @@ class DeviceConnection(
     // --- Lifecycle ---
 
     @SuppressLint("MissingPermission")
-    fun connect() {
+    override fun connect() {
         if (_connectionState.value != ConnectionState.Disconnected &&
             _connectionState.value != ConnectionState.Error
         ) return
@@ -222,20 +222,19 @@ class DeviceConnection(
      * Reconnect, re-enumerating the GATT database instead of trusting Android's cached
      * copy. The automatic refresh only fires when a known characteristic is missing.
      */
-    fun reconnectWithCacheRefresh() {
+    override fun reconnectWithCacheRefresh() {
         forceCacheRefresh = true
         disconnect()
         connect()
     }
 
     @SuppressLint("MissingPermission")
-    fun disconnect() {
+    override fun disconnect() {
         userDisconnect = true
         reconnectJob?.cancel()
         reconnectJob = null
         phaseTimeoutJob?.cancel()
         phaseTimeoutJob = null
-        stopAudioVisualizer()
         closeGatt()
         _connectionState.value = ConnectionState.Disconnected
         _connectionFailure.value = null
@@ -246,7 +245,7 @@ class DeviceConnection(
         _deviceId.value = null
     }
 
-    fun dispose() {
+    override fun dispose() {
         disconnect()
         runCatching { context.unregisterReceiver(bondReceiver) }
         scope.cancel()
@@ -255,6 +254,11 @@ class DeviceConnection(
     private fun clearGattState() {
         initialSync = false
         characteristics.clear()
+        _currentMode.value = null
+        _pomodoroStatus.value = null
+        _timerStatus.value = null
+        _brightness.value = null
+        _deviceId.value = null
         synchronized(queueLock) {
             opQueue.clear()
             opInFlight = false
@@ -295,7 +299,6 @@ class DeviceConnection(
         phaseTimeoutJob?.cancel()
         phaseTimeoutJob = null
         _connectionFailure.value = failure
-        stopAudioVisualizer()
         closeGatt()
         if (retry) scheduleReconnect(failure) else _connectionState.value = ConnectionState.Error
     }
@@ -328,6 +331,7 @@ class DeviceConnection(
      * hidden refresh call is unavailable, leaving the caller to decide whether the stale
      * cache is survivable.
      */
+    @SuppressLint("MissingPermission")
     private fun refreshCacheAndRediscover(g: BluetoothGatt): Boolean {
         if (!refreshGattCache(g)) return false
         startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.ServiceDiscoveryFailed, retry = true)
@@ -419,7 +423,8 @@ class DeviceConnection(
         val idle = synchronized(queueLock) { !opInFlight && opQueue.isEmpty() }
         if (!idle) return
         if (_deviceId.value == null || _currentMode.value == null ||
-            _pomodoroStatus.value == null || _timerStatus.value == null
+            _pomodoroStatus.value == null || _timerStatus.value == null ||
+            _brightness.value == null
         ) {
             fail(ConnectionFailure.SynchronizationFailed, retry = true)
             return
@@ -435,10 +440,7 @@ class DeviceConnection(
 
     // --- Public actions ---
 
-    fun writeMode(mode: Int) {
-        if (shouldStopVisualizerForModeChange(audioVisualizer.isActive.value, mode)) {
-            stopAudioVisualizer(clearDisplay = true)
-        }
+    override fun writeMode(mode: Int) {
         enqueue(GattOp.Write(BleUuids.MODE, byteArrayOf(mode.toByte()), noResponse = false))
     }
 
@@ -447,10 +449,16 @@ class DeviceConnection(
      * live-preview edits) pending display writes are coalesced so only the
      * newest frame is sent, using write-without-response.
      */
-    fun writeDisplay(data: ByteArray, stream: Boolean = false) {
+    override fun writeDisplay(data: ByteArray, stream: Boolean) {
         val payload = data.copyOf(8)
         synchronized(queueLock) {
-            if (stream) opQueue.removeAll { it is GattOp.Write && it.uuid == BleUuids.DISPLAY }
+            if (stream) {
+                opQueue.removeAll {
+                    it is GattOp.Write &&
+                        it.uuid == BleUuids.DISPLAY &&
+                        displayWriteMayBeCoalesced(it.noResponse)
+                }
+            }
             opQueue.add(GattOp.Write(BleUuids.DISPLAY, payload, noResponse = stream))
         }
         processQueue()
@@ -460,29 +468,28 @@ class DeviceConnection(
         enqueue(GattOp.Write(BleUuids.POMODORO, ByteArray(bytes.size) { bytes[it].toByte() }, noResponse = false))
     }
 
-    fun pomodoroStart() = writePomodoroCommand(BleUuids.POMODORO_CMD_START)
-    fun pomodoroPause() = writePomodoroCommand(BleUuids.POMODORO_CMD_PAUSE)
-    fun pomodoroReset() = writePomodoroCommand(BleUuids.POMODORO_CMD_RESET)
+    override fun pomodoroStart() = writePomodoroCommand(BleUuids.POMODORO_CMD_START)
+    override fun pomodoroPause() = writePomodoroCommand(BleUuids.POMODORO_CMD_PAUSE)
+    override fun pomodoroReset() = writePomodoroCommand(BleUuids.POMODORO_CMD_RESET)
 
-    fun pomodoroSetDurations(workMin: Int, breakMin: Int) =
+    override fun pomodoroSetDurations(workMin: Int, breakMin: Int) =
         writePomodoroCommand(BleUuids.POMODORO_CMD_SET_DURATIONS, workMin.coerceIn(1, 99), breakMin.coerceIn(1, 99))
 
     private fun writeTimerCommand(vararg bytes: Int) {
         enqueue(GattOp.Write(BleUuids.TIMER, ByteArray(bytes.size) { bytes[it].toByte() }, noResponse = false))
     }
 
-    fun timerStart() = writeTimerCommand(BleUuids.TIMER_CMD_START)
-    fun timerPause() = writeTimerCommand(BleUuids.TIMER_CMD_PAUSE)
-    fun timerCancel() = writeTimerCommand(BleUuids.TIMER_CMD_CANCEL)
+    override fun timerStart() = writeTimerCommand(BleUuids.TIMER_CMD_START)
+    override fun timerPause() = writeTimerCommand(BleUuids.TIMER_CMD_PAUSE)
+    override fun timerCancel() = writeTimerCommand(BleUuids.TIMER_CMD_CANCEL)
 
-    fun timerSetDuration(minutes: Int, seconds: Int) {
+    override fun timerSetDuration(minutes: Int, seconds: Int) {
         val payload = BleUuids.timerSetDurationPayloadOrNull(minutes, seconds) ?: return
         enqueue(GattOp.Write(BleUuids.TIMER, payload, noResponse = false))
     }
 
-    fun writeBrightness(level: Int) {
+    override fun writeBrightness(level: Int) {
         val clamped = level.coerceIn(0, 0x0F)
-        _brightness.value = clamped
         enqueue(GattOp.Write(BleUuids.BRIGHTNESS, byteArrayOf(clamped.toByte()), noResponse = false))
     }
 
@@ -491,38 +498,6 @@ class DeviceConnection(
     fun readTimerStatus() = enqueue(GattOp.Read(BleUuids.TIMER))
     fun readBrightness() = enqueue(GattOp.Read(BleUuids.BRIGHTNESS))
     fun readDeviceId() = enqueue(GattOp.Read(BleUuids.DEVICE_ID))
-
-    // --- Audio visualizer ---
-
-    fun startAudioVisualizer(): Boolean {
-        if (!canRunAudioVisualizer(_connectionState.value, _currentMode.value)) {
-            Log.w(TAG, "$address: audio visualizer requires ready Visualizer mode")
-            return false
-        }
-        if (!audioVisualizer.start()) {
-            Log.w(TAG, "$address: audio visualizer failed to start")
-            return false
-        }
-        audioSendJob?.cancel()
-        audioSendJob = scope.launch {
-            while (true) {
-                delay(AUDIO_SEND_INTERVAL_MS)
-                if (!canRunAudioVisualizer(_connectionState.value, _currentMode.value)) continue
-                val columns = audioVisualizer.columns.value
-                writeDisplay(ByteArray(8) { columns[it].toByte() }, stream = true)
-            }
-        }
-        return true
-    }
-
-    fun stopAudioVisualizer(clearDisplay: Boolean = false) {
-        audioSendJob?.cancel()
-        audioSendJob = null
-        audioVisualizer.stop()
-        if (clearDisplay && canRunAudioVisualizer(_connectionState.value, _currentMode.value)) {
-            writeDisplay(ByteArray(8), stream = true)
-        }
-    }
 
     // --- GATT callback ---
 
@@ -563,7 +538,6 @@ class DeviceConnection(
                     gatt = null
                     runCatching { g.close() }
                     clearGattState()
-                    stopAudioVisualizer()
                     if (!userDisconnect) {
                         scheduleReconnect(ConnectionFailure.ConnectionLost)
                     } else {
@@ -698,10 +672,22 @@ class DeviceConnection(
     private fun handleValue(uuid: UUID, value: ByteArray) {
         if (value.isEmpty()) return
         when (uuid) {
-            BleUuids.MODE -> _currentMode.value = value[0].toInt() and 0xFF
-            BleUuids.POMODORO -> PomodoroStatus.parse(value)?.let { _pomodoroStatus.value = it }
-            BleUuids.TIMER -> CountdownTimerStatus.parse(value)?.let { _timerStatus.value = it }
-            BleUuids.BRIGHTNESS -> _brightness.value = value[0].toInt() and 0xFF
+            BleUuids.MODE -> (value[0].toInt() and 0xFF).let {
+                _currentMode.value = it
+                _observations.tryEmit(DeviceObservation.Mode(it))
+            }
+            BleUuids.POMODORO -> PomodoroStatus.parse(value)?.let {
+                _pomodoroStatus.value = it
+                _observations.tryEmit(DeviceObservation.Pomodoro(it))
+            }
+            BleUuids.TIMER -> CountdownTimerStatus.parse(value)?.let {
+                _timerStatus.value = it
+                _observations.tryEmit(DeviceObservation.Timer(it))
+            }
+            BleUuids.BRIGHTNESS -> (value[0].toInt() and 0xFF).let {
+                _brightness.value = it
+                _observations.tryEmit(DeviceObservation.Brightness(it))
+            }
             BleUuids.DEVICE_ID -> _deviceId.value = formatDeviceId(value)
             BleUuids.BUTTON -> ButtonEvent.parse(value)?.let {
                 if (!_buttonEvents.tryEmit(it)) {

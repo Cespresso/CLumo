@@ -25,18 +25,57 @@ internal fun upsertPattern(patterns: List<Pattern>, pattern: Pattern): List<Patt
     }
 }
 
-internal data class PatternSelectionUpdate(
+internal data class PatternApplicationUpdate(
     val patterns: List<Pattern>,
-    val selectedId: String,
+    val appliedPatternIds: Map<String, String>,
 )
 
-internal fun saveAndSelectPattern(
+internal fun saveAndApplyPattern(
     patterns: List<Pattern>,
+    appliedPatternIds: Map<String, String>,
+    deviceId: String,
     pattern: Pattern,
-): PatternSelectionUpdate = PatternSelectionUpdate(
+): PatternApplicationUpdate = PatternApplicationUpdate(
     patterns = upsertPattern(patterns, pattern),
-    selectedId = pattern.id,
+    appliedPatternIds = appliedPatternIds + (deviceId to pattern.id),
 )
+
+internal fun appliedPatternIdsAfterRemoval(
+    appliedPatternIds: Map<String, String>,
+    removedPatternId: String,
+): Map<String, String> = appliedPatternIds.filterValues { it != removedPatternId }
+
+internal fun migrateLegacyPatternSelection(
+    legacyPatternId: String?,
+    appliedPatternIds: Map<String, String>,
+    primaryDeviceId: String?,
+    knownDeviceIds: List<String>,
+): Map<String, String> {
+    val patternId = legacyPatternId ?: return appliedPatternIds
+    val target = primaryDeviceId ?: knownDeviceIds.firstOrNull() ?: return appliedPatternIds
+    if (target in appliedPatternIds) return appliedPatternIds
+    return appliedPatternIds + (target to patternId)
+}
+
+internal fun legacySelectionCanBeConsumed(
+    primaryDeviceId: String?,
+    knownDeviceIds: List<String>,
+): Boolean = primaryDeviceId != null || knownDeviceIds.isNotEmpty()
+
+internal fun encodeAppliedPatternIds(appliedPatternIds: Map<String, String>): String =
+    JSONObject().apply {
+        appliedPatternIds.forEach { (deviceId, patternId) -> put(deviceId, patternId) }
+    }.toString()
+
+internal fun decodeAppliedPatternIds(raw: String?): Map<String, String> {
+    if (raw.isNullOrEmpty()) return emptyMap()
+    return runCatching {
+        val json = JSONObject(raw)
+        buildMap {
+            json.keys().forEach { deviceId -> put(deviceId, json.getString(deviceId)) }
+        }
+    }.getOrElse { emptyMap() }
+}
 
 /**
  * The pattern one step after [currentId] in list order, wrapping at both ends.
@@ -57,14 +96,19 @@ internal fun cyclePattern(
 
 /**
  * DataStore-backed store of user display patterns (JSON list of
- * {id, name, bits}) plus the currently selected pattern id.
+ * {id, name, bits}) plus the applied pattern id for each device.
  * Seeds three default patterns on first run.
  */
-class PatternRepository(private val context: Context) {
+class PatternRepository(
+    private val context: Context,
+    private val preferences: AppPreferences,
+    private val devices: DeviceRepository,
+) {
 
     companion object {
         private val KEY_PATTERNS = stringPreferencesKey("patterns_json")
         private val KEY_SELECTED = stringPreferencesKey("selected_pattern_id")
+        private val KEY_APPLIED = stringPreferencesKey("applied_pattern_ids_json")
         private val KEY_SEEDED = booleanPreferencesKey("patterns_seeded")
 
         private val HEART_BITS = listOf(
@@ -89,10 +133,13 @@ class PatternRepository(private val context: Context) {
         decode(prefs[KEY_PATTERNS])
     }
 
-    val selectedId: Flow<String?> = store.data.map { it[KEY_SELECTED] }
+    val appliedPatternIds: Flow<Map<String, String>> = store.data.map {
+        decodeAppliedPatternIds(it[KEY_APPLIED])
+    }
 
     /** Seed the default patterns exactly once. */
     suspend fun ensureSeeded() {
+        migrateLegacySelection()
         val seeded = store.data.first()[KEY_SEEDED] ?: false
         if (seeded) return
         val defaults = listOf(
@@ -103,8 +150,26 @@ class PatternRepository(private val context: Context) {
         store.edit { prefs ->
             if (prefs[KEY_SEEDED] == true) return@edit
             prefs[KEY_PATTERNS] = encode(defaults)
-            prefs[KEY_SELECTED] = defaults.first().id
             prefs[KEY_SEEDED] = true
+        }
+    }
+
+    private suspend fun migrateLegacySelection() {
+        val primaryId = preferences.primaryDeviceId.first()
+        val knownIds = devices.devices.value.map { it.id }
+        store.edit { prefs ->
+            val legacy = prefs[KEY_SELECTED] ?: return@edit
+            if (!legacySelectionCanBeConsumed(primaryId, knownIds)) return@edit
+            val migrated = migrateLegacyPatternSelection(
+                legacyPatternId = legacy,
+                appliedPatternIds = decodeAppliedPatternIds(prefs[KEY_APPLIED]),
+                primaryDeviceId = primaryId,
+                knownDeviceIds = knownIds,
+            )
+            if (migrated.isNotEmpty()) {
+                prefs[KEY_APPLIED] = encodeAppliedPatternIds(migrated)
+            }
+            prefs.remove(KEY_SELECTED)
         }
     }
 
@@ -115,12 +180,16 @@ class PatternRepository(private val context: Context) {
         }
     }
 
-    suspend fun saveAndSelect(pattern: Pattern) {
+    suspend fun saveAndApply(deviceId: String, pattern: Pattern) {
         store.edit { prefs ->
-            val current = decode(prefs[KEY_PATTERNS])
-            val update = saveAndSelectPattern(current, pattern)
+            val update = saveAndApplyPattern(
+                patterns = decode(prefs[KEY_PATTERNS]),
+                appliedPatternIds = decodeAppliedPatternIds(prefs[KEY_APPLIED]),
+                deviceId = deviceId,
+                pattern = pattern,
+            )
             prefs[KEY_PATTERNS] = encode(update.patterns)
-            prefs[KEY_SELECTED] = update.selectedId
+            prefs[KEY_APPLIED] = encodeAppliedPatternIds(update.appliedPatternIds)
         }
     }
 
@@ -128,30 +197,35 @@ class PatternRepository(private val context: Context) {
         store.edit { prefs ->
             val updated = decode(prefs[KEY_PATTERNS]).filter { it.id != id }
             prefs[KEY_PATTERNS] = encode(updated)
-            if (prefs[KEY_SELECTED] == id) {
-                val fallback = updated.firstOrNull()?.id
-                if (fallback != null) prefs[KEY_SELECTED] = fallback else prefs.remove(KEY_SELECTED)
+            val applied = appliedPatternIdsAfterRemoval(
+                decodeAppliedPatternIds(prefs[KEY_APPLIED]),
+                id,
+            )
+            if (applied.isEmpty()) {
+                prefs.remove(KEY_APPLIED)
+            } else {
+                prefs[KEY_APPLIED] = encodeAppliedPatternIds(applied)
             }
         }
     }
 
-    suspend fun select(id: String) {
-        store.edit { it[KEY_SELECTED] = id }
+    suspend fun setApplied(deviceId: String, patternId: String) {
+        store.edit { prefs ->
+            val applied = decodeAppliedPatternIds(prefs[KEY_APPLIED]) + (deviceId to patternId)
+            prefs[KEY_APPLIED] = encodeAppliedPatternIds(applied)
+        }
     }
 
-    /**
-     * Move the selection one step and return the newly selected pattern. Returns null
-     * when the selection could not move because there are fewer than two patterns.
-     */
-    suspend fun cycleSelection(forward: Boolean): Pattern? {
+    suspend fun cycleApplied(deviceId: String, forward: Boolean): Pattern? {
         var selected: Pattern? = null
         store.edit { prefs ->
             val current = decode(prefs[KEY_PATTERNS])
-            val currentId = prefs[KEY_SELECTED]
+            val applied = decodeAppliedPatternIds(prefs[KEY_APPLIED])
+            val currentId = applied[deviceId]
             val next = cyclePattern(current, currentId, forward) ?: return@edit
             if (next.id == currentId) return@edit
             selected = next
-            prefs[KEY_SELECTED] = next.id
+            prefs[KEY_APPLIED] = encodeAppliedPatternIds(applied + (deviceId to next.id))
         }
         return selected
     }

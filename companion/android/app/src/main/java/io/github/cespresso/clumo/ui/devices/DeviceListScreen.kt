@@ -66,9 +66,11 @@ import io.github.cespresso.clumo.data.ble.DeviceAdvertisement
 import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.data.ble.ScanEvent
 import io.github.cespresso.clumo.data.ble.ScanFailure
+import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.components.BrandCorner
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
@@ -76,14 +78,12 @@ import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.ClumoInfoDialog
 import io.github.cespresso.clumo.ui.components.ClumoNavigationBarSpacer
 import io.github.cespresso.clumo.ui.components.CtaPillButton
-import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.HelpBadge
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
 import io.github.cespresso.clumo.ui.components.connectionLabel
 import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.device.liveMirrorBits
 import io.github.cespresso.clumo.ui.onboarding.bluetoothPermissions
-import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.CoroutineScope

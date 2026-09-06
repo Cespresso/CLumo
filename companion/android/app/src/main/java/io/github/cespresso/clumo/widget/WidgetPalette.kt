@@ -2,7 +2,7 @@ package io.github.cespresso.clumo.widget
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.design.ClumoColors
 
 /**
  * Fixed widget colors, taken from the app's palette wherever one already exists. The colors

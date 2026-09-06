@@ -36,8 +36,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.ble.BleUuids
+import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
-import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.delay

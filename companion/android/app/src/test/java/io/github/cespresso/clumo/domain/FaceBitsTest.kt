@@ -1,7 +1,5 @@
-package io.github.cespresso.clumo.ui.components
+package io.github.cespresso.clumo.domain
 
-import io.github.cespresso.clumo.domain.CountdownTimerStatus
-import io.github.cespresso.clumo.domain.PomodoroStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

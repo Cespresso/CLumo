@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.BuildConfig
 import io.github.cespresso.clumo.R
-import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 

@@ -18,6 +18,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import io.github.cespresso.clumo.data.AppPreferences
+import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceScreen
@@ -29,7 +30,6 @@ import io.github.cespresso.clumo.ui.onboarding.OnboardingBluetoothScreen
 import io.github.cespresso.clumo.ui.onboarding.OnboardingWelcomeScreen
 import io.github.cespresso.clumo.ui.settings.LicensesScreen
 import io.github.cespresso.clumo.ui.settings.SettingsScreen
-import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.ClumoTheme
 import kotlinx.coroutines.flow.first
 

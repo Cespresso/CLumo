@@ -3,10 +3,11 @@ package io.github.cespresso.clumo.ui.theme
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import io.github.cespresso.clumo.design.ClumoColors
+import io.github.cespresso.clumo.design.ContentTone
+import io.github.cespresso.clumo.design.accentContentToneFor
 import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.RgbColor
-import io.github.cespresso.clumo.ui.components.ContentTone
-import io.github.cespresso.clumo.ui.components.relativeLuminance
 import io.github.cespresso.clumo.ui.components.toComposeColor
 
 /**
@@ -24,15 +25,6 @@ data class AccentSpec(
     val knob: RgbColor,
     val led: RgbColor,
 )
-
-/**
- * Content tone for text/icons on an accent fill. Unlike contentToneFor's
- * WCAG cutoff, mid-tone fills such as the default sage and coral keep white
- * content to match the design language; only clearly light fills switch to
- * dark content.
- */
-fun accentContentToneFor(color: RgbColor): ContentTone =
-    if (relativeLuminance(color) > 0.4f) ContentTone.Dark else ContentTone.Light
 
 fun accentSpecFor(appearance: DeviceAppearance): AccentSpec = AccentSpec(
     accent = appearance.enclosureColor,

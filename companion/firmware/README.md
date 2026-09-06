@@ -89,8 +89,8 @@ cargo run
 assigns ATT handles in creation order, so inserting a characteristic ahead of an
 existing one shifts that one's handle. A client that already bonded reconnects from
 its cached GATT database and keeps using the old handles, so it silently reads the
-wrong attribute — which broke reconnection entirely when BUTTON was first added
-ahead of DEVICE_ID. Appending leaves every existing handle untouched, so clients
+wrong attribute. This is what broke reconnection entirely when BUTTON was first
+added ahead of DEVICE_ID. Appending leaves every existing handle untouched, so clients
 upgrading from older firmware keep working; they just do not see the new
 characteristic until their cache is refreshed. The companion app forces exactly one
 refresh when a known-optional characteristic is missing, which is how the new
@@ -98,12 +98,12 @@ features come alive after a firmware upgrade without re-pairing.
 
 ### DISPLAY payload interpretation
 
-- **Display mode (2)** — row bitmap: byte 0 = top row, byte 7 = bottom row.
+- **Display mode (2)**: row bitmap. Byte 0 = top row, byte 7 = bottom row.
   Within a byte, bit 7 (MSB) = leftmost column, bit 0 = rightmost column.
   The last bitmap is persisted in NVS and restored on reboot.
-- **Visualizer mode (3)** — column heights: byte 0 = leftmost column, byte 7 =
+- **Visualizer mode (3)**: column heights. Byte 0 = leftmost column, byte 7 =
   rightmost column. Each byte is a height `0..=8` (values above 8 are clamped).
-- **Pomodoro (0) and Timer (1)** — ignored.
+- **Pomodoro (0) and Timer (1)**: ignored.
 
 Use WRITE_NR (write without response) for high-rate visualizer streaming.
 

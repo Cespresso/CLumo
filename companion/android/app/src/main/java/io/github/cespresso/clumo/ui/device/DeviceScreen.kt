@@ -136,6 +136,7 @@ fun DeviceScreen(
     address: String,
     onBack: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAppearance: (deviceId: String) -> Unit,
     onOpenEditor: (patternId: String?) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -577,6 +578,14 @@ fun DeviceScreen(
                     menuOpen = false
                     renameOpen = true
                 }
+                MenuItem(
+                    label = stringResource(R.string.device_menu_appearance),
+                    color = ClumoColors.Text,
+                    enabled = stableId != null,
+                ) {
+                    menuOpen = false
+                    stableId?.let(onOpenAppearance)
+                }
                 MenuItem(stringResource(R.string.device_menu_settings), ClumoColors.Text) {
                     menuOpen = false
                     onOpenSettings()
@@ -658,12 +667,17 @@ fun DeviceScreen(
 }
 
 @Composable
-private fun MenuItem(label: String, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+private fun MenuItem(
+    label: String,
+    color: androidx.compose.ui.graphics.Color,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Text(
@@ -671,7 +685,7 @@ private fun MenuItem(label: String, color: androidx.compose.ui.graphics.Color, o
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = RoundedFontFamily,
-            color = color,
+            color = if (enabled) color else ClumoColors.MutedLight,
         )
     }
 }

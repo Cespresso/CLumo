@@ -42,6 +42,7 @@
 
     <!-- Device screen -->
     <string name="device_menu_rename">名前を変更</string>
+    <string name="device_menu_appearance">外観設定</string>
     <string name="device_menu_settings">設定</string>
     <string name="device_menu_refresh_gatt">デバイス情報を再取得</string>
     <string name="device_menu_disconnect">切断</string>
@@ -131,6 +132,39 @@
 
     <!-- Rename dialog -->
     <string name="rename_title">名前を変更</string>
+
+    <!-- Device appearance -->
+    <string name="appearance_title">外観設定</string>
+    <string name="appearance_preview_label">%1$s の外観</string>
+    <string name="appearance_enclosure">筐体</string>
+    <string name="appearance_button_a">ボタンA</string>
+    <string name="appearance_button_b">ボタンB</string>
+    <string name="appearance_led">LED</string>
+    <string name="appearance_reset">初期カラーに戻す</string>
+    <string name="appearance_save_error">色を保存できませんでした。もう一度お試しください。</string>
+    <string name="appearance_custom_color">自由に選ぶ</string>
+    <string name="appearance_swatch_description">%1$s、%2$s</string>
+    <string name="appearance_selected">選択中</string>
+    <string name="appearance_picker_title">%1$sの色</string>
+    <string name="appearance_hex_label">HEXカラー</string>
+    <string name="appearance_hex_error">#RRGGBB形式で入力してください</string>
+    <string name="appearance_use_color">この色にする</string>
+    <string name="appearance_preset_sage">セージ</string>
+    <string name="appearance_preset_coral">コーラル</string>
+    <string name="appearance_preset_mist_blue">ミストブルー</string>
+    <string name="appearance_preset_lavender">ラベンダー</string>
+    <string name="appearance_preset_mustard">マスタード</string>
+    <string name="appearance_preset_dusty_rose">ダスティローズ</string>
+    <string name="appearance_preset_sand">サンド</string>
+    <string name="appearance_preset_stone">ストーン</string>
+    <string name="appearance_preset_white">ホワイト</string>
+    <string name="appearance_preset_red">レッド</string>
+    <string name="appearance_preset_blue">ブルー</string>
+    <string name="appearance_preset_green">グリーン</string>
+    <string name="appearance_preset_orange">オレンジ</string>
+    <string name="appearance_preset_yellow">イエロー</string>
+    <string name="appearance_preset_purple">パープル</string>
+    <string name="appearance_preset_warm_white">ウォームホワイト</string>
 
     <!-- Settings -->
     <string name="settings_title">設定</string>

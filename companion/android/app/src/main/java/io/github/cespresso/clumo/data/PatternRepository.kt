@@ -16,6 +16,28 @@ import org.json.JSONObject
 
 private val Context.patternStore by preferencesDataStore(name = "clumo_patterns")
 
+internal fun upsertPattern(patterns: List<Pattern>, pattern: Pattern): List<Pattern> {
+    val index = patterns.indexOfFirst { it.id == pattern.id }
+    return if (index >= 0) {
+        patterns.toMutableList().apply { set(index, pattern) }
+    } else {
+        patterns + pattern
+    }
+}
+
+internal data class PatternSelectionUpdate(
+    val patterns: List<Pattern>,
+    val selectedId: String,
+)
+
+internal fun saveAndSelectPattern(
+    patterns: List<Pattern>,
+    pattern: Pattern,
+): PatternSelectionUpdate = PatternSelectionUpdate(
+    patterns = upsertPattern(patterns, pattern),
+    selectedId = pattern.id,
+)
+
 /**
  * DataStore-backed store of user display patterns (JSON list of
  * {id, name, bits}) plus the currently selected pattern id.
@@ -72,13 +94,16 @@ class PatternRepository(private val context: Context) {
     suspend fun upsert(pattern: Pattern) {
         store.edit { prefs ->
             val current = decode(prefs[KEY_PATTERNS])
-            val index = current.indexOfFirst { it.id == pattern.id }
-            val updated = if (index >= 0) {
-                current.toMutableList().apply { set(index, pattern) }
-            } else {
-                current + pattern
-            }
-            prefs[KEY_PATTERNS] = encode(updated)
+            prefs[KEY_PATTERNS] = encode(upsertPattern(current, pattern))
+        }
+    }
+
+    suspend fun saveAndSelect(pattern: Pattern) {
+        store.edit { prefs ->
+            val current = decode(prefs[KEY_PATTERNS])
+            val update = saveAndSelectPattern(current, pattern)
+            prefs[KEY_PATTERNS] = encode(update.patterns)
+            prefs[KEY_SELECTED] = update.selectedId
         }
     }
 

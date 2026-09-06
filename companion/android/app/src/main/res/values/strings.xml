@@ -104,6 +104,7 @@
     <!-- Pattern editor -->
     <string name="editor_new_title">あたらしい表示</string>
     <string name="editor_save">保存</string>
+    <string name="editor_updating">更新中…</string>
     <string name="editor_clear">クリア</string>
     <string name="editor_invert">反転</string>
     <string name="editor_live_preview">実機プレビュー</string>
@@ -114,6 +115,8 @@
     <string name="editor_delete_confirm_title">この表示を削除しますか？</string>
     <string name="editor_delete_confirm_body">削除するともとに戻せません。</string>
     <string name="editor_delete_confirm">削除する</string>
+    <string name="editor_operation_error_title">操作を完了できませんでした</string>
+    <string name="editor_operation_error_body">データを更新できませんでした。もう一度お試しください。</string>
     <string name="dialog_cancel">キャンセル</string>
     <string name="dialog_save">保存</string>
 

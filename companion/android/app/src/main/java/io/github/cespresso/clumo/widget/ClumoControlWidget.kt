@@ -31,7 +31,8 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import io.github.cespresso.clumo.MainActivity
 
-private const val FACE_PX = 96
+private const val FACE_PX = 156
+private const val FACE_DP = 52f
 
 /** The widget that operates the device. A tap outside a button opens the app. */
 class ClumoControlWidget : GlanceAppWidget() {
@@ -56,22 +57,11 @@ class ClumoControlWidget : GlanceAppWidget() {
                 .clickable(actionStartActivity<MainActivity>()),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val layout = deviceArtLayout(FACE_DP, ringed = false)
             Image(
-                provider = ImageProvider(
-                    if (shown.facePlaceholder) {
-                        renderPlaceholderBitmap(FACE_PX, WidgetPalette.PlaceholderStrokeArgb)
-                    } else {
-                        renderFaceBitmap(
-                            bits = shown.faceBits,
-                            sizePx = FACE_PX,
-                            litArgb = shown.ledArgb,
-                            offArgb = WidgetPalette.OffDotArgb,
-                            dimmed = shown.faceDimmed,
-                        )
-                    }
-                ),
+                provider = ImageProvider(renderDeviceBitmap(shown, FACE_PX, ringed = false)),
                 contentDescription = null,
-                modifier = GlanceModifier.size(44.dp),
+                modifier = GlanceModifier.size(layout.widthPx.dp, layout.heightPx.dp),
             )
             Spacer(GlanceModifier.width(12.dp))
             Column(modifier = GlanceModifier.defaultWeight()) {

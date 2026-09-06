@@ -36,6 +36,8 @@ object ClumoColors {
     val ErrorBg = Color(0xFFFBEBE6)
     val ErrorBorder = Color(0xFFF2CCC1)
     val ErrorText = Color(0xFFC06A57)
+    val CoralChipBg = Color(0xFFFBEBE6)
+    val CoralChipFg = Color(0xFFC06A57)
     val BreakChipBg = Color(0xFFDDE0DE)
     val BreakChipFg = Color(0xFF5B615E)
     val EditorOffCell = Color(0xFFEFEBE3)

@@ -39,47 +39,47 @@ class PatternRepositoryTest {
     }
 
     @Test
-    fun cyclePatternIdMovesForwardAndWrapsAround() {
+    fun cyclePatternMovesForwardAndWrapsAround() {
         val first = Pattern(id = "first", name = "First", bits = "0".repeat(64))
         val second = Pattern(id = "second", name = "Second", bits = "0".repeat(64))
         val third = Pattern(id = "third", name = "Third", bits = "0".repeat(64))
         val all = listOf(first, second, third)
 
-        assertEquals("second", cyclePatternId(all, "first", forward = true))
-        assertEquals("first", cyclePatternId(all, "third", forward = true))
+        assertEquals(second, cyclePattern(all, "first", forward = true))
+        assertEquals(first, cyclePattern(all, "third", forward = true))
     }
 
     @Test
-    fun cyclePatternIdMovesBackwardAndWrapsAround() {
+    fun cyclePatternMovesBackwardAndWrapsAround() {
         val first = Pattern(id = "first", name = "First", bits = "0".repeat(64))
         val second = Pattern(id = "second", name = "Second", bits = "0".repeat(64))
         val third = Pattern(id = "third", name = "Third", bits = "0".repeat(64))
         val all = listOf(first, second, third)
 
-        assertEquals("second", cyclePatternId(all, "third", forward = false))
-        assertEquals("third", cyclePatternId(all, "first", forward = false))
+        assertEquals(second, cyclePattern(all, "third", forward = false))
+        assertEquals(third, cyclePattern(all, "first", forward = false))
     }
 
     @Test
-    fun cyclePatternIdFallsBackToTheFirstPatternWhenTheSelectionIsUnknown() {
+    fun cyclePatternFallsBackToTheFirstPatternWhenTheSelectionIsUnknown() {
         val first = Pattern(id = "first", name = "First", bits = "0".repeat(64))
         val second = Pattern(id = "second", name = "Second", bits = "0".repeat(64))
         val all = listOf(first, second)
 
-        assertEquals("first", cyclePatternId(all, null, forward = true))
-        assertEquals("first", cyclePatternId(all, "deleted", forward = false))
+        assertEquals(first, cyclePattern(all, null, forward = true))
+        assertEquals(first, cyclePattern(all, "deleted", forward = false))
     }
 
     @Test
-    fun cyclePatternIdReturnsTheOnlyPatternUnchanged() {
+    fun cyclePatternReturnsTheOnlyPatternUnchanged() {
         val only = Pattern(id = "only", name = "Only", bits = "0".repeat(64))
 
-        assertEquals("only", cyclePatternId(listOf(only), "only", forward = true))
-        assertEquals("only", cyclePatternId(listOf(only), "only", forward = false))
+        assertEquals(only, cyclePattern(listOf(only), "only", forward = true))
+        assertEquals(only, cyclePattern(listOf(only), "only", forward = false))
     }
 
     @Test
-    fun cyclePatternIdReturnsNullWhenThereAreNoPatterns() {
-        assertNull(cyclePatternId(emptyList(), null, forward = true))
+    fun cyclePatternReturnsNullWhenThereAreNoPatterns() {
+        assertNull(cyclePattern(emptyList(), null, forward = true))
     }
 }

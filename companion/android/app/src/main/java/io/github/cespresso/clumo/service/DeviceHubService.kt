@@ -37,18 +37,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -57,6 +61,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  * streaming survive while the app is backgrounded. It holds a lifecycle, not the graph: the
  * registry and repositories it drives belong to [io.github.cespresso.clumo.AppContainer].
  * Per-device logic lives in [DeviceSession].
+ *
+ * It runs while a session has work for it or a widget command is in flight, and stops itself
+ * a grace period after both are gone. The container starts it for the sessions; a widget tap
+ * starts it for the command.
  */
 class DeviceHubService : Service() {
 
@@ -94,6 +102,14 @@ class DeviceHubService : Service() {
     private var pendingCommand: WidgetCommand? = null
     private var lastWidgetFailureRealtime: Long? = null
 
+    /**
+     * Commands received and not yet finished. Kept apart from [pendingCommand], which is only
+     * set once the command has resolved its target, after a suspension: a stop decided during
+     * that suspension would cancel the command with nothing to say it was ever there.
+     */
+    private val inFlightCommands = MutableStateFlow(0)
+    private var lastStartId = 0
+
     private var currentStatus: String = ""
     private var capturingAudio: Boolean = false
 
@@ -107,15 +123,25 @@ class DeviceHubService : Service() {
         observeVisualizerPreferences()
         observeAudioCapture()
         observeButtonEvents()
+        stopWhenIdle()
         // A widget tap can start this process straight into the service, and the tap's
         // outcome has to be drawn: the publisher is what draws it.
         publisher
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        lastStartId = startId
         if (intent?.action == WidgetCommand.ACTION) {
-            WidgetCommand.decode(intent.getStringExtra(WidgetCommand.EXTRA))?.let {
-                scope.launch { handleWidgetCommand(it) }
+            WidgetCommand.decode(intent.getStringExtra(WidgetCommand.EXTRA))?.let { command ->
+                // Counted here, before anything suspends, so the idle check sees it.
+                inFlightCommands.update { it + 1 }
+                scope.launch {
+                    try {
+                        handleWidgetCommand(command)
+                    } finally {
+                        inFlightCommands.update { it - 1 }
+                    }
+                }
             }
         }
         // A restart after a kill would arrive with a null intent and no sessions to protect:
@@ -123,8 +149,8 @@ class DeviceHubService : Service() {
         return START_NOT_STICKY
     }
 
+    /** The sessions belong to the container and outlive this service; a screen may be holding one. */
     override fun onDestroy() {
-        registry.disconnectAll()
         scope.cancel()
         _running.value = false
         super.onDestroy()
@@ -300,6 +326,32 @@ class DeviceHubService : Service() {
     }
 
     private fun hasRecordAudioPermission(): Boolean = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Stops the service once no link has work and no command is in flight, after
+     * [HUB_IDLE_GRACE_MS] of that. Any return to busy inside the grace cancels the stop.
+     * stopSelf takes the last start id so that a start delivered after the decision, which
+     * arrives with a newer id, keeps the service up instead of being lost.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun stopWhenIdle() {
+        combine(registry.states, inFlightCommands) { states, inFlight ->
+            inFlight > 0 || hubHasWorkFor(states.values.map { it.link })
+        }
+            .distinctUntilChanged()
+            .flatMapLatest { busy ->
+                if (busy) {
+                    emptyFlow()
+                } else {
+                    flow {
+                        delay(HUB_IDLE_GRACE_MS)
+                        emit(Unit)
+                    }
+                }
+            }
+            .onEach { stopSelf(lastStartId) }
+            .launchIn(scope)
+    }
 
     /** Keeps the foreground notification text in sync with connection states. */
     @OptIn(ExperimentalCoroutinesApi::class)

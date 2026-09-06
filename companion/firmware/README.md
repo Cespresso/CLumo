@@ -20,7 +20,7 @@ This document is the source of truth for the BLE protocol (v2).
 |-------|------------|-------------|---------|
 | 0     | Pomodoro   | Work/break countdown with app-settable durations. The matrix is a 64-pixel progress bar. | Main: start/pause/resume. Sub: reset. |
 | 1     | Timer      | One-shot countdown configurable from `00:01` to `59:59`. At `00:00`, the matrix blinks every 400 ms until operated. | Main: start/pause/resume/restart. Sub: cancel. |
-| 2     | Display    | Shows the last 8-byte bitmap written to the DISPLAY characteristic. Persisted in NVS across reboots; blank until the first bitmap arrives. | Reported over BUTTON; the app cycles its saved patterns. |
+| 2     | Display    | Shows the last 8-byte bitmap committed to the DISPLAY characteristic (see preview/commit below). Persisted in NVS across reboots; blank until the first bitmap arrives. | Reported over BUTTON; the app cycles its saved patterns. |
 | 3     | Visualizer | Bar visualizer driven by column heights streamed to the DISPLAY characteristic. The matrix stays blank until data arrives; bars rise instantly, fall smoothly, and decay to zero when data stops. | Reported over BUTTON; the app steps visualizer sensitivity. |
 
 Modes are selected by the Android companion app through the MODE characteristic;
@@ -89,6 +89,33 @@ CI runs this on every push and PR (`firmware-ci.yml`). `handlers/`, `mode.rs`, a
 
 ## BLE protocol v2
 
+### State ownership
+
+CLumo (the device) is the sole source of truth for everything it runs or persists;
+the app reads and reflects that state rather than assuming it, and reconciles from
+a fresh read on every reconnect. Everything the app owns locally never reaches the
+device at all. Nothing is owned by both sides: where two representations of the
+same fact exist (Display's live preview vs. its committed frame), one is always an
+explicit, expiring projection of the other, never an independent second source
+(see preview/commit below).
+
+| State | Owner | On reconnect |
+|---|---|---|
+| Mode | Device (NVS `STATE`) | App re-reads MODE and adopts it as observed; an unexpired (<3s) pending tap is re-sent, not discarded, until the device confirms it |
+| Brightness | Device (NVS `STATE`) | Same as Mode |
+| Pomodoro/Timer: running state, phase, remaining time | Device only; not persisted, resets to idle on reboot | App re-reads POMODORO/TIMER |
+| Pomodoro durations, Timer configured duration | Device (NVS, one namespace per handler) | App re-reads POMODORO/TIMER |
+| Display: which 8-byte frame is on the matrix | Device (NVS `DISPLAY`, committed frame only; a live preview is never persisted) | App re-reads DISPLAY, which returns the committed frame (see preview/commit below) |
+| Display: pattern names and the app's saved-pattern library | App only; the device has no concept of a pattern, only bytes | Not applicable; the app matches its library against the frame it reads by content |
+| Visualizer sensitivity, automatic low-volume boost | App only; a local audio-processing parameter, never sent to the device | Not applicable |
+| Device alias, appearance (colors) | App only; cosmetic and local | Not applicable |
+| Primary device selection | App only; local | Not applicable |
+| Device identity (UUID) | Device (NVS `DEVICE`, generated once on first boot, read-only) | App re-reads DEVICE_ID |
+
+Rule of thumb: if losing power should not lose it, the device owns it and persists
+it; if it is purely how the app presents the device (a name, a color, a saved
+pattern's name), the app owns it and never sends it.
+
 ### Service
 
 | Item             | Value |
@@ -101,7 +128,7 @@ CI runs this on every push and PR (`firmware-ci.yml`). `handlers/`, `mode.rs`, a
 | Name       | UUID | Properties | Payload |
 |------------|------|------------|---------|
 | MODE       | `681285a6-247f-48c6-80ad-68c3dce18586` | READ, WRITE, NOTIFY | 1 byte: mode `0..=3`. Write switches mode. A same-value Display write commits the current preview. Firmware notifies after an accepted mode change. Invalid values are ignored. |
-| DISPLAY    | `681285a6-247f-48c6-80ad-68c3dce18585` | READ, WRITE, WRITE_NR | 8 bytes, interpreted by the current mode (see below). Ignored in Pomodoro and Timer modes. |
+| DISPLAY    | `681285a6-247f-48c6-80ad-68c3dce18585` | READ, WRITE, WRITE_NR | 8 bytes, interpreted by the current mode (see below). Ignored in Pomodoro and Timer modes. READ returns the last **committed** frame, never a live preview. |
 | POMODORO   | `681285a6-247f-48c6-80ad-68c3dce18587` | READ, WRITE, NOTIFY | Write: command (below). Read/notify: 6-byte status (below). |
 | BRIGHTNESS | `681285a6-247f-48c6-80ad-68c3dce18588` | READ, WRITE, NOTIFY | 1 byte: MAX7219 intensity, clamped to `0..=15`. Firmware echoes the applied value via notify. |
 | DEVICE_ID  | `681285a6-247f-48c6-80ad-68c3dce18589` | READ | 16 bytes: stable UUIDv4 device identifier, generated on first boot and persisted in NVS. |
@@ -134,13 +161,15 @@ streaming.
 
 Legacy v2 clients get the original behavior: every DISPLAY write is persisted.
 
-A client that supports high-rate preview opts in once per connection by writing the
-current `MODE = 2` value after initial sync, or by writing `MODE = 2` twice when
-entering Display. Its later DISPLAY writes are visible immediately but are not
-persisted. Another same-value `MODE = 2` write commits the current preview. An
-uncommitted preview is discarded on disconnect, mode change, or after 5 seconds
-without another preview, and the last committed bitmap is restored. The Android
-companion performs this handshake automatically.
+A client that supports high-rate preview opts in, once per Display entry, by writing
+the current `MODE = 2` value after initial sync, or by writing `MODE = 2` twice when
+entering Display. The opt-in does not carry across a mode change: leaving and
+re-entering Display resets it, and the next preview write auto-commits until the
+client repeats the handshake. Once opted in, later DISPLAY writes are visible
+immediately but are not persisted. Another same-value `MODE = 2` write commits the
+current preview. An uncommitted preview is discarded on disconnect, mode change, or
+after 5 seconds without another preview, and the last committed bitmap is restored.
+The Android companion performs this handshake automatically.
 
 ESP-NimBLE does not expose request-vs-command metadata to the server callback, so
 the explicit same-mode MODE write is the commit boundary. Leaving legacy writes

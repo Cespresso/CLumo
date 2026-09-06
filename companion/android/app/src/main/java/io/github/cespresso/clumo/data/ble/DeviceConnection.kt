@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -81,6 +82,9 @@ class DeviceConnection(
 
     private val _timerStatus = MutableStateFlow<CountdownTimerStatus?>(null)
     override val timerStatus = _timerStatus.asStateFlow()
+
+    private val _displayCommittedFrame = MutableStateFlow<Long?>(null)
+    override val displayCommittedFrame = _displayCommittedFrame.asStateFlow()
 
     private val _brightness = MutableStateFlow<Int?>(null)
     override val brightness = _brightness.asStateFlow()
@@ -242,6 +246,7 @@ class DeviceConnection(
         _currentMode.value = null
         _pomodoroStatus.value = null
         _timerStatus.value = null
+        _displayCommittedFrame.value = null
         _deviceId.value = null
     }
 
@@ -257,6 +262,7 @@ class DeviceConnection(
         _currentMode.value = null
         _pomodoroStatus.value = null
         _timerStatus.value = null
+        _displayCommittedFrame.value = null
         _brightness.value = null
         _deviceId.value = null
         synchronized(queueLock) {
@@ -422,6 +428,9 @@ class DeviceConnection(
         if (!initialSync) return
         val idle = synchronized(queueLock) { !opInFlight && opQueue.isEmpty() }
         if (!idle) return
+        // Firmware predating the committed-frame contract leaves DISPLAY unset, so its
+        // READ returns zero bytes. Requiring one here would lock the app out of every
+        // un-reflashed device.
         if (_deviceId.value == null || _currentMode.value == null ||
             _pomodoroStatus.value == null || _timerStatus.value == null ||
             _brightness.value == null
@@ -498,6 +507,7 @@ class DeviceConnection(
     fun readTimerStatus() = enqueue(GattOp.Read(BleUuids.TIMER))
     fun readBrightness() = enqueue(GattOp.Read(BleUuids.BRIGHTNESS))
     fun readDeviceId() = enqueue(GattOp.Read(BleUuids.DEVICE_ID))
+    override fun readDisplayCommittedFrame() = enqueue(GattOp.Read(BleUuids.DISPLAY))
 
     // --- GATT callback ---
 
@@ -618,6 +628,7 @@ class DeviceConnection(
             _currentMode.value = null
             _pomodoroStatus.value = null
             _timerStatus.value = null
+            _displayCommittedFrame.value = null
             initialSync = true
             startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.SynchronizationFailed, retry = true)
 
@@ -632,6 +643,7 @@ class DeviceConnection(
             readPomodoroStatus()
             readTimerStatus()
             readBrightness()
+            readDisplayCommittedFrame()
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, desc: BluetoothGattDescriptor, status: Int) {
@@ -652,6 +664,8 @@ class DeviceConnection(
             if (g !== gatt) return
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 // The device may not notify on app-initiated changes; re-read to stay in sync.
+                // Android fires this for write-without-response too, so a DISPLAY entry here
+                // would cost a read per streamed preview and visualizer frame.
                 when (char.uuid) {
                     BleUuids.MODE -> readMode()
                     BleUuids.POMODORO -> readPomodoroStatus()
@@ -683,6 +697,10 @@ class DeviceConnection(
             BleUuids.TIMER -> CountdownTimerStatus.parse(value)?.let {
                 _timerStatus.value = it
                 _observations.tryEmit(DeviceObservation.Timer(it))
+            }
+            BleUuids.DISPLAY -> FaceBits.fromRowBytes(value).let {
+                _displayCommittedFrame.value = it
+                _observations.tryEmit(DeviceObservation.DisplayCommittedFrame(it))
             }
             BleUuids.BRIGHTNESS -> (value[0].toInt() and 0xFF).let {
                 _brightness.value = it

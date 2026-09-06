@@ -33,6 +33,7 @@ class DeviceUiStateTest {
         appearances: Map<String, DeviceAppearance> = emptyMap(),
         primaryDeviceId: String? = null,
         selectedPatternBits: String? = null,
+        committedFrame: Long? = null,
         brightnessUi: Float = 100f,
         columns: IntArray = IntArray(8),
         visualizerActive: Boolean = false,
@@ -54,6 +55,7 @@ class DeviceUiStateTest {
         appearances = appearances,
         primaryDeviceId = primaryDeviceId,
         selectedPatternBits = selectedPatternBits,
+        committedFrame = committedFrame,
         brightnessUi = brightnessUi,
         columns = columns,
         visualizerActive = visualizerActive,
@@ -299,6 +301,20 @@ class DeviceUiStateTest {
         assertEquals(
             FaceBits.fromBitsString(bits),
             create(currentMode = DeviceMode.DISPLAY, selectedPatternBits = bits).mirrorBits,
+        )
+    }
+
+    @Test
+    fun displayModePrefersTheDeviceConfirmedFrameOverTheSelectedPattern() {
+        // Another phone committed a different pattern than the one selected locally.
+        val confirmed = FaceBits.fromBitsString("1".repeat(16) + "0".repeat(48))
+        assertEquals(
+            confirmed,
+            create(
+                currentMode = DeviceMode.DISPLAY,
+                selectedPatternBits = "1".repeat(64),
+                committedFrame = confirmed,
+            ).mirrorBits,
         )
     }
 

@@ -11,6 +11,7 @@ import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceSessionState
 import io.github.cespresso.clumo.domain.DeviceSnapshot
+import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.PendingCommand
 import io.github.cespresso.clumo.domain.PendingCommands
@@ -113,11 +114,13 @@ class DeviceSession internal constructor(
         val pomodoro = transport.pomodoroStatus.value ?: return null
         val timer = transport.timerStatus.value ?: return null
         val brightness = transport.brightness.value ?: return null
+        val committedFrame = transport.displayCommittedFrame.value ?: return null
         return DeviceSnapshot(
             mode = mode,
             brightnessLevel = brightness,
             pomodoro = pomodoro,
             timer = timer,
+            committedFrame = committedFrame,
         )
     }
 
@@ -140,6 +143,10 @@ class DeviceSession internal constructor(
                 is DeviceObservation.Timer -> current.copy(
                     observed = observed.copy(timer = observation.value),
                 )
+                is DeviceObservation.DisplayCommittedFrame -> current.copy(
+                    observed = observed.copy(committedFrame = observation.value),
+                    pending = current.pending.copy(committedFrame = null),
+                )
             }
         }
     }
@@ -147,6 +154,14 @@ class DeviceSession internal constructor(
     private fun resend(pending: PendingCommands) {
         pending.mode?.let { writeModeWithDisplayHandshake(it.value) }
         pending.brightnessLevel?.let { transport.writeBrightness(it.value) }
+        pending.committedFrame?.let {
+            transport.writeDisplay(
+                Pattern.bitsToRowBytes(FaceBits.toBitsString(it.value)),
+                stream = false,
+            )
+            transport.writeMode(DeviceMode.DISPLAY)
+            transport.readDisplayCommittedFrame()
+        }
     }
 
     private fun writeModeWithDisplayHandshake(mode: Int) {
@@ -208,6 +223,17 @@ class DeviceSession internal constructor(
         cancelPreview()
         transport.writeDisplay(pattern.toRowBytes(), stream = false)
         transport.writeMode(DeviceMode.DISPLAY)
+        transport.readDisplayCommittedFrame()
+        _state.update {
+            it.copy(
+                pending = it.pending.copy(
+                    committedFrame = PendingCommand(
+                        FaceBits.fromBitsString(pattern.bits),
+                        nowRealtime(),
+                    ),
+                ),
+            )
+        }
     }
 
     /**

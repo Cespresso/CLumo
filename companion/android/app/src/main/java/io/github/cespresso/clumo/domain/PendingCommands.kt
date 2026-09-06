@@ -9,11 +9,14 @@ data class PendingCommand<T>(
 data class PendingCommands(
     val mode: PendingCommand<Int>? = null,
     val brightnessLevel: PendingCommand<Int>? = null,
+    /** A committed Display frame, as face bits, still awaiting the device's read-back. */
+    val committedFrame: PendingCommand<Long>? = null,
 ) {
     fun expire(nowRealtime: Long, ttlMs: Long = DEFAULT_TTL_MS): PendingCommands = copy(
         mode = mode?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
         brightnessLevel = brightnessLevel
             ?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
+        committedFrame = committedFrame?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
     )
 
     companion object {

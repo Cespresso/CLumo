@@ -109,7 +109,7 @@ class WidgetStatePublisher(
         }
             .flatMapLatest { (id, session, pattern) ->
                 if (session == null) {
-                    flowOf(Live(id, pattern, ConnectionState.Disconnected, null, null, null))
+                    flowOf(Live(id, pattern, ConnectionState.Disconnected, null, null, null, null))
                 } else {
                     session.state.map { state ->
                         Live(
@@ -119,6 +119,7 @@ class WidgetStatePublisher(
                             mode = state.observed?.mode,
                             pomodoro = state.observed?.pomodoro,
                             timer = state.observed?.timer,
+                            committedFrame = state.effectiveCommittedFrame,
                         )
                     }
                 }
@@ -193,6 +194,7 @@ class WidgetStatePublisher(
                     timer = null,
                     patternName = null,
                     patternBits = FaceBits.EMPTY,
+                    committedFrame = null,
                     alias = "",
                     appearance = DeviceAppearance.DEFAULT,
                     commandFailed = false,
@@ -223,6 +225,7 @@ class WidgetStatePublisher(
                     timer = live.timer,
                     patternName = live.pattern.name,
                     patternBits = live.pattern.bits,
+                    committedFrame = live.committedFrame,
                     alias = target?.let {
                         DeviceNaming.displayName(
                             deviceId = it.id,
@@ -289,6 +292,7 @@ class WidgetStatePublisher(
         val mode: Int?,
         val pomodoro: io.github.cespresso.clumo.domain.PomodoroStatus?,
         val timer: io.github.cespresso.clumo.domain.CountdownTimerStatus?,
+        val committedFrame: Long?,
     )
 
     data class PatternSelection(val name: String?, val bits: Long)

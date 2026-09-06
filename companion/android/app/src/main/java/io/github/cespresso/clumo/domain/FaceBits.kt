@@ -41,6 +41,18 @@ object FaceBits {
         for (i in 0 until 64) append(if ((mask shr i) and 1L == 1L) '1' else '0')
     }
 
+    /** Row bitmap bytes as read from the DISPLAY characteristic, MSB = left column. */
+    fun fromRowBytes(bytes: ByteArray): Long {
+        var mask = 0L
+        for (row in 0 until 8) {
+            val b = bytes.getOrElse(row) { 0 }.toInt() and 0xFF
+            for (col in 0 until 8) {
+                if ((b shr (7 - col)) and 1 == 1) mask = mask or (1L shl (row * 8 + col))
+            }
+        }
+        return mask
+    }
+
     /** Column heights 0..8 -> bars growing from the bottom. */
     fun fromColumns(columns: IntArray): Long {
         var mask = 0L

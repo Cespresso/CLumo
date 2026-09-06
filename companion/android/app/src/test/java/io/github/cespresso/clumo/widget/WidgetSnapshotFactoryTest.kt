@@ -26,6 +26,7 @@ class WidgetSnapshotFactoryTest {
         timer: CountdownTimerStatus? = CountdownTimerStatus.DEFAULT,
         patternName: String? = "ハート",
         patternBits: Long = FaceBits.EMPTY,
+        committedFrame: Long? = null,
         alias: String = "つくえ",
         appearance: DeviceAppearance = DeviceAppearance.DEFAULT,
         commandFailed: Boolean = false,
@@ -38,6 +39,7 @@ class WidgetSnapshotFactoryTest {
         timer = timer,
         patternName = patternName,
         patternBits = patternBits,
+        committedFrame = committedFrame,
         alias = alias,
         appearance = appearance,
         commandFailed = commandFailed,
@@ -278,5 +280,25 @@ class WidgetSnapshotFactoryTest {
     fun missingStatusFallsBackToIdleRatherThanCrashing() {
         val s = create(pomodoro = null)
         assertEquals(WidgetHeadline.PomodoroIdle, s.headline)
+    }
+
+    @Test
+    fun displayFaceFollowsTheDeviceConfirmedFrameSoTheWidgetMatchesTheAppScreen() {
+        val selected = FaceBits.fromBitsString("1".repeat(64))
+        val confirmed = FaceBits.fromBitsString("1".repeat(8) + "0".repeat(56))
+        assertEquals(
+            confirmed,
+            create(
+                mode = DeviceMode.DISPLAY,
+                patternBits = selected,
+                committedFrame = confirmed,
+            ).faceBits,
+        )
+        // Firmware that cannot report one leaves the local selection as the only source.
+        assertEquals(
+            selected,
+            create(mode = DeviceMode.DISPLAY, patternBits = selected, committedFrame = null)
+                .faceBits,
+        )
     }
 }

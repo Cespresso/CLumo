@@ -40,17 +40,23 @@ impl DisplayHandler {
         })
     }
 
-    pub fn commit_preview(&mut self) {
+    /// Commits the pending preview, if any, and returns the resulting
+    /// committed frame.
+    pub fn commit_preview(&mut self) -> [u8; 8] {
         let previous = self.state.committed_frame();
-        let Some(committed) = self.state.commit_preview() else {
-            return;
-        };
-        self.dirty = true;
-        if committed != previous {
-            if let Err(e) = self.nvs.set_blob(KEY_PATTERN, &committed) {
-                log::warn!("Display: failed to persist committed pattern: {:?}", e);
+        if let Some(committed) = self.state.commit_preview() {
+            self.dirty = true;
+            if committed != previous {
+                if let Err(e) = self.nvs.set_blob(KEY_PATTERN, &committed) {
+                    log::warn!("Display: failed to persist committed pattern: {:?}", e);
+                }
             }
         }
+        self.state.committed_frame()
+    }
+
+    pub fn committed_frame(&self) -> [u8; 8] {
+        self.state.committed_frame()
     }
 
     pub fn cancel_preview(&mut self) {

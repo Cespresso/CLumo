@@ -71,6 +71,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize BLE
     let ble = BluetoothManager::init(
         mode_manager.current() as u8,
+        runtime.display_committed_frame(),
         runtime.pomodoro_status(),
         runtime.timer_status(),
         mode_manager.brightness(),
@@ -141,7 +142,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let new_mode = Mode::from_u8(m);
                     if new_mode == mode_manager.current() {
                         if new_mode == Mode::Display {
-                            runtime.commit_display_preview();
+                            let committed = runtime.commit_display_preview();
+                            ble.set_display_committed_frame(&committed);
                             explicit_display_commit = true;
                         }
                         continue;
@@ -163,6 +165,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     {
                         runtime.commit_display_preview();
                     }
+                    // NimBLE has already replaced the characteristic value with the write
+                    // payload, a live preview in Display and column heights in Visualizer.
+                    // Restore the committed frame so READ keeps its contract in every mode.
+                    ble.set_display_committed_frame(&runtime.display_committed_frame());
                 }
                 BleCommand::SetBrightness(level) => match mode_manager.set_brightness(level) {
                     Ok(applied) => {

@@ -50,6 +50,7 @@ pub struct BluetoothManager {
     has_bonded_peer: bool,
     current_conn_handle: Arc<Mutex<Option<u16>>>,
     mode_characteristic: Arc<Mutex<BLECharacteristic>>,
+    display_characteristic: Arc<Mutex<BLECharacteristic>>,
     pomodoro_characteristic: Arc<Mutex<BLECharacteristic>>,
     timer_characteristic: Arc<Mutex<BLECharacteristic>>,
     brightness_characteristic: Arc<Mutex<BLECharacteristic>>,
@@ -59,6 +60,7 @@ pub struct BluetoothManager {
 impl BluetoothManager {
     pub fn init(
         initial_mode: u8,
+        initial_committed_display: [u8; 8],
         initial_pomodoro_status: [u8; 6],
         initial_timer_status: [u8; 5],
         initial_brightness: u8,
@@ -183,6 +185,9 @@ impl BluetoothManager {
                 | NimbleProperties::WRITE_ENC
                 | NimbleProperties::WRITE_NO_RSP,
         );
+        display_characteristic
+            .lock()
+            .set_value(&initial_committed_display);
 
         let commands_clone = commands.clone();
         display_characteristic.lock().on_write(move |value| {
@@ -362,6 +367,7 @@ impl BluetoothManager {
             has_bonded_peer,
             current_conn_handle,
             mode_characteristic,
+            display_characteristic,
             pomodoro_characteristic,
             timer_characteristic,
             brightness_characteristic,
@@ -403,6 +409,12 @@ impl BluetoothManager {
     /// Call this on every mode change, whether triggered by BLE or buttons.
     pub fn notify_mode_change(&self, mode: u8) {
         self.mode_characteristic.lock().set_value(&[mode]).notify();
+    }
+
+    /// Publish the committed frame, never a live preview, as the value a READ or a
+    /// reconnect observes. DISPLAY has no NOTIFY property, so this does not notify.
+    pub fn set_display_committed_frame(&self, frame: &[u8; 8]) {
+        self.display_characteristic.lock().set_value(frame);
     }
 
     /// Update the Brightness Characteristic value and notify connected clients.

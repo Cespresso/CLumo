@@ -34,6 +34,7 @@ object WidgetSnapshotFactory {
         timer: CountdownTimerStatus?,
         patternName: String?,
         patternBits: Long,
+        committedFrame: Long?,
         alias: String,
         appearance: DeviceAppearance,
         commandFailed: Boolean,
@@ -110,11 +111,13 @@ object WidgetSnapshotFactory {
                 timer ?: CountdownTimerStatus.DEFAULT,
                 alias,
             )
+            // The frame follows the device, as on the app screen, but the name stays local:
+            // the device has no concept of a pattern name.
             DeviceMode.DISPLAY -> base.copy(
                 headline = WidgetHeadline.MyDisplay,
                 subtitle = WidgetSubtitle.PatternName,
                 subtitleText = patternName.orEmpty(),
-                faceBits = patternBits,
+                faceBits = committedFrame ?: patternBits,
             )
             DeviceMode.VISUALIZER -> base.copy(
                 headline = WidgetHeadline.Visualizer,

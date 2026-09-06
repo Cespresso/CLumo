@@ -7,6 +7,7 @@ import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.DeviceMode
+import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -221,6 +222,32 @@ class DeviceSessionTest {
         assertEquals(afterDrop, fixture.transport.displayWrites.size)
     }
 
+    @Test
+    fun committedFrameIsPendingUntilTheDeviceReadsItBackAndIsResentAfterAReconnect() {
+        val fixture = fixture()
+        fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
+        val pattern = Pattern("p1", "One", "1" + "0".repeat(63))
+        val bits = FaceBits.fromBitsString(pattern.bits)
+
+        fixture.session.commitPattern(pattern)
+        fixture.scope.runCurrent()
+        assertEquals(bits, fixture.session.state.value.effectiveCommittedFrame)
+        assertEquals(1, fixture.transport.displayReads)
+
+        // A commit that raced the link down must not be silently dropped.
+        fixture.transport.connectionState.value = ConnectionState.Reconnecting
+        fixture.scope.runCurrent()
+        fixture.transport.displayCommittedFrame.value = FaceBits.EMPTY
+        fixture.transport.connectionState.value = ConnectionState.Ready
+        fixture.scope.runCurrent()
+        assertEquals(false, fixture.transport.displayWrites.last().second)
+
+        fixture.transport.reportCommittedFrame(bits)
+        fixture.scope.runCurrent()
+        assertNull(fixture.session.state.value.pending.committedFrame)
+        assertEquals(bits, fixture.session.state.value.observed?.committedFrame)
+    }
+
     private fun fixture(): Fixture {
         val dispatcher = StandardTestDispatcher()
         val scope = TestScope(dispatcher)
@@ -244,6 +271,7 @@ class DeviceSessionTest {
             transport.brightness.value = brightness
             transport.pomodoroStatus.value = PomodoroStatus.DEFAULT
             transport.timerStatus.value = CountdownTimerStatus.DEFAULT
+            transport.displayCommittedFrame.value = FaceBits.EMPTY
             transport.connectionState.value = ConnectionState.Ready
             scope.runCurrent()
         }
@@ -258,6 +286,7 @@ private class FakeDeviceTransport : DeviceTransport {
     override val currentMode = MutableStateFlow<Int?>(null)
     override val pomodoroStatus = MutableStateFlow<PomodoroStatus?>(null)
     override val timerStatus = MutableStateFlow<CountdownTimerStatus?>(null)
+    override val displayCommittedFrame = MutableStateFlow<Long?>(null)
     override val brightness = MutableStateFlow<Int?>(null)
     override val deviceId = MutableStateFlow<String?>(null)
     override val deviceName = MutableStateFlow<String?>("CLumo-Test")
@@ -267,6 +296,7 @@ private class FakeDeviceTransport : DeviceTransport {
     val modeWrites = mutableListOf<Int>()
     val brightnessWrites = mutableListOf<Int>()
     val displayWrites = mutableListOf<Pair<ByteArray, Boolean>>()
+    var displayReads = 0
 
     override fun connect() = Unit
     override fun disconnect() = Unit
@@ -276,6 +306,7 @@ private class FakeDeviceTransport : DeviceTransport {
     override fun writeDisplay(data: ByteArray, stream: Boolean) {
         displayWrites += data.copyOf() to stream
     }
+    override fun readDisplayCommittedFrame() { displayReads++ }
     override fun pomodoroSetDurations(workMin: Int, breakMin: Int) = Unit
     override fun pomodoroStart() = Unit
     override fun pomodoroPause() = Unit
@@ -294,5 +325,10 @@ private class FakeDeviceTransport : DeviceTransport {
     fun reportBrightness(value: Int) {
         brightness.value = value
         observations.tryEmit(DeviceObservation.Brightness(value))
+    }
+
+    fun reportCommittedFrame(value: Long) {
+        displayCommittedFrame.value = value
+        observations.tryEmit(DeviceObservation.DisplayCommittedFrame(value))
     }
 }

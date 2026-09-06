@@ -129,6 +129,7 @@ class DeviceViewModel(
             appearances = identity.appearances,
             primaryDeviceId = identity.primaryDeviceId,
             selectedPatternBits = appliedPattern?.bits,
+            committedFrame = live.state.effectiveCommittedFrame,
             brightnessUi = Brightness.toPercent(brightnessLevel),
             columns = live.columns,
             visualizerActive = live.visualizerActive,

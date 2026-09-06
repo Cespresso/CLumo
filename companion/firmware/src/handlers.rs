@@ -97,12 +97,19 @@ impl Runtime {
         }
     }
 
-    pub fn commit_display_preview(&mut self) {
-        self.display.commit_preview();
+    /// Commits the pending display preview, if any, and returns the
+    /// resulting committed frame.
+    pub fn commit_display_preview(&mut self) -> [u8; 8] {
+        self.display.commit_preview()
     }
 
     pub fn cancel_display_preview(&mut self) {
         self.display.cancel_preview();
+    }
+
+    /// The committed Display frame, as opposed to any live preview.
+    pub fn display_committed_frame(&self) -> [u8; 8] {
+        self.display.committed_frame()
     }
 
     pub fn on_pomodoro_command(&mut self, command: PomodoroCommand) {

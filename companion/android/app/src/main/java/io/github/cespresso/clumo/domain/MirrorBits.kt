@@ -12,6 +12,7 @@ fun mirrorBitsFor(
     pomodoro: PomodoroStatus?,
     timer: CountdownTimerStatus?,
     selectedPatternBits: String?,
+    committedFrame: Long?,
     columns: IntArray,
     visualizerActive: Boolean,
     timerBlinkOn: Boolean,
@@ -26,7 +27,12 @@ fun mirrorBitsFor(
         }
     } ?: FaceBits.EMPTY
 
-    DeviceMode.DISPLAY -> selectedPatternBits?.let { FaceBits.fromBitsString(it) } ?: FaceBits.EMPTY
+    // CLumo's own frame outranks the app's locally selected pattern: it is still correct
+    // after a reinstall, another phone's edit, or a physical-button cycle the app has not
+    // caught up with yet.
+    DeviceMode.DISPLAY -> committedFrame
+        ?: selectedPatternBits?.let { FaceBits.fromBitsString(it) }
+        ?: FaceBits.EMPTY
     DeviceMode.VISUALIZER -> if (visualizerActive) FaceBits.fromColumns(columns) else FaceBits.EMPTY
     else -> FaceBits.EMPTY
 }

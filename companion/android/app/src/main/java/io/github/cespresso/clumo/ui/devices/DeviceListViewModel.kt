@@ -93,6 +93,7 @@ internal fun buildKnownDeviceCards(
             pomodoro = observed?.pomodoro,
             timer = observed?.timer,
             selectedPatternBits = selectedPattern?.bits,
+            committedFrame = state.effectiveCommittedFrame,
             columns = live?.visualizerColumns ?: IntArray(0),
             visualizerActive = live?.visualizerActive == true,
             timerBlinkOn = true,

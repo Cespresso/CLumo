@@ -13,4 +13,8 @@ data class DeviceSessionState(
 
     val effectiveBrightnessLevel: Int?
         get() = pending.brightnessLevel?.value ?: observed?.brightnessLevel
+
+    /** The Display frame to draw: a just-sent commit until CLumo reads its own back. */
+    val effectiveCommittedFrame: Long?
+        get() = pending.committedFrame?.value ?: observed?.committedFrame
 }

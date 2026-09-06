@@ -13,6 +13,7 @@ sealed interface DeviceObservation {
     data class Brightness(val value: Int) : DeviceObservation
     data class Pomodoro(val value: PomodoroStatus) : DeviceObservation
     data class Timer(val value: CountdownTimerStatus) : DeviceObservation
+
     /** The frame CLumo has actually committed to the matrix, not a live preview. */
     data class DisplayCommittedFrame(val value: Long) : DeviceObservation
 }
@@ -43,6 +44,7 @@ interface DeviceTransport {
     fun reconnectWithCacheRefresh()
     fun writeMode(mode: Int)
     fun writeDisplay(data: ByteArray, stream: Boolean = false)
+
     /** Re-read DISPLAY after a commit, to confirm the frame the device actually kept. */
     fun readDisplayCommittedFrame()
     fun pomodoroSetDurations(workMin: Int, breakMin: Int)

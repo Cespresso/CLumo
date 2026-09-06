@@ -302,11 +302,15 @@ private class FakeDeviceTransport : DeviceTransport {
     override fun disconnect() = Unit
     override fun dispose() = Unit
     override fun reconnectWithCacheRefresh() = Unit
-    override fun writeMode(mode: Int) { modeWrites += mode }
+    override fun writeMode(mode: Int) {
+        modeWrites += mode
+    }
     override fun writeDisplay(data: ByteArray, stream: Boolean) {
         displayWrites += data.copyOf() to stream
     }
-    override fun readDisplayCommittedFrame() { displayReads++ }
+    override fun readDisplayCommittedFrame() {
+        displayReads++
+    }
     override fun pomodoroSetDurations(workMin: Int, breakMin: Int) = Unit
     override fun pomodoroStart() = Unit
     override fun pomodoroPause() = Unit
@@ -315,7 +319,9 @@ private class FakeDeviceTransport : DeviceTransport {
     override fun timerStart() = Unit
     override fun timerPause() = Unit
     override fun timerCancel() = Unit
-    override fun writeBrightness(level: Int) { brightnessWrites += level }
+    override fun writeBrightness(level: Int) {
+        brightnessWrites += level
+    }
 
     fun reportMode(value: Int) {
         currentMode.value = value

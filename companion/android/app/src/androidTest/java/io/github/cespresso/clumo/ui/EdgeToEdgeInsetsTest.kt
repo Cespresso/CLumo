@@ -70,8 +70,8 @@ class EdgeToEdgeInsetsTest {
         }
 
         val lastLicense = compose.onNodeWithText("SIL Open Font License 1.1")
-        compose.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) {
-            scrollBy -> scrollBy(0f, Float.MAX_VALUE)
+        compose.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) { scrollBy ->
+            scrollBy(0f, Float.MAX_VALUE)
         }
         compose.waitForIdle()
 

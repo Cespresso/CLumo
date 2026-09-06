@@ -28,7 +28,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.ConnectionFailure
@@ -64,7 +64,7 @@ fun DeviceScreen(
     val context = LocalContext.current
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val settingsLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
+        ActivityResultContracts.StartActivityForResult(),
     ) {
         viewModel.onReconnect()
     }
@@ -103,10 +103,10 @@ fun DeviceScreen(
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                     Uri.parse("package:${context.packageName}"),
-                )
+                ),
             )
             DeviceFailureAction.OpenBluetoothSettings -> settingsLauncher.launch(
-                Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
             )
             DeviceFailureAction.BackToList -> onBack()
             DeviceFailureAction.Retry -> viewModel.onReconnect()
@@ -275,11 +275,11 @@ fun DeviceScreen(
                                     onStart = { viewModel.onVisualizerStart() },
                                     onStop = viewModel::onVisualizerStop,
                                     onVisualizerSensitivityChange =
-                                        viewModel::onVisualizerSensitivityChanged,
+                                    viewModel::onVisualizerSensitivityChanged,
                                     onVisualizerSensitivityChangeFinished =
-                                        viewModel::onVisualizerSensitivityChangeFinished,
+                                    viewModel::onVisualizerSensitivityChangeFinished,
                                     onAutomaticLowVolumeBoostChange =
-                                        viewModel::onAutomaticLowVolumeBoostChanged,
+                                    viewModel::onAutomaticLowVolumeBoostChanged,
                                 )
 
                                 DeviceMode.POMODORO -> PomodoroSection(

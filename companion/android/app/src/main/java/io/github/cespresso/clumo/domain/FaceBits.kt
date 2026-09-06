@@ -19,11 +19,9 @@ object FaceBits {
      * with remaining pixels occupying the row-major suffix so they turn off
      * from the top-left toward the bottom-right.
      */
-    fun fromPomodoro(status: PomodoroStatus): Long =
-        fromProgress(status.remainingSec, status.phaseTotalSec)
+    fun fromPomodoro(status: PomodoroStatus): Long = fromProgress(status.remainingSec, status.phaseTotalSec)
 
-    fun fromCountdownTimer(status: CountdownTimerStatus): Long =
-        fromProgress(status.remainingSec, status.configuredTotalSec)
+    fun fromCountdownTimer(status: CountdownTimerStatus): Long = fromProgress(status.remainingSec, status.configuredTotalSec)
 
     private fun fromProgress(remainingSec: Int, total: Int): Long {
         if (total <= 0) return EMPTY
@@ -37,9 +35,10 @@ object FaceBits {
         }
     }
 
-    fun toBitsString(mask: Long): String = buildString {
-        for (i in 0 until 64) append(if ((mask shr i) and 1L == 1L) '1' else '0')
-    }
+    fun toBitsString(mask: Long): String =
+        buildString {
+            for (i in 0 until 64) append(if ((mask shr i) and 1L == 1L) '1' else '0')
+        }
 
     /** Row bitmap bytes as read from the DISPLAY characteristic, MSB = left column. */
     fun fromRowBytes(bytes: ByteArray): Long {

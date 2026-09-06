@@ -18,5 +18,4 @@ object DeviceMode {
 }
 
 /** Pending user intent wins until CLumo reports its canonical mode. */
-fun effectiveModeOf(pendingMode: Int?, observedMode: Int?): Int =
-    pendingMode ?: observedMode ?: DeviceMode.POMODORO
+fun effectiveModeOf(pendingMode: Int?, observedMode: Int?): Int = pendingMode ?: observedMode ?: DeviceMode.POMODORO

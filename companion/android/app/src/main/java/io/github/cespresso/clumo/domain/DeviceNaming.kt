@@ -23,8 +23,9 @@ object DeviceNaming {
         aliases: Map<String, String>,
         scannedName: String? = null,
         fallbackName: String? = null,
-    ): String = deviceId?.let { aliases[it] }
-        ?: scannedName
-        ?: fallbackName
-        ?: DEFAULT
+    ): String =
+        deviceId?.let { aliases[it] }
+            ?: scannedName
+            ?: fallbackName
+            ?: DEFAULT
 }

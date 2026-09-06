@@ -8,13 +8,13 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
-import io.github.cespresso.clumo.domain.DeviceAppearance
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
+import io.github.cespresso.clumo.domain.DeviceAppearance
 
 /** M PLUS Rounded 1c, bundled in res/font. */
 val RoundedFontFamily = FontFamily(

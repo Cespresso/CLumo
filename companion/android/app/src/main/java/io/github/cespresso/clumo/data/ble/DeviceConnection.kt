@@ -22,7 +22,6 @@ import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
-import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -34,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 internal fun displayWriteMayBeCoalesced(noResponse: Boolean): Boolean = noResponse
 
@@ -122,7 +122,9 @@ class DeviceConnection(
     private var reconnectAttempts = 0
     private var initialSync = false
     private var gattCacheRefreshAttempted = false
+
     @Volatile private var forceCacheRefresh = false
+
     @Volatile private var userDisconnect = false
 
     private val bondReceiver = object : BroadcastReceiver() {
@@ -171,7 +173,9 @@ class DeviceConnection(
     override fun connect() {
         if (_connectionState.value != ConnectionState.Disconnected &&
             _connectionState.value != ConnectionState.Error
-        ) return
+        ) {
+            return
+        }
         userDisconnect = false
         reconnectJob?.cancel()
         reconnectAttempts = 0
@@ -325,12 +329,13 @@ class DeviceConnection(
             ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
             PackageManager.PERMISSION_GRANTED
 
-    private fun refreshGattCache(g: BluetoothGatt): Boolean = runCatching {
-        val refresh = g.javaClass.getMethod("refresh")
-        refresh.invoke(g) as? Boolean == true
-    }.onFailure {
-        Log.w(TAG, "$address: GATT cache refresh failed", it)
-    }.getOrDefault(false)
+    private fun refreshGattCache(g: BluetoothGatt): Boolean =
+        runCatching {
+            val refresh = g.javaClass.getMethod("refresh")
+            refresh.invoke(g) as? Boolean == true
+        }.onFailure {
+            Log.w(TAG, "$address: GATT cache refresh failed", it)
+        }.getOrDefault(false)
 
     /**
      * Drop Android's cached GATT table and run discovery again. Returns false when the
@@ -373,35 +378,43 @@ class DeviceConnection(
             return
         }
         val g = gatt
-        val started = if (g == null) false else when (op) {
-            is GattOp.Subscribe -> {
-                val char = characteristics[op.uuid]
-                val desc = char?.getDescriptor(BleUuids.CCCD)
-                if (char != null && desc != null) {
-                    g.setCharacteristicNotification(char, true)
-                    @Suppress("DEPRECATION")
-                    desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                    @Suppress("DEPRECATION")
-                    g.writeDescriptor(desc)
-                } else false
-            }
-            is GattOp.Read -> {
-                val char = characteristics[op.uuid]
-                if (char != null) g.readCharacteristic(char) else false
-            }
-            is GattOp.Write -> {
-                val char = characteristics[op.uuid]
-                if (char != null) {
-                    char.writeType = if (op.noResponse) {
-                        BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+        val started = if (g == null) {
+            false
+        } else {
+            when (op) {
+                is GattOp.Subscribe -> {
+                    val char = characteristics[op.uuid]
+                    val desc = char?.getDescriptor(BleUuids.CCCD)
+                    if (char != null && desc != null) {
+                        g.setCharacteristicNotification(char, true)
+                        @Suppress("DEPRECATION")
+                        desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                        @Suppress("DEPRECATION")
+                        g.writeDescriptor(desc)
                     } else {
-                        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                        false
                     }
-                    @Suppress("DEPRECATION")
-                    char.value = op.value
-                    @Suppress("DEPRECATION")
-                    g.writeCharacteristic(char)
-                } else false
+                }
+                is GattOp.Read -> {
+                    val char = characteristics[op.uuid]
+                    if (char != null) g.readCharacteristic(char) else false
+                }
+                is GattOp.Write -> {
+                    val char = characteristics[op.uuid]
+                    if (char != null) {
+                        char.writeType = if (op.noResponse) {
+                            BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                        } else {
+                            BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                        }
+                        @Suppress("DEPRECATION")
+                        char.value = op.value
+                        @Suppress("DEPRECATION")
+                        g.writeCharacteristic(char)
+                    } else {
+                        false
+                    }
+                }
             }
         }
         if (!started) {
@@ -481,8 +494,7 @@ class DeviceConnection(
     override fun pomodoroPause() = writePomodoroCommand(BleUuids.POMODORO_CMD_PAUSE)
     override fun pomodoroReset() = writePomodoroCommand(BleUuids.POMODORO_CMD_RESET)
 
-    override fun pomodoroSetDurations(workMin: Int, breakMin: Int) =
-        writePomodoroCommand(BleUuids.POMODORO_CMD_SET_DURATIONS, workMin.coerceIn(1, 99), breakMin.coerceIn(1, 99))
+    override fun pomodoroSetDurations(workMin: Int, breakMin: Int) = writePomodoroCommand(BleUuids.POMODORO_CMD_SET_DURATIONS, workMin.coerceIn(1, 99), breakMin.coerceIn(1, 99))
 
     private fun writeTimerCommand(vararg bytes: Int) {
         enqueue(GattOp.Write(BleUuids.TIMER, ByteArray(bytes.size) { bytes[it].toByte() }, noResponse = false))
@@ -567,8 +579,12 @@ class DeviceConnection(
             }
             val service = g.getService(BleUuids.SERVICE)
             val required = setOf(
-                BleUuids.MODE, BleUuids.DISPLAY, BleUuids.POMODORO, BleUuids.TIMER,
-                BleUuids.BRIGHTNESS, BleUuids.DEVICE_ID,
+                BleUuids.MODE,
+                BleUuids.DISPLAY,
+                BleUuids.POMODORO,
+                BleUuids.TIMER,
+                BleUuids.BRIGHTNESS,
+                BleUuids.DEVICE_ID,
             )
             val optional = setOf(BleUuids.BUTTON)
             val discovered = service?.characteristics
@@ -607,8 +623,11 @@ class DeviceConnection(
                 GattCompatibilityAction.REJECT -> {
                     Log.w(
                         TAG,
-                        if (service == null) "$address: CLumo service not found"
-                        else "$address: required CLumo characteristics are missing",
+                        if (service == null) {
+                            "$address: CLumo service not found"
+                        } else {
+                            "$address: required CLumo characteristics are missing"
+                        },
                     )
                     fail(ConnectionFailure.IncompatibleDevice, retry = false)
                     return

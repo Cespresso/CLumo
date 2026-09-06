@@ -46,9 +46,9 @@ internal fun updatedDeviceAppearances(
     current: Map<String, DeviceAppearance>,
     deviceId: String,
     appearance: DeviceAppearance?,
-): Map<String, DeviceAppearance> = current.toMutableMap().apply {
-    if (appearance == null) remove(deviceId) else put(deviceId, appearance)
-}
+): Map<String, DeviceAppearance> =
+    current.toMutableMap().apply {
+        if (appearance == null) remove(deviceId) else put(deviceId, appearance)
+    }
 
-private fun JSONObject.rgbOrDefault(key: String, default: RgbColor): RgbColor =
-    optString(key).takeIf { it.isNotEmpty() }?.let(RgbColor::parseOrNull) ?: default
+private fun JSONObject.rgbOrDefault(key: String, default: RgbColor): RgbColor = optString(key).takeIf { it.isNotEmpty() }?.let(RgbColor::parseOrNull) ?: default

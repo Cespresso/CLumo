@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+    id("org.jlleitschuh.gradle.ktlint")
 }
 
 // release ビルドは必ず専用鍵で署名する。署名材料が欠けたまま
@@ -56,6 +57,19 @@ android {
         }
     }
 
+    lint {
+        // 新しく増えた指摘だけを落とすため、警告もエラー扱いにしたうえで
+        // 既存分は lint-baseline.xml に固定する。
+        warningsAsErrors = true
+        baseline = file("lint-baseline.xml")
+        // targetSdk を 34 に留めているのは意図した判断で、引き上げは
+        // 実機での見た目確認を伴う別作業。
+        disable += "OldTargetApi"
+        // 依存の版は固定して選んでいる。毎回ネットワークを見に行くのも
+        // CI の再現性を損なう。
+        disable += "NewerVersionAvailable"
+    }
+
     buildTypes {
         getByName("debug") {
             applicationIdSuffix = ".debug"
@@ -65,6 +79,12 @@ android {
             signingConfig = signingConfigs.findByName("release")
         }
     }
+}
+
+// ktlint はコードスタイルを、Compose Rules は Composable 固有の作法を見る。
+// エンジン版は Compose Rules 0.6.4 が要求する 1.8.0 に合わせる。
+ktlint {
+    version.set("1.8.0")
 }
 
 dependencies {
@@ -89,4 +109,5 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    ktlintRuleset("io.nlopez.compose.rules:ktlint:0.6.4")
 }

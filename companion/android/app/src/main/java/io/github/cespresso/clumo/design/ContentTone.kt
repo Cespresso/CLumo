@@ -6,8 +6,7 @@ import kotlin.math.pow
 /** Which of the two content colors stays legible on a given fill. */
 enum class ContentTone { Dark, Light }
 
-fun contentToneFor(color: RgbColor): ContentTone =
-    if (relativeLuminance(color) > 0.179f) ContentTone.Dark else ContentTone.Light
+fun contentToneFor(color: RgbColor): ContentTone = if (relativeLuminance(color) > 0.179f) ContentTone.Dark else ContentTone.Light
 
 /**
  * Content tone for text/icons on an accent fill. Unlike contentToneFor's
@@ -15,8 +14,7 @@ fun contentToneFor(color: RgbColor): ContentTone =
  * content to match the design language; only clearly light fills switch to
  * dark content.
  */
-fun accentContentToneFor(color: RgbColor): ContentTone =
-    if (relativeLuminance(color) > 0.4f) ContentTone.Dark else ContentTone.Light
+fun accentContentToneFor(color: RgbColor): ContentTone = if (relativeLuminance(color) > 0.4f) ContentTone.Dark else ContentTone.Light
 
 private fun relativeLuminance(color: RgbColor): Float {
     fun linear(channel: Int): Float {

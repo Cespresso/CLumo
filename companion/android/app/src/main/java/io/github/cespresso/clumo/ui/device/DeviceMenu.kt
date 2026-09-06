@@ -97,7 +97,7 @@ internal fun BoxScope.DeviceMenu(
         )
         entry(
             label = stringResource(
-                if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary
+                if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary,
             ),
             color = ClumoColors.Text,
             enabled = identified,

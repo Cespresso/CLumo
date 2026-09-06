@@ -129,16 +129,14 @@ class DeviceHubService : Service() {
      * a widget tap can start this process, and a collector filled asynchronously in
      * [onCreate] has not necessarily emitted by the time the command arrives.
      */
-    private suspend fun currentTarget(): Device? =
-        resolvePrimaryTarget(preferences.primaryDeviceId.first(), repository.devices.value)
+    private suspend fun currentTarget(): Device? = resolvePrimaryTarget(preferences.primaryDeviceId.first(), repository.devices.value)
 
     /**
      * Connects to the primary device on behalf of a caller that has no address to hand in.
      * [DeviceSession.connect] guards itself and returns immediately unless the link is
      * down, so a live connection comes back untouched.
      */
-    private fun ensureConnected(target: Device): DeviceSession =
-        registry.connect(target.address, target.name)
+    private fun ensureConnected(target: Device): DeviceSession = registry.connect(target.address, target.name)
 
     private suspend fun handleWidgetCommand(command: WidgetCommand) {
         val target = currentTarget()

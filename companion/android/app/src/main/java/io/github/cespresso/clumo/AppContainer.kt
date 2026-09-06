@@ -30,5 +30,4 @@ class AppContainer(context: Context) {
     val patterns: PatternRepository by lazy {
         PatternRepository(appContext, preferences, repository)
     }
-
 }

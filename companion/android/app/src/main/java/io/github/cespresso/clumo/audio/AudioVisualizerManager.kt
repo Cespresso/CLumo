@@ -92,7 +92,7 @@ class AudioVisualizerManager {
                         override fun onWaveFormDataCapture(
                             visualizer: Visualizer,
                             waveform: ByteArray,
-                            samplingRate: Int
+                            samplingRate: Int,
                         ) {
                             // Not used; FFT drives the frequency bands.
                         }
@@ -100,14 +100,14 @@ class AudioVisualizerManager {
                         override fun onFftDataCapture(
                             visualizer: Visualizer,
                             fft: ByteArray,
-                            samplingRate: Int
+                            samplingRate: Int,
                         ) {
                             _columns.value = fftToBands(fft)
                         }
                     },
                     Visualizer.getMaxCaptureRate(),
                     false,
-                    true
+                    true,
                 )
                 enabled = true
             }
@@ -177,7 +177,7 @@ class AudioVisualizerManager {
         }
 
         val frameLevel = kotlin.math.sqrt(
-            bandMagnitudes.sumOf { value -> value.toDouble() * value } / NUM_BANDS
+            bandMagnitudes.sumOf { value -> value.toDouble() * value } / NUM_BANDS,
         )
         val now = System.nanoTime()
         val elapsedMs = lastCaptureNanos

@@ -14,25 +14,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelStore
-import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.viewmodel.initializer
-import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.resolveAppearance
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceScreen
 import io.github.cespresso.clumo.ui.appearance.DeviceAppearanceViewModel
-import io.github.cespresso.clumo.domain.resolveAppearance
 import io.github.cespresso.clumo.ui.device.DeviceScreen
 import io.github.cespresso.clumo.ui.device.DeviceViewModel
 import io.github.cespresso.clumo.ui.devices.DeviceListScreen
@@ -79,23 +79,25 @@ private fun AppContainer.deviceListViewModelFactory(): ViewModelProvider.Factory
 private fun AppContainer.patternEditorViewModelFactory(
     address: String?,
     patternId: String?,
-): ViewModelProvider.Factory = viewModelFactory {
-    initializer {
-        PatternEditorViewModel(address, patternId, registry, repository, preferences, patterns)
+): ViewModelProvider.Factory =
+    viewModelFactory {
+        initializer {
+            PatternEditorViewModel(address, patternId, registry, repository, preferences, patterns)
+        }
     }
-}
 
 private fun AppContainer.deviceAppearanceViewModelFactory(
     deviceId: String,
-): ViewModelProvider.Factory = viewModelFactory {
-    initializer {
-        DeviceAppearanceViewModel(
-            deviceId = deviceId,
-            fallbackName = repository.get(deviceId)?.fallbackName,
-            preferences = preferences,
-        )
+): ViewModelProvider.Factory =
+    viewModelFactory {
+        initializer {
+            DeviceAppearanceViewModel(
+                deviceId = deviceId,
+                fallbackName = repository.get(deviceId)?.fallbackName,
+                preferences = preferences,
+            )
+        }
     }
-}
 
 class MainActivity : ComponentActivity() {
 
@@ -166,64 +168,64 @@ private fun AppRoot(container: AppContainer) {
 
     CompositionLocalProvider(LocalViewModelStoreOwner provides currentEntry) {
         when (current) {
-        is Screen.OnboardingWelcome -> OnboardingWelcomeScreen(
-            onStart = { push(Screen.OnboardingBluetooth) },
-        )
+            is Screen.OnboardingWelcome -> OnboardingWelcomeScreen(
+                onStart = { push(Screen.OnboardingBluetooth) },
+            )
 
-        is Screen.OnboardingBluetooth -> OnboardingBluetoothScreen(
-            preferences = container.preferences,
-            onDone = { replaceAll(Screen.DeviceList) },
-        )
+            is Screen.OnboardingBluetooth -> OnboardingBluetoothScreen(
+                preferences = container.preferences,
+                onDone = { replaceAll(Screen.DeviceList) },
+            )
 
-        is Screen.DeviceList -> DeviceListScreen(
-            viewModel = viewModel(
-                key = "device-list",
-                factory = container.deviceListViewModelFactory(),
-            ),
-            onOpenDevice = { address -> push(Screen.Device(address)) },
-            onOpenSettings = { push(Screen.Settings) },
-        )
-
-        is Screen.Device -> DeviceScreen(
-            viewModel = viewModel(
-                key = "device:${current.address}",
-                factory = container.deviceViewModelFactory(current.address),
-            ),
-            onBack = { pop() },
-            onOpenSettings = { push(Screen.Settings) },
-            onOpenAppearance = { deviceId -> push(Screen.Appearance(deviceId)) },
-            onOpenEditor = { patternId ->
-                push(Screen.Editor(address = current.address, patternId = patternId))
-            },
-        )
-
-        is Screen.Editor -> PatternEditorScreen(
-            viewModel = viewModel(
-                key = "editor:${current.address}:${current.patternId}",
-                factory = container.patternEditorViewModelFactory(
-                    address = current.address,
-                    patternId = current.patternId,
+            is Screen.DeviceList -> DeviceListScreen(
+                viewModel = viewModel(
+                    key = "device-list",
+                    factory = container.deviceListViewModelFactory(),
                 ),
-            ),
-            onBack = { pop() },
-        )
+                onOpenDevice = { address -> push(Screen.Device(address)) },
+                onOpenSettings = { push(Screen.Settings) },
+            )
 
-        is Screen.Appearance -> DeviceAppearanceScreen(
-            viewModel = viewModel(
-                key = "appearance:${current.deviceId}",
-                factory = container.deviceAppearanceViewModelFactory(current.deviceId),
-            ),
-            onBack = { pop() },
-        )
+            is Screen.Device -> DeviceScreen(
+                viewModel = viewModel(
+                    key = "device:${current.address}",
+                    factory = container.deviceViewModelFactory(current.address),
+                ),
+                onBack = { pop() },
+                onOpenSettings = { push(Screen.Settings) },
+                onOpenAppearance = { deviceId -> push(Screen.Appearance(deviceId)) },
+                onOpenEditor = { patternId ->
+                    push(Screen.Editor(address = current.address, patternId = patternId))
+                },
+            )
 
-        is Screen.Settings -> SettingsScreen(
-            onBack = { pop() },
-            onOpenLicenses = { push(Screen.Licenses) },
-        )
+            is Screen.Editor -> PatternEditorScreen(
+                viewModel = viewModel(
+                    key = "editor:${current.address}:${current.patternId}",
+                    factory = container.patternEditorViewModelFactory(
+                        address = current.address,
+                        patternId = current.patternId,
+                    ),
+                ),
+                onBack = { pop() },
+            )
 
-        is Screen.Licenses -> LicensesScreen(
-            onBack = { pop() },
-        )
+            is Screen.Appearance -> DeviceAppearanceScreen(
+                viewModel = viewModel(
+                    key = "appearance:${current.deviceId}",
+                    factory = container.deviceAppearanceViewModelFactory(current.deviceId),
+                ),
+                onBack = { pop() },
+            )
+
+            is Screen.Settings -> SettingsScreen(
+                onBack = { pop() },
+                onOpenLicenses = { push(Screen.Licenses) },
+            )
+
+            is Screen.Licenses -> LicensesScreen(
+                onBack = { pop() },
+            )
         }
     }
 }

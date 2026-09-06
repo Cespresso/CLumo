@@ -92,19 +92,19 @@ class ClumoControlWidget : GlanceAppWidget() {
             text = actionLabel(context, action),
             style = TextStyle(
                 color = ColorProvider(
-                    if (isCta) Color(snapshot.onCtaArgb) else WidgetPalette.Muted
+                    if (isCta) Color(snapshot.onCtaArgb) else WidgetPalette.Muted,
                 ),
             ),
             modifier = GlanceModifier
                 .background(
-                    if (isCta) Color(snapshot.ctaArgb) else WidgetPalette.NeutralButton
+                    if (isCta) Color(snapshot.ctaArgb) else WidgetPalette.NeutralButton,
                 )
                 .cornerRadius(16.dp)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .clickable(
                     actionRunCallback<RunWidgetCommand>(
-                        actionParametersOf(CommandKey to WidgetCommand.encode(command))
-                    )
+                        actionParametersOf(CommandKey to WidgetCommand.encode(command)),
+                    ),
                 ),
         )
     }

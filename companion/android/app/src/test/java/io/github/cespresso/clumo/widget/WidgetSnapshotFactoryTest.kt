@@ -47,7 +47,11 @@ class WidgetSnapshotFactoryTest {
     )
 
     private val running = PomodoroStatus(
-        PomodoroStatus.STATE_RUNNING, PomodoroStatus.PHASE_WORK, 15 * 60, 25, 5,
+        PomodoroStatus.STATE_RUNNING,
+        PomodoroStatus.PHASE_WORK,
+        15 * 60,
+        25,
+        5,
     )
 
     @Test

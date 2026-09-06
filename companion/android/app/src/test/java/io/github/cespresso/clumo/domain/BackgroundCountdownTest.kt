@@ -6,7 +6,11 @@ import org.junit.Test
 class BackgroundCountdownTest {
 
     private val runningPomodoro = PomodoroStatus(
-        PomodoroStatus.STATE_RUNNING, PomodoroStatus.PHASE_WORK, 15 * 60, 25, 5,
+        PomodoroStatus.STATE_RUNNING,
+        PomodoroStatus.PHASE_WORK,
+        15 * 60,
+        25,
+        5,
     )
     private val runningTimer = CountdownTimerStatus(CountdownTimerStatus.STATE_RUNNING, 120, 5, 0)
 

@@ -12,8 +12,7 @@ object Brightness {
     const val MAX_LEVEL = 15
 
     /** The slider's percentage as a level the device will accept. */
-    fun toLevel(percent: Float): Int =
-        (percent / 100f * MAX_LEVEL).roundToInt().coerceIn(0, MAX_LEVEL)
+    fun toLevel(percent: Float): Int = (percent / 100f * MAX_LEVEL).roundToInt().coerceIn(0, MAX_LEVEL)
 
     /** A level the device reported as a position for the slider. */
     fun toPercent(level: Int): Float = level.coerceIn(0, MAX_LEVEL) / MAX_LEVEL.toFloat() * 100f

@@ -30,7 +30,7 @@ fun faceDots(bits: Long, sizePx: Int): List<FaceDot> {
                         centerY = cell * (row + 0.5f),
                         radius = radius,
                         lit = (bits shr index) and 1L == 1L,
-                    )
+                    ),
                 )
             }
         }

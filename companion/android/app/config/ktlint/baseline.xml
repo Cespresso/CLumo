@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<baseline version="1.0">
+    <file name="src/main/java/io/github/cespresso/clumo/ui/appearance/DeviceAppearanceScreen.kt">
+        <error line="75" column="5" source="compose:modifier-missing-check" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/components/Components.kt">
+        <error line="644" column="5" source="compose:modifier-missing-check" />
+        <error line="714" column="5" source="compose:modifier-missing-check" />
+        <error line="751" column="5" source="compose:modifier-missing-check" />
+        <error line="783" column="5" source="compose:modifier-missing-check" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/components/ScreenHeader.kt">
+        <error line="32" column="5" source="compose:modifier-missing-check" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/device/CountdownTimerSection.kt">
+        <error line="42" column="5" source="compose:parameter-naming" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/device/DeviceMenu.kt">
+        <error line="84" column="13" source="compose:naming-check" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/device/DeviceScreen.kt">
+        <error line="57" column="5" source="compose:modifier-missing-check" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/device/PatternsSection.kt">
+        <error line="48" column="5" source="compose:parameter-naming" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/device/PomodoroSection.kt">
+        <error line="40" column="5" source="compose:parameter-naming" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/device/ReadyGate.kt">
+        <error line="26" column="13" source="compose:modifier-not-used-at-root" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/device/VisualizerSection.kt">
+        <error line="49" column="5" source="compose:parameter-naming" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/devices/DeviceListScreen.kt">
+        <error line="85" column="5" source="compose:modifier-missing-check" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/editor/PatternEditorScreen.kt">
+        <error line="69" column="5" source="compose:modifier-missing-check" />
+        <error line="71" column="5" source="compose:lambda-param-in-effect" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/onboarding/OnboardingScreens.kt">
+        <error line="65" column="5" source="compose:modifier-missing-check" />
+        <error line="121" column="5" source="compose:modifier-missing-check" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/ui/settings/SettingsScreen.kt">
+        <error line="44" column="5" source="compose:modifier-missing-check" />
+        <error line="196" column="5" source="compose:modifier-missing-check" />
+    </file>
+    <file name="src/main/java/io/github/cespresso/clumo/widget/FaceDots.kt">
+        <error line="1" column="1" source="standard:filename" />
+    </file>
+</baseline>

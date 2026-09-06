@@ -111,7 +111,7 @@ object WidgetSnapshotFactory {
         val renderedMode = if (mode in DeviceMode.ORDER) mode else DeviceMode.POMODORO
         val withBackgroundFlag = base.copy(
             backgroundTimerActive =
-                backgroundCountdownsFor(renderedMode, pomodoro, timer).isNotEmpty(),
+            backgroundCountdownsFor(renderedMode, pomodoro, timer).isNotEmpty(),
         )
 
         return when (renderedMode) {
@@ -145,73 +145,76 @@ object WidgetSnapshotFactory {
         base: WidgetSnapshot,
         status: PomodoroStatus,
         alias: String,
-    ): WidgetSnapshot = when {
-        status.isRunning -> base.copy(
-            headline = if (status.isWorkPhase) {
-                WidgetHeadline.PomodoroWorking
-            } else {
-                WidgetHeadline.PomodoroBreak
-            },
-            subtitle = WidgetSubtitle.Alias,
-            subtitleText = alias,
-            faceBits = FaceBits.fromPomodoro(status),
-            actions = listOf(WidgetAction.Pause, WidgetAction.Reset),
-        )
-        status.isIdle -> base.copy(
-            headline = WidgetHeadline.PomodoroIdle,
-            subtitle = WidgetSubtitle.PomodoroDurations,
-            subtitleArgA = status.workMin,
-            subtitleArgB = status.breakMin,
-            faceBits = -1L,
-            actions = listOf(WidgetAction.Start),
-        )
-        else -> base.copy(
-            headline = WidgetHeadline.Paused,
-            subtitle = WidgetSubtitle.Alias,
-            subtitleText = alias,
-            faceBits = FaceBits.fromPomodoro(status),
-            faceDimmed = true,
-            actions = listOf(WidgetAction.Start, WidgetAction.Reset),
-        )
-    }
+    ): WidgetSnapshot =
+        when {
+            status.isRunning -> base.copy(
+                headline = if (status.isWorkPhase) {
+                    WidgetHeadline.PomodoroWorking
+                } else {
+                    WidgetHeadline.PomodoroBreak
+                },
+                subtitle = WidgetSubtitle.Alias,
+                subtitleText = alias,
+                faceBits = FaceBits.fromPomodoro(status),
+                actions = listOf(WidgetAction.Pause, WidgetAction.Reset),
+            )
+            status.isIdle -> base.copy(
+                headline = WidgetHeadline.PomodoroIdle,
+                subtitle = WidgetSubtitle.PomodoroDurations,
+                subtitleArgA = status.workMin,
+                subtitleArgB = status.breakMin,
+                faceBits = -1L,
+                actions = listOf(WidgetAction.Start),
+            )
+            else -> base.copy(
+                headline = WidgetHeadline.Paused,
+                subtitle = WidgetSubtitle.Alias,
+                subtitleText = alias,
+                faceBits = FaceBits.fromPomodoro(status),
+                faceDimmed = true,
+                actions = listOf(WidgetAction.Start, WidgetAction.Reset),
+            )
+        }
 
     private fun timerState(
         base: WidgetSnapshot,
         status: CountdownTimerStatus,
         alias: String,
-    ): WidgetSnapshot = when {
-        status.isRunning -> base.copy(
-            headline = WidgetHeadline.Timer,
-            subtitle = WidgetSubtitle.Alias,
-            subtitleText = alias,
-            faceBits = FaceBits.fromCountdownTimer(status),
-            actions = listOf(WidgetAction.Pause, WidgetAction.Cancel),
-        )
-        status.isPaused -> base.copy(
-            headline = WidgetHeadline.Paused,
-            subtitle = WidgetSubtitle.Alias,
-            subtitleText = alias,
-            faceBits = FaceBits.fromCountdownTimer(status),
-            faceDimmed = true,
-            actions = listOf(WidgetAction.Start, WidgetAction.Cancel),
-        )
-        // Idle and Completed both present as "ready to start".
-        else -> base.copy(
-            headline = WidgetHeadline.TimerIdle,
-            subtitle = WidgetSubtitle.TimerDuration,
-            subtitleArgA = status.configuredMin,
-            subtitleArgB = status.configuredSec,
-            faceBits = -1L,
-            actions = listOf(WidgetAction.Start),
-        )
-    }
+    ): WidgetSnapshot =
+        when {
+            status.isRunning -> base.copy(
+                headline = WidgetHeadline.Timer,
+                subtitle = WidgetSubtitle.Alias,
+                subtitleText = alias,
+                faceBits = FaceBits.fromCountdownTimer(status),
+                actions = listOf(WidgetAction.Pause, WidgetAction.Cancel),
+            )
+            status.isPaused -> base.copy(
+                headline = WidgetHeadline.Paused,
+                subtitle = WidgetSubtitle.Alias,
+                subtitleText = alias,
+                faceBits = FaceBits.fromCountdownTimer(status),
+                faceDimmed = true,
+                actions = listOf(WidgetAction.Start, WidgetAction.Cancel),
+            )
+            // Idle and Completed both present as "ready to start".
+            else -> base.copy(
+                headline = WidgetHeadline.TimerIdle,
+                subtitle = WidgetSubtitle.TimerDuration,
+                subtitleArgA = status.configuredMin,
+                subtitleArgB = status.configuredSec,
+                faceBits = -1L,
+                actions = listOf(WidgetAction.Start),
+            )
+        }
 
     /** RgbColor stores opaque sRGB without an alpha channel. */
     private fun argb(rgb: Int): Int = rgb or (0xFF shl 24)
 
     /** The same two content colors the app draws on an accent fill. */
-    private fun contentArgb(tone: ContentTone): Int = when (tone) {
-        ContentTone.Dark -> ClumoColors.Text.toArgb()
-        ContentTone.Light -> ClumoColors.White.toArgb()
-    }
+    private fun contentArgb(tone: ContentTone): Int =
+        when (tone) {
+            ContentTone.Dark -> ClumoColors.Text.toArgb()
+            ContentTone.Light -> ClumoColors.White.toArgb()
+        }
 }

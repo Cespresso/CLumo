@@ -4,8 +4,8 @@ import io.github.cespresso.clumo.audio.AudioVisualizerManager
 import io.github.cespresso.clumo.data.ble.ButtonEvent
 import io.github.cespresso.clumo.data.ble.DeviceObservation
 import io.github.cespresso.clumo.data.ble.DeviceTransport
-import io.github.cespresso.clumo.data.ble.shouldStopVisualizerForModeChange
 import io.github.cespresso.clumo.data.ble.shouldStopVisualizerForLinkChange
+import io.github.cespresso.clumo.data.ble.shouldStopVisualizerForModeChange
 import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.DeviceMode
@@ -20,9 +20,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -202,18 +202,17 @@ class DeviceSession internal constructor(
         }
     }
 
-    private fun expirePendingAfterTtl(): Job = scope.launch {
-        delay(PendingCommands.DEFAULT_TTL_MS)
-        _state.update { it.copy(pending = it.pending.expire(nowRealtime())) }
-    }
+    private fun expirePendingAfterTtl(): Job =
+        scope.launch {
+            delay(PendingCommands.DEFAULT_TTL_MS)
+            _state.update { it.copy(pending = it.pending.expire(nowRealtime())) }
+        }
 
-    fun pomodoroSetDurations(workMin: Int, breakMin: Int) =
-        transport.pomodoroSetDurations(workMin, breakMin)
+    fun pomodoroSetDurations(workMin: Int, breakMin: Int) = transport.pomodoroSetDurations(workMin, breakMin)
     fun pomodoroStart() = transport.pomodoroStart()
     fun pomodoroPause() = transport.pomodoroPause()
     fun pomodoroReset() = transport.pomodoroReset()
-    fun timerSetDuration(minutes: Int, seconds: Int) =
-        transport.timerSetDuration(minutes, seconds)
+    fun timerSetDuration(minutes: Int, seconds: Int) = transport.timerSetDuration(minutes, seconds)
     fun timerStart() = transport.timerStart()
     fun timerPause() = transport.timerPause()
     fun timerCancel() = transport.timerCancel()
@@ -273,7 +272,9 @@ class DeviceSession internal constructor(
         if (_state.value.link != ConnectionState.Ready ||
             _state.value.effectiveMode != DeviceMode.VISUALIZER ||
             !audioVisualizer.start()
-        ) return false
+        ) {
+            return false
+        }
         visualizerWriteJob?.cancel()
         visualizerWriteJob = scope.launch {
             while (true) {
@@ -326,6 +327,7 @@ class DeviceSession internal constructor(
     private companion object {
         const val BRIGHTNESS_DEBOUNCE_MS = 100L
         const val PREVIEW_INTERVAL_MS = 100L
+
         // Must stay under the firmware's DISPLAY preview TTL, or the device reverts to
         // the committed frame mid-edit.
         const val PREVIEW_KEEP_ALIVE_MS = 2_000L

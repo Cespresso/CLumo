@@ -21,23 +21,24 @@ fun backgroundCountdownsFor(
     mode: Int?,
     pomodoro: PomodoroStatus?,
     timer: CountdownTimerStatus?,
-): List<BackgroundCountdown> = buildList {
-    if (mode != DeviceMode.POMODORO && pomodoro != null && !pomodoro.isIdle) {
-        add(
-            if (pomodoro.isRunning) {
-                BackgroundCountdown.PomodoroRunning
-            } else {
-                BackgroundCountdown.PomodoroPaused
-            },
-        )
+): List<BackgroundCountdown> =
+    buildList {
+        if (mode != DeviceMode.POMODORO && pomodoro != null && !pomodoro.isIdle) {
+            add(
+                if (pomodoro.isRunning) {
+                    BackgroundCountdown.PomodoroRunning
+                } else {
+                    BackgroundCountdown.PomodoroPaused
+                },
+            )
+        }
+        if (mode != DeviceMode.TIMER && timer != null && !timer.isIdle) {
+            add(
+                when {
+                    timer.isRunning -> BackgroundCountdown.TimerRunning
+                    timer.isCompleted -> BackgroundCountdown.TimerCompleted
+                    else -> BackgroundCountdown.TimerPaused
+                },
+            )
+        }
     }
-    if (mode != DeviceMode.TIMER && timer != null && !timer.isIdle) {
-        add(
-            when {
-                timer.isRunning -> BackgroundCountdown.TimerRunning
-                timer.isCompleted -> BackgroundCountdown.TimerCompleted
-                else -> BackgroundCountdown.TimerPaused
-            },
-        )
-    }
-}

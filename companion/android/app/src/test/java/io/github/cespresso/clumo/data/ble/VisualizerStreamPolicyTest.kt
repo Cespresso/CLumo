@@ -21,19 +21,19 @@ class VisualizerStreamPolicyTest {
             shouldStopVisualizerForModeChange(
                 visualizerActive = true,
                 requestedMode = DeviceMode.DISPLAY,
-            )
+            ),
         )
         assertFalse(
             shouldStopVisualizerForModeChange(
                 visualizerActive = true,
                 requestedMode = DeviceMode.VISUALIZER,
-            )
+            ),
         )
         assertFalse(
             shouldStopVisualizerForModeChange(
                 visualizerActive = false,
                 requestedMode = DeviceMode.DISPLAY,
-            )
+            ),
         )
     }
 

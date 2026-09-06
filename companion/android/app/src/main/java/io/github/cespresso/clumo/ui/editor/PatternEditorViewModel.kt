@@ -10,7 +10,6 @@ import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.resolveAppearance
-import java.util.UUID
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,17 +22,19 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 internal fun editorPattern(
     existing: Pattern?,
     name: String,
     cells: Long,
     newId: String,
-): Pattern = Pattern(
-    id = existing?.id ?: newId,
-    name = name,
-    bits = FaceBits.toBitsString(cells),
-)
+): Pattern =
+    Pattern(
+        id = existing?.id ?: newId,
+        name = name,
+        bits = FaceBits.toBitsString(cells),
+    )
 
 data class PatternEditorUiState(
     val patterns: List<Pattern> = emptyList(),

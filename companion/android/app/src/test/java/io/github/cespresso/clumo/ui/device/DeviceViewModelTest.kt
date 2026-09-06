@@ -11,36 +11,38 @@ import org.junit.Test
 class DeviceViewModelTest {
 
     @Test
-    fun explicitApplyPersistsDeviceSelectionBeforeCommittingFrame() = runTest {
-        val pattern = Pattern("pattern", "Pattern", "1".repeat(64))
-        val calls = mutableListOf<String>()
+    fun explicitApplyPersistsDeviceSelectionBeforeCommittingFrame() =
+        runTest {
+            val pattern = Pattern("pattern", "Pattern", "1".repeat(64))
+            val calls = mutableListOf<String>()
 
-        applyPatternToDevice(
-            deviceId = "device",
-            pattern = pattern,
-            setApplied = { deviceId, patternId -> calls += "persist:$deviceId:$patternId" },
-            commit = { calls += "commit:${it.id}" },
-        )
-
-        assertEquals(listOf("persist:device:pattern", "commit:pattern"), calls)
-    }
-
-    @Test
-    fun failedSelectionPersistenceDoesNotClaimFrameWasCommitted() = runTest {
-        val pattern = Pattern("pattern", "Pattern", "1".repeat(64))
-        var committed = false
-
-        runCatching {
             applyPatternToDevice(
                 deviceId = "device",
                 pattern = pattern,
-                setApplied = { _, _ -> error("storage failed") },
-                commit = { committed = true },
+                setApplied = { deviceId, patternId -> calls += "persist:$deviceId:$patternId" },
+                commit = { calls += "commit:${it.id}" },
             )
+
+            assertEquals(listOf("persist:device:pattern", "commit:pattern"), calls)
         }
 
-        assertFalse(committed)
-    }
+    @Test
+    fun failedSelectionPersistenceDoesNotClaimFrameWasCommitted() =
+        runTest {
+            val pattern = Pattern("pattern", "Pattern", "1".repeat(64))
+            var committed = false
+
+            runCatching {
+                applyPatternToDevice(
+                    deviceId = "device",
+                    pattern = pattern,
+                    setApplied = { _, _ -> error("storage failed") },
+                    commit = { committed = true },
+                )
+            }
+
+            assertFalse(committed)
+        }
 
     @Test
     fun initialUiStateIsDisconnectedAndDoesNotInventObservedPixels() {

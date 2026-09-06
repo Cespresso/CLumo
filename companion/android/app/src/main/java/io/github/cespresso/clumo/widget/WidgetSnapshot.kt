@@ -71,7 +71,7 @@ val VISUALIZER_GLYPH: Long = FaceBits.fromBitsString(
         "01011101" +
         "01111101" +
         "11111111" +
-        "11111111"
+        "11111111",
 )
 
 /** A snapshot older than this is treated as disconnected. */
@@ -113,8 +113,7 @@ data class WidgetSnapshot(
 )
 
 /** Whether anything visible differs. [WidgetSnapshot.updatedAtRealtime] alone is not visible. */
-fun WidgetSnapshot.sameContentAs(other: WidgetSnapshot): Boolean =
-    copy(updatedAtRealtime = 0L) == other.copy(updatedAtRealtime = 0L)
+fun WidgetSnapshot.sameContentAs(other: WidgetSnapshot): Boolean = copy(updatedAtRealtime = 0L) == other.copy(updatedAtRealtime = 0L)
 
 /**
  * `elapsedRealtime` resets on reboot, so a timestamp in the future is itself proof that the
@@ -125,16 +124,17 @@ fun WidgetSnapshot.isStale(nowRealtime: Long): Boolean =
         nowRealtime - updatedAtRealtime > STALE_THRESHOLD_MS
 
 /** What a widget draws before the service has ever published, and once a snapshot goes stale. */
-fun disconnectedSnapshot(): WidgetSnapshot = WidgetSnapshot(
-    link = WidgetLink.Connecting,
-    headline = WidgetHeadline.NotConnected,
-    subtitle = WidgetSubtitle.TapToReconnect,
-    actions = listOf(WidgetAction.Retry),
-    enclosureArgb = 0xFF7E9E7C.toInt(),
-    ctaArgb = 0xFFE8907E.toInt(),
-    // The default coral sits below the light-content threshold, so its label is white.
-    onCtaArgb = 0xFFFFFFFF.toInt(),
-    knobArgb = 0xFFFFFFFF.toInt(),
-    ledArgb = 0xFFF0A35E.toInt(),
-    updatedAtRealtime = 0L,
-)
+fun disconnectedSnapshot(): WidgetSnapshot =
+    WidgetSnapshot(
+        link = WidgetLink.Connecting,
+        headline = WidgetHeadline.NotConnected,
+        subtitle = WidgetSubtitle.TapToReconnect,
+        actions = listOf(WidgetAction.Retry),
+        enclosureArgb = 0xFF7E9E7C.toInt(),
+        ctaArgb = 0xFFE8907E.toInt(),
+        // The default coral sits below the light-content threshold, so its label is white.
+        onCtaArgb = 0xFFFFFFFF.toInt(),
+        knobArgb = 0xFFFFFFFF.toInt(),
+        ledArgb = 0xFFF0A35E.toInt(),
+        updatedAtRealtime = 0L,
+    )

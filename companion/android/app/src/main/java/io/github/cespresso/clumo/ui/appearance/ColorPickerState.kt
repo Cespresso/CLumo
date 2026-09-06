@@ -23,6 +23,5 @@ data class ColorPickerState(
         return copy(draftColor = selected, hexInput = selected.toHex())
     }
 
-    fun confirmedColorOrNull(): RgbColor? =
-        if (canConfirm) RgbColor.parseOrNull(hexInput) else null
+    fun confirmedColorOrNull(): RgbColor? = if (canConfirm) RgbColor.parseOrNull(hexInput) else null
 }

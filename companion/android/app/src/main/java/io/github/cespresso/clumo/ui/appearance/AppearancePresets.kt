@@ -50,5 +50,4 @@ val LED_PRESETS = listOf(
     preset(AppearancePresetName.WarmWhite, "#FFF4DC"),
 )
 
-private fun preset(name: AppearancePresetName, hex: String): AppearancePreset =
-    AppearancePreset(name, requireNotNull(RgbColor.parseOrNull(hex)))
+private fun preset(name: AppearancePresetName, hex: String): AppearancePreset = AppearancePreset(name, requireNotNull(RgbColor.parseOrNull(hex)))

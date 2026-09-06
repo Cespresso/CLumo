@@ -26,7 +26,7 @@ internal fun ReadyGate(
             modifier = Modifier
                 .alpha(if (ready) 1f else 0.45f)
                 .then(
-                    if (ready) Modifier else Modifier.clearAndSetSemantics { disabled() }
+                    if (ready) Modifier else Modifier.clearAndSetSemantics { disabled() },
                 )
                 .then(modifier),
         ) {

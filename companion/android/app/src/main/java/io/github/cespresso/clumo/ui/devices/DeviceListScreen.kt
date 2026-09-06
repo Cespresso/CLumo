@@ -32,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +52,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.ConnectionState
@@ -60,7 +60,6 @@ import io.github.cespresso.clumo.domain.DeviceAdvertisement
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.ScanFailure
 import io.github.cespresso.clumo.ui.components.BrandCorner
-import io.github.cespresso.clumo.ui.components.bluetoothPermissions
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.ClumoInfoDialog
@@ -68,6 +67,7 @@ import io.github.cespresso.clumo.ui.components.ClumoNavigationBarSpacer
 import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.HelpBadge
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
+import io.github.cespresso.clumo.ui.components.bluetoothPermissions
 import io.github.cespresso.clumo.ui.components.connectionLabel
 import io.github.cespresso.clumo.ui.components.dashedBorder
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
@@ -99,7 +99,7 @@ fun DeviceListScreen(
     var showPrimaryHelp by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
+        ActivityResultContracts.RequestMultiplePermissions(),
     ) { results ->
         if (results.values.all { it }) {
             when (val action = pendingAction) {
@@ -217,7 +217,7 @@ fun DeviceListScreen(
                                 PendingBluetoothAction.Connect(
                                     item.device.address,
                                     item.device.name,
-                                )
+                                ),
                             )
                         },
                     )
@@ -271,7 +271,7 @@ fun DeviceListScreen(
                             onConnect = {
                                 viewModel.stopScan()
                                 runWithBluetoothPermission(
-                                    PendingBluetoothAction.Connect(adv.address, adv.name)
+                                    PendingBluetoothAction.Connect(adv.address, adv.name),
                                 )
                             },
                         )
@@ -292,7 +292,7 @@ fun DeviceListScreen(
                     Brush.verticalGradient(
                         0f to ClumoColors.Background.copy(alpha = 0f),
                         0.45f to ClumoColors.Background,
-                    )
+                    ),
                 )
                 .windowInsetsPadding(
                     WindowInsets.safeDrawing.only(
@@ -320,7 +320,7 @@ fun DeviceListScreen(
                     Intent(
                         Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                         Uri.parse("package:${context.packageName}"),
-                    )
+                    ),
                 )
             },
             onDismiss = { showPermissionDialog = false },
@@ -386,7 +386,7 @@ private fun KnownDeviceCard(
             }
         }
         val toggleLabel = stringResource(
-            if (item.isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary
+            if (item.isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary,
         )
         val primaryStateLabel = stringResource(R.string.device_primary_marker)
         Box(
@@ -623,7 +623,7 @@ private fun PasskeyHint() {
             text = buildAnnotatedString {
                 append(stringResource(R.string.list_passkey_prefix))
                 withStyle(
-                    SpanStyle(fontWeight = FontWeight.ExtraBold, color = ClumoColors.Text)
+                    SpanStyle(fontWeight = FontWeight.ExtraBold, color = ClumoColors.Text),
                 ) {
                     append(stringResource(R.string.list_passkey))
                 }

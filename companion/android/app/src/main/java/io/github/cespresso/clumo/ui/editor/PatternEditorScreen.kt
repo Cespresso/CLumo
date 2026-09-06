@@ -33,7 +33,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +49,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.design.ContentTone
@@ -137,7 +137,7 @@ fun PatternEditorScreen(
             ) {
                 Text(
                     text = stringResource(
-                        if (updating) R.string.editor_updating else R.string.editor_save
+                        if (updating) R.string.editor_updating else R.string.editor_save,
                     ),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -383,8 +383,7 @@ private fun cellIndexAt(position: Offset, size: IntSize, gapPx: Float): Int? {
     return row * 8 + col
 }
 
-private fun setBit(mask: Long, index: Int, on: Boolean): Long =
-    if (on) mask or (1L shl index) else mask and (1L shl index).inv()
+private fun setBit(mask: Long, index: Int, on: Boolean): Long = if (on) mask or (1L shl index) else mask and (1L shl index).inv()
 
 @Composable
 private fun DeleteConfirmDialog(

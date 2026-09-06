@@ -67,7 +67,7 @@ class DeviceRepository(context: Context) {
                     put("address", d.address)
                     put("name", d.name ?: "")
                     put("lastSeenAt", d.lastSeenAt)
-                }
+                },
             )
         }
         prefs.edit().putString(KEY_DEVICES, array.toString()).apply()

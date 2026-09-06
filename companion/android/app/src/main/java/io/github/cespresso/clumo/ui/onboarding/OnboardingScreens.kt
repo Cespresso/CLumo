@@ -37,12 +37,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.data.AppPreferences
-import io.github.cespresso.clumo.ui.components.bluetoothPermissions
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.ui.components.BrandCorner
 import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.DeviceFace
+import io.github.cespresso.clumo.ui.components.bluetoothPermissions
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.launch
@@ -50,9 +50,15 @@ import kotlinx.coroutines.launch
 /** Bluetooth mark drawn as an 8x8 dot pattern for the explainer face. */
 private val BT_FACE_BITS = FaceBits.fromBitsString(
     listOf(
-        "00010000", "00011000", "01010100", "00111000",
-        "00111000", "01010100", "00011000", "00010000",
-    ).joinToString("")
+        "00010000",
+        "00011000",
+        "01010100",
+        "00111000",
+        "00111000",
+        "01010100",
+        "00011000",
+        "00010000",
+    ).joinToString(""),
 )
 
 @Composable
@@ -127,7 +133,7 @@ fun OnboardingBluetoothScreen(
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
+        ActivityResultContracts.RequestMultiplePermissions(),
     ) { results ->
         if (results.values.all { it }) finish() else permissionDenied = true
     }

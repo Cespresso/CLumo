@@ -38,7 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.DeviceAppearance
@@ -486,12 +486,13 @@ private fun HuePicker(hue: Float, onChange: (Float) -> Unit) {
     }
 }
 
-private fun DeviceAppearance.colorFor(part: AppearancePart): RgbColor = when (part) {
-    AppearancePart.Enclosure -> enclosureColor
-    AppearancePart.ButtonA -> buttonAColor
-    AppearancePart.ButtonB -> buttonBColor
-    AppearancePart.Led -> ledColor
-}
+private fun DeviceAppearance.colorFor(part: AppearancePart): RgbColor =
+    when (part) {
+        AppearancePart.Enclosure -> enclosureColor
+        AppearancePart.ButtonA -> buttonAColor
+        AppearancePart.ButtonB -> buttonBColor
+        AppearancePart.Led -> ledColor
+    }
 
 internal fun DeviceAppearance.withColor(part: AppearancePart, color: RgbColor): DeviceAppearance =
     when (part) {
@@ -502,29 +503,31 @@ internal fun DeviceAppearance.withColor(part: AppearancePart, color: RgbColor): 
     }
 
 @StringRes
-private fun AppearancePart.stringRes(): Int = when (this) {
-    AppearancePart.Enclosure -> R.string.appearance_enclosure
-    AppearancePart.ButtonA -> R.string.appearance_button_a
-    AppearancePart.ButtonB -> R.string.appearance_button_b
-    AppearancePart.Led -> R.string.appearance_led
-}
+private fun AppearancePart.stringRes(): Int =
+    when (this) {
+        AppearancePart.Enclosure -> R.string.appearance_enclosure
+        AppearancePart.ButtonA -> R.string.appearance_button_a
+        AppearancePart.ButtonB -> R.string.appearance_button_b
+        AppearancePart.Led -> R.string.appearance_led
+    }
 
 @StringRes
-private fun AppearancePresetName.stringRes(): Int = when (this) {
-    AppearancePresetName.Sage -> R.string.appearance_preset_sage
-    AppearancePresetName.Coral -> R.string.appearance_preset_coral
-    AppearancePresetName.MistBlue -> R.string.appearance_preset_mist_blue
-    AppearancePresetName.Lavender -> R.string.appearance_preset_lavender
-    AppearancePresetName.Mustard -> R.string.appearance_preset_mustard
-    AppearancePresetName.DustyRose -> R.string.appearance_preset_dusty_rose
-    AppearancePresetName.Sand -> R.string.appearance_preset_sand
-    AppearancePresetName.Stone -> R.string.appearance_preset_stone
-    AppearancePresetName.White -> R.string.appearance_preset_white
-    AppearancePresetName.Red -> R.string.appearance_preset_red
-    AppearancePresetName.Blue -> R.string.appearance_preset_blue
-    AppearancePresetName.Green -> R.string.appearance_preset_green
-    AppearancePresetName.Orange -> R.string.appearance_preset_orange
-    AppearancePresetName.Yellow -> R.string.appearance_preset_yellow
-    AppearancePresetName.Purple -> R.string.appearance_preset_purple
-    AppearancePresetName.WarmWhite -> R.string.appearance_preset_warm_white
-}
+private fun AppearancePresetName.stringRes(): Int =
+    when (this) {
+        AppearancePresetName.Sage -> R.string.appearance_preset_sage
+        AppearancePresetName.Coral -> R.string.appearance_preset_coral
+        AppearancePresetName.MistBlue -> R.string.appearance_preset_mist_blue
+        AppearancePresetName.Lavender -> R.string.appearance_preset_lavender
+        AppearancePresetName.Mustard -> R.string.appearance_preset_mustard
+        AppearancePresetName.DustyRose -> R.string.appearance_preset_dusty_rose
+        AppearancePresetName.Sand -> R.string.appearance_preset_sand
+        AppearancePresetName.Stone -> R.string.appearance_preset_stone
+        AppearancePresetName.White -> R.string.appearance_preset_white
+        AppearancePresetName.Red -> R.string.appearance_preset_red
+        AppearancePresetName.Blue -> R.string.appearance_preset_blue
+        AppearancePresetName.Green -> R.string.appearance_preset_green
+        AppearancePresetName.Orange -> R.string.appearance_preset_orange
+        AppearancePresetName.Yellow -> R.string.appearance_preset_yellow
+        AppearancePresetName.Purple -> R.string.appearance_preset_purple
+        AppearancePresetName.WarmWhite -> R.string.appearance_preset_warm_white
+    }

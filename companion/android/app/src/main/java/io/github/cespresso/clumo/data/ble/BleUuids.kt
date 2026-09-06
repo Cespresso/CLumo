@@ -17,17 +17,18 @@ internal fun gattCompatibilityAction(
     required: Set<UUID>,
     optional: Set<UUID>,
     cacheRefreshAttempted: Boolean,
-): GattCompatibilityAction = when {
-    !discovered.containsAll(required) ->
-        if (cacheRefreshAttempted) {
-            GattCompatibilityAction.REJECT
-        } else {
+): GattCompatibilityAction =
+    when {
+        !discovered.containsAll(required) ->
+            if (cacheRefreshAttempted) {
+                GattCompatibilityAction.REJECT
+            } else {
+                GattCompatibilityAction.REFRESH_CACHE
+            }
+        !discovered.containsAll(optional) && !cacheRefreshAttempted ->
             GattCompatibilityAction.REFRESH_CACHE
-        }
-    !discovered.containsAll(optional) && !cacheRefreshAttempted ->
-        GattCompatibilityAction.REFRESH_CACHE
-    else -> GattCompatibilityAction.ACCEPT
-}
+        else -> GattCompatibilityAction.ACCEPT
+    }
 
 /** BLE protocol v2 identifiers for the CLumo firmware. */
 object BleUuids {

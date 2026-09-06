@@ -27,7 +27,7 @@ class RunWidgetCommand : ActionCallback {
             runCatching {
                 context.startActivity(
                     Intent(context, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             }
         }

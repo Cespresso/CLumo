@@ -51,41 +51,42 @@ private data class ModeHelpContent(
     @StringRes val subButtonDescription: Int,
 )
 
-private fun modeHelpContent(mode: Int): ModeHelpContent? = when (mode) {
-    DeviceMode.POMODORO -> ModeHelpContent(
-        title = R.string.seg_pomodoro,
-        summary = R.string.mode_help_pomodoro_summary,
-        displayDescription = R.string.mode_help_pomodoro_display,
-        mainButtonDescription = R.string.button_role_pomodoro_main,
-        subButtonDescription = R.string.button_role_pomodoro_sub,
-    )
+private fun modeHelpContent(mode: Int): ModeHelpContent? =
+    when (mode) {
+        DeviceMode.POMODORO -> ModeHelpContent(
+            title = R.string.seg_pomodoro,
+            summary = R.string.mode_help_pomodoro_summary,
+            displayDescription = R.string.mode_help_pomodoro_display,
+            mainButtonDescription = R.string.button_role_pomodoro_main,
+            subButtonDescription = R.string.button_role_pomodoro_sub,
+        )
 
-    DeviceMode.TIMER -> ModeHelpContent(
-        title = R.string.seg_timer,
-        summary = R.string.mode_help_timer_summary,
-        displayDescription = R.string.mode_help_timer_display,
-        mainButtonDescription = R.string.button_role_timer_main,
-        subButtonDescription = R.string.button_role_timer_sub,
-    )
+        DeviceMode.TIMER -> ModeHelpContent(
+            title = R.string.seg_timer,
+            summary = R.string.mode_help_timer_summary,
+            displayDescription = R.string.mode_help_timer_display,
+            mainButtonDescription = R.string.button_role_timer_main,
+            subButtonDescription = R.string.button_role_timer_sub,
+        )
 
-    DeviceMode.DISPLAY -> ModeHelpContent(
-        title = R.string.seg_patterns,
-        summary = R.string.mode_help_display_summary,
-        displayDescription = R.string.mode_help_display_display,
-        mainButtonDescription = R.string.button_role_display_main,
-        subButtonDescription = R.string.button_role_display_sub,
-    )
+        DeviceMode.DISPLAY -> ModeHelpContent(
+            title = R.string.seg_patterns,
+            summary = R.string.mode_help_display_summary,
+            displayDescription = R.string.mode_help_display_display,
+            mainButtonDescription = R.string.button_role_display_main,
+            subButtonDescription = R.string.button_role_display_sub,
+        )
 
-    DeviceMode.VISUALIZER -> ModeHelpContent(
-        title = R.string.seg_viz,
-        summary = R.string.mode_help_visualizer_summary,
-        displayDescription = R.string.mode_help_visualizer_display,
-        mainButtonDescription = R.string.button_role_viz_main,
-        subButtonDescription = R.string.button_role_viz_sub,
-    )
+        DeviceMode.VISUALIZER -> ModeHelpContent(
+            title = R.string.seg_viz,
+            summary = R.string.mode_help_visualizer_summary,
+            displayDescription = R.string.mode_help_visualizer_display,
+            mainButtonDescription = R.string.button_role_viz_main,
+            subButtonDescription = R.string.button_role_viz_sub,
+        )
 
-    else -> null
-}
+        else -> null
+    }
 
 @Composable
 fun ModeHelpHeader(
@@ -234,7 +235,7 @@ private fun HelpDetailRow(
                                 Modifier.border(1.5.dp, markerBorder, CircleShape)
                             } else {
                                 Modifier
-                            }
+                            },
                         ),
                 )
             }
@@ -278,29 +279,30 @@ private fun ModeHelpPreview(mode: Int, appearance: DeviceAppearance) {
     )
 }
 
-private fun demoBits(mode: Int, tick: Int): Long = when (mode) {
-    DeviceMode.POMODORO -> countdownDemoBits(
-        tick = tick,
-        blinkTicks = POMODORO_BLINK_TICKS,
-        blinkFrames = POMODORO_BLINK_FRAMES,
-    )
+private fun demoBits(mode: Int, tick: Int): Long =
+    when (mode) {
+        DeviceMode.POMODORO -> countdownDemoBits(
+            tick = tick,
+            blinkTicks = POMODORO_BLINK_TICKS,
+            blinkFrames = POMODORO_BLINK_FRAMES,
+        )
 
-    DeviceMode.TIMER -> countdownDemoBits(
-        tick = tick,
-        blinkTicks = TIMER_BLINK_TICKS,
-        blinkFrames = TIMER_DEMO_BLINK_FRAMES,
-    )
+        DeviceMode.TIMER -> countdownDemoBits(
+            tick = tick,
+            blinkTicks = TIMER_BLINK_TICKS,
+            blinkFrames = TIMER_DEMO_BLINK_FRAMES,
+        )
 
-    DeviceMode.DISPLAY -> {
-        if ((tick / DISPLAY_FRAME_TICKS) % 2 == 0) HEART_BITS else SMILE_BITS
+        DeviceMode.DISPLAY -> {
+            if ((tick / DISPLAY_FRAME_TICKS) % 2 == 0) HEART_BITS else SMILE_BITS
+        }
+
+        DeviceMode.VISUALIZER -> {
+            FaceBits.fromColumns(VISUALIZER_FRAMES[(tick / VISUALIZER_FRAME_TICKS) % VISUALIZER_FRAMES.size])
+        }
+
+        else -> FaceBits.EMPTY
     }
-
-    DeviceMode.VISUALIZER -> {
-        FaceBits.fromColumns(VISUALIZER_FRAMES[(tick / VISUALIZER_FRAME_TICKS) % VISUALIZER_FRAMES.size])
-    }
-
-    else -> FaceBits.EMPTY
-}
 
 private fun countdownDemoBits(tick: Int, blinkTicks: Int, blinkFrames: Int): Long {
     val completionTicks = blinkTicks * blinkFrames
@@ -314,6 +316,7 @@ private fun countdownDemoBits(tick: Int, blinkTicks: Int, blinkFrames: Int): Lon
 }
 
 private const val DEMO_TICK_MS = 50L
+
 // Divisible by all four demo cycles (88, 96, 48, and 64 ticks).
 private const val DEMO_TICK_WRAP = 10_560
 private const val COUNTDOWN_TICKS = 64

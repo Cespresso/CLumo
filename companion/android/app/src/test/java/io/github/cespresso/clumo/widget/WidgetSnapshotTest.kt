@@ -11,20 +11,21 @@ import org.junit.Test
 
 class WidgetSnapshotTest {
 
-    private fun snapshot(updatedAt: Long) = WidgetSnapshot(
-        link = WidgetLink.Ready,
-        headline = WidgetHeadline.PomodoroWorking,
-        subtitle = WidgetSubtitle.Alias,
-        subtitleText = "つくえ",
-        faceBits = -1L shl 24,
-        actions = listOf(WidgetAction.Pause, WidgetAction.Reset),
-        enclosureArgb = 0xFF7E9E7C.toInt(),
-        ctaArgb = 0xFFE8907E.toInt(),
-        onCtaArgb = 0xFFFFFFFF.toInt(),
-        knobArgb = 0xFFFFFFFF.toInt(),
-        ledArgb = 0xFFF0A35E.toInt(),
-        updatedAtRealtime = updatedAt,
-    )
+    private fun snapshot(updatedAt: Long) =
+        WidgetSnapshot(
+            link = WidgetLink.Ready,
+            headline = WidgetHeadline.PomodoroWorking,
+            subtitle = WidgetSubtitle.Alias,
+            subtitleText = "つくえ",
+            faceBits = -1L shl 24,
+            actions = listOf(WidgetAction.Pause, WidgetAction.Reset),
+            enclosureArgb = 0xFF7E9E7C.toInt(),
+            ctaArgb = 0xFFE8907E.toInt(),
+            onCtaArgb = 0xFFFFFFFF.toInt(),
+            knobArgb = 0xFFFFFFFF.toInt(),
+            ledArgb = 0xFFF0A35E.toInt(),
+            updatedAtRealtime = updatedAt,
+        )
 
     @Test
     fun contentEqualityIgnoresTheTimestamp() {

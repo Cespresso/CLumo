@@ -6,11 +6,11 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import java.io.IOException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.IOException
 
 private val Context.widgetStore by preferencesDataStore(name = "clumo_widget")
 
@@ -35,11 +35,12 @@ class WidgetSnapshotStore(context: Context) {
      * would unwind through the publisher and cancel its collector for the service's lifetime,
      * so a storage failure costs one update rather than every future one.
      */
-    suspend fun write(snapshot: WidgetSnapshot): Boolean = try {
-        store.edit { it[KEY_SNAPSHOT] = encodeWidgetSnapshot(snapshot) }
-        true
-    } catch (e: IOException) {
-        Log.w(TAG, "Could not persist the widget snapshot", e)
-        false
-    }
+    suspend fun write(snapshot: WidgetSnapshot): Boolean =
+        try {
+            store.edit { it[KEY_SNAPSHOT] = encodeWidgetSnapshot(snapshot) }
+            true
+        } catch (e: IOException) {
+            Log.w(TAG, "Could not persist the widget snapshot", e)
+            false
+        }
 }

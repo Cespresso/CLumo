@@ -26,14 +26,15 @@ data class AccentSpec(
     val led: RgbColor,
 )
 
-fun accentSpecFor(appearance: DeviceAppearance): AccentSpec = AccentSpec(
-    accent = appearance.enclosureColor,
-    accentTone = accentContentToneFor(appearance.enclosureColor),
-    cta = appearance.buttonAColor,
-    ctaTone = accentContentToneFor(appearance.buttonAColor),
-    knob = appearance.buttonBColor,
-    led = appearance.ledColor,
-)
+fun accentSpecFor(appearance: DeviceAppearance): AccentSpec =
+    AccentSpec(
+        accent = appearance.enclosureColor,
+        accentTone = accentContentToneFor(appearance.enclosureColor),
+        cta = appearance.buttonAColor,
+        ctaTone = accentContentToneFor(appearance.buttonAColor),
+        knob = appearance.buttonBColor,
+        led = appearance.ledColor,
+    )
 
 /** Compose-side accent palette. Error/destructive colors stay in [ClumoColors]. */
 @Immutable
@@ -46,17 +47,17 @@ data class ClumoAccents(
     val led: Color,
 )
 
-private fun ContentTone.toContentColor(): Color =
-    if (this == ContentTone.Dark) ClumoColors.Text else ClumoColors.White
+private fun ContentTone.toContentColor(): Color = if (this == ContentTone.Dark) ClumoColors.Text else ClumoColors.White
 
-fun AccentSpec.toClumoAccents(): ClumoAccents = ClumoAccents(
-    accent = accent.toComposeColor(),
-    onAccent = accentTone.toContentColor(),
-    cta = cta.toComposeColor(),
-    onCta = ctaTone.toContentColor(),
-    knob = knob.toComposeColor(),
-    led = led.toComposeColor(),
-)
+fun AccentSpec.toClumoAccents(): ClumoAccents =
+    ClumoAccents(
+        accent = accent.toComposeColor(),
+        onAccent = accentTone.toContentColor(),
+        cta = cta.toComposeColor(),
+        onCta = ctaTone.toContentColor(),
+        knob = knob.toComposeColor(),
+        led = led.toComposeColor(),
+    )
 
 val LocalClumoAccents = compositionLocalOf {
     accentSpecFor(DeviceAppearance.DEFAULT).toClumoAccents()

@@ -14,8 +14,7 @@ import org.junit.Test
 
 class DeviceUiStateTest {
 
-    private fun device(id: String = "abcd1234", name: String? = "CLumo-Desk") =
-        Device(id = id, address = "AA:BB", name = name, lastSeenAt = 0L)
+    private fun device(id: String = "abcd1234", name: String? = "CLumo-Desk") = Device(id = id, address = "AA:BB", name = name, lastSeenAt = 0L)
 
     private fun create(
         connected: Boolean = true,

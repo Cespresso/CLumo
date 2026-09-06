@@ -1,8 +1,8 @@
 package io.github.cespresso.clumo.data.ble
 
-import java.util.UUID
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.util.UUID
 
 class GattCompatibilityTest {
     private val required = setOf(

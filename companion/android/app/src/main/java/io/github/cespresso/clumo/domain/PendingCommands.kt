@@ -12,12 +12,13 @@ data class PendingCommands(
     /** A committed Display frame, as face bits, still awaiting the device's read-back. */
     val committedFrame: PendingCommand<Long>? = null,
 ) {
-    fun expire(nowRealtime: Long, ttlMs: Long = DEFAULT_TTL_MS): PendingCommands = copy(
-        mode = mode?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
-        brightnessLevel = brightnessLevel
-            ?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
-        committedFrame = committedFrame?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
-    )
+    fun expire(nowRealtime: Long, ttlMs: Long = DEFAULT_TTL_MS): PendingCommands =
+        copy(
+            mode = mode?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
+            brightnessLevel = brightnessLevel
+                ?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
+            committedFrame = committedFrame?.takeIf { nowRealtime - it.sentAtRealtime < ttlMs },
+        )
 
     companion object {
         const val DEFAULT_TTL_MS = 3_000L

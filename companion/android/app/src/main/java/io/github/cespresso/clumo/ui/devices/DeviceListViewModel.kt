@@ -73,37 +73,42 @@ internal fun buildKnownDeviceCards(
     primaryDeviceId: String?,
     patterns: List<Pattern>,
     appliedPatternIds: Map<String, String>,
-): List<KnownDeviceCardState> = devices.map { device ->
-    val live = liveStates[device.address]
-    val state = live?.session ?: DeviceSessionState(ConnectionState.Disconnected)
-    val observed = state.observed
-    val selectedPattern = patterns.firstOrNull { it.id == appliedPatternIds[device.id] }
-    val ready = state.link == ConnectionState.Ready
-    KnownDeviceCardState(
-        device = device,
-        name = DeviceNaming.displayName(
-            deviceId = device.id,
-            aliases = aliases,
-            fallbackName = device.fallbackName,
-        ),
-        appearance = resolveAppearance(device.id, appearances),
-        connectionState = state.link,
-        mirrorBits = if (!ready) FaceBits.EMPTY else mirrorBitsFor(
-            mode = observed?.mode,
-            pomodoro = observed?.pomodoro,
-            timer = observed?.timer,
-            selectedPatternBits = selectedPattern?.bits,
-            committedFrame = state.effectiveCommittedFrame,
-            columns = live?.visualizerColumns ?: IntArray(0),
-            visualizerActive = live?.visualizerActive == true,
-            timerBlinkOn = true,
-        ),
-        litAlpha = Brightness.litAlpha(
-            state.effectiveBrightnessLevel ?: Brightness.MAX_LEVEL,
-        ),
-        isPrimary = device.id == primaryDeviceId,
-    )
-}
+): List<KnownDeviceCardState> =
+    devices.map { device ->
+        val live = liveStates[device.address]
+        val state = live?.session ?: DeviceSessionState(ConnectionState.Disconnected)
+        val observed = state.observed
+        val selectedPattern = patterns.firstOrNull { it.id == appliedPatternIds[device.id] }
+        val ready = state.link == ConnectionState.Ready
+        KnownDeviceCardState(
+            device = device,
+            name = DeviceNaming.displayName(
+                deviceId = device.id,
+                aliases = aliases,
+                fallbackName = device.fallbackName,
+            ),
+            appearance = resolveAppearance(device.id, appearances),
+            connectionState = state.link,
+            mirrorBits = if (!ready) {
+                FaceBits.EMPTY
+            } else {
+                mirrorBitsFor(
+                    mode = observed?.mode,
+                    pomodoro = observed?.pomodoro,
+                    timer = observed?.timer,
+                    selectedPatternBits = selectedPattern?.bits,
+                    committedFrame = state.effectiveCommittedFrame,
+                    columns = live?.visualizerColumns ?: IntArray(0),
+                    visualizerActive = live?.visualizerActive == true,
+                    timerBlinkOn = true,
+                )
+            },
+            litAlpha = Brightness.litAlpha(
+                state.effectiveBrightnessLevel ?: Brightness.MAX_LEVEL,
+            ),
+            isPrimary = device.id == primaryDeviceId,
+        )
+    }
 
 data class DeviceListUiState(
     val knownDevices: List<KnownDeviceCardState> = emptyList(),
@@ -137,8 +142,7 @@ class DeviceListViewModel(
     }
     private val liveStates = registry.sessions.flatMapLatest(::cardLiveStateMap)
 
-    val uiState = combine(identity, library, liveStates, scanState) {
-            identity, library, liveStates, scan ->
+    val uiState = combine(identity, library, liveStates, scanState) { identity, library, liveStates, scan ->
         val knownAddresses = identity.devices.mapTo(mutableSetOf()) { it.address }
         DeviceListUiState(
             knownDevices = buildKnownDeviceCards(
@@ -203,13 +207,15 @@ class DeviceListViewModel(
     ): Flow<Map<String, DeviceCardLiveState>> {
         if (sessions.isEmpty()) return flowOf(emptyMap())
         val entries = sessions.entries.toList()
-        return combine(entries.map { (_, session) ->
-            combine(
-                session.state,
-                session.visualizerColumns,
-                session.visualizerActive,
-            ) { state, columns, active -> DeviceCardLiveState(state, columns, active) }
-        }) { values ->
+        return combine(
+            entries.map { (_, session) ->
+                combine(
+                    session.state,
+                    session.visualizerColumns,
+                    session.visualizerActive,
+                ) { state, columns, active -> DeviceCardLiveState(state, columns, active) }
+            },
+        ) { values ->
             entries.indices.associate { index -> entries[index].key to values[index] }
         }
     }

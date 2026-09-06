@@ -84,19 +84,19 @@ class DeviceSessionRegistry(
         _sessions.value = emptyMap()
     }
 
-    private fun wireRepositoryUpsert(session: DeviceSession) = scope.launch {
-        session.deviceId.filterNotNull().collect { id ->
-            repository.upsert(
-                Device(
-                    id = id,
-                    address = session.address,
-                    name = session.deviceName.value ?: repository.get(id)?.name,
-                    lastSeenAt = System.currentTimeMillis(),
+    private fun wireRepositoryUpsert(session: DeviceSession) =
+        scope.launch {
+            session.deviceId.filterNotNull().collect { id ->
+                repository.upsert(
+                    Device(
+                        id = id,
+                        address = session.address,
+                        name = session.deviceName.value ?: repository.get(id)?.name,
+                        lastSeenAt = System.currentTimeMillis(),
+                    ),
                 )
-            )
+            }
         }
-    }
 
-    fun connectionStateOf(device: Device): ConnectionState =
-        states.value[device.address]?.link ?: ConnectionState.Disconnected
+    fun connectionStateOf(device: Device): ConnectionState = states.value[device.address]?.link ?: ConnectionState.Disconnected
 }

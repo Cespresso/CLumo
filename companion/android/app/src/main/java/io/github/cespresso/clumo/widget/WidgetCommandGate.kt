@@ -32,8 +32,7 @@ object WidgetCommandGate {
         return GateDecision.ConnectThenExecute
     }
 
-    fun hasTimedOut(waitStartedRealtime: Long, nowRealtime: Long): Boolean =
-        nowRealtime - waitStartedRealtime >= CONNECT_TIMEOUT_MS
+    fun hasTimedOut(waitStartedRealtime: Long, nowRealtime: Long): Boolean = nowRealtime - waitStartedRealtime >= CONNECT_TIMEOUT_MS
 
     /**
      * A reboot resets elapsedRealtime, which would leave a stored failure timestamp in

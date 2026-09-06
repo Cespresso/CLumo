@@ -14,7 +14,7 @@ class DeviceAppearanceJsonTest {
         val second = DeviceAppearance.DEFAULT.copy(enclosureColor = color("#538BC5"))
 
         val decoded = decodeDeviceAppearances(
-            encodeDeviceAppearances(mapOf("one" to first, "two" to second))
+            encodeDeviceAppearances(mapOf("one" to first, "two" to second)),
         )
 
         assertEquals(first, decoded["one"])

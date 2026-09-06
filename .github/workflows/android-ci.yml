@@ -37,6 +37,21 @@ jobs:
           chmod +x ./gradlew
           ./gradlew testDebugUnitTest assembleDebugAndroidTest
 
+      # ktlint はコードスタイル、Android Lint は Android API の誤用を見る。
+      # どちらも既存の指摘はベースラインに固定済みなので、新しく増えた分だけが落ちる。
+      - name: Run static checks
+        working-directory: companion/android
+        run: ./gradlew ktlintCheck lintDebug
+
+      - name: Upload lint reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: |
+            companion/android/app/build/reports/lint-results-debug.html
+            companion/android/app/build/reports/ktlint
+
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v4

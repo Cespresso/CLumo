@@ -221,13 +221,11 @@ class DeviceViewModel(
         }
     }
 
-    fun onPomodoroDurationsChanged(workMin: Int, breakMin: Int) =
-        session?.pomodoroSetDurations(workMin, breakMin)
+    fun onPomodoroDurationsChanged(workMin: Int, breakMin: Int) = session?.pomodoroSetDurations(workMin, breakMin)
     fun onPomodoroStart() = session?.pomodoroStart()
     fun onPomodoroPause() = session?.pomodoroPause()
     fun onPomodoroReset() = session?.pomodoroReset()
-    fun onTimerDurationChanged(minutes: Int, seconds: Int) =
-        session?.timerSetDuration(minutes, seconds)
+    fun onTimerDurationChanged(minutes: Int, seconds: Int) = session?.timerSetDuration(minutes, seconds)
     fun onTimerStart() = session?.timerStart()
     fun onTimerPause() = session?.timerPause()
     fun onTimerCancel() = session?.timerCancel()
@@ -256,14 +254,15 @@ class DeviceViewModel(
         val visualizerActive: Boolean,
     ) {
         companion object {
-            fun disconnected() = SessionPresentation(
-                connected = false,
-                state = DeviceSessionState(ConnectionState.Disconnected),
-                deviceId = null,
-                deviceName = null,
-                columns = IntArray(0),
-                visualizerActive = false,
-            )
+            fun disconnected() =
+                SessionPresentation(
+                    connected = false,
+                    state = DeviceSessionState(ConnectionState.Disconnected),
+                    deviceId = null,
+                    deviceName = null,
+                    columns = IntArray(0),
+                    visualizerActive = false,
+                )
         }
     }
 

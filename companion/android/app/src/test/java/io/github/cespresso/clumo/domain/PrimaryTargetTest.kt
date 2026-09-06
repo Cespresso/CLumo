@@ -6,8 +6,7 @@ import org.junit.Test
 
 class PrimaryTargetTest {
 
-    private fun device(id: String, address: String) =
-        Device(id = id, address = address, name = "CLumo", lastSeenAt = 0L)
+    private fun device(id: String, address: String) = Device(id = id, address = address, name = "CLumo", lastSeenAt = 0L)
 
     @Test
     fun picksTheDesignatedPrimary() {

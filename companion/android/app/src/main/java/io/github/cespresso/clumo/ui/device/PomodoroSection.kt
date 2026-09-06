@@ -75,7 +75,7 @@ internal fun PomodoroSection(
         ) {
             Text(
                 text = stringResource(
-                    if (work) R.string.pomodoro_phase_work else R.string.pomodoro_phase_break
+                    if (work) R.string.pomodoro_phase_work else R.string.pomodoro_phase_break,
                 ),
                 fontSize = 12.5.sp,
                 fontWeight = FontWeight.ExtraBold,
@@ -102,12 +102,18 @@ internal fun PomodoroSection(
                 DurationStepperRow(
                     label = stringResource(R.string.pomodoro_work_label),
                     value = workMin,
-                    onChange = { workMin = it; pushDurations() },
+                    onChange = {
+                        workMin = it
+                        pushDurations()
+                    },
                 )
                 DurationStepperRow(
                     label = stringResource(R.string.pomodoro_break_label),
                     value = breakMin,
-                    onChange = { breakMin = it; pushDurations() },
+                    onChange = {
+                        breakMin = it
+                        pushDurations()
+                    },
                 )
             }
         }
@@ -118,7 +124,7 @@ internal fun PomodoroSection(
         ) {
             CtaPillButton(
                 text = stringResource(
-                    if (status.isRunning) R.string.pomodoro_pause else R.string.pomodoro_start
+                    if (status.isRunning) R.string.pomodoro_pause else R.string.pomodoro_start,
                 ),
                 onClick = {
                     if (status.isRunning) onPause() else onStart()

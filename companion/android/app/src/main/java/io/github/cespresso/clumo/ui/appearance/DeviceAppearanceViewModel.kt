@@ -7,8 +7,8 @@ import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.RgbColor
 import io.github.cespresso.clumo.domain.resolveAppearance
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,14 +25,15 @@ internal suspend fun saveAppearanceOptimistically(
     persisted: DeviceAppearance,
     next: DeviceAppearance,
     persist: suspend () -> Unit,
-): AppearanceSaveResult = try {
-    persist()
-    AppearanceSaveResult(next, saveFailed = false)
-} catch (error: CancellationException) {
-    throw error
-} catch (_: Exception) {
-    AppearanceSaveResult(persisted, saveFailed = true)
-}
+): AppearanceSaveResult =
+    try {
+        persist()
+        AppearanceSaveResult(next, saveFailed = false)
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: Exception) {
+        AppearanceSaveResult(persisted, saveFailed = true)
+    }
 
 data class DeviceAppearanceUiState(
     val deviceName: String,
@@ -58,8 +59,7 @@ class DeviceAppearanceViewModel(
 
     init {
         viewModelScope.launch {
-            combine(preferences.deviceAppearances, preferences.aliases, ::Pair).collect {
-                    (appearances, aliases) ->
+            combine(preferences.deviceAppearances, preferences.aliases, ::Pair).collect { (appearances, aliases) ->
                 persistedAppearance = resolveAppearance(deviceId, appearances)
                 _uiState.update { current ->
                     current.copy(

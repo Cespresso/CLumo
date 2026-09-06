@@ -75,16 +75,18 @@ import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 // ---------------------------------------------------------------------------
 
 @Composable
-fun connectionLabel(state: ConnectionState): Pair<String, Color> = when (state) {
-    ConnectionState.Ready -> stringResource(R.string.state_connected) to LocalClumoAccents.current.accent
-    ConnectionState.Connecting,
-    ConnectionState.Reconnecting,
-    ConnectionState.Bonding,
-    ConnectionState.Connected,
-    ConnectionState.Synchronizing -> stringResource(R.string.state_connecting) to ClumoColors.Muted
-    ConnectionState.Error -> stringResource(R.string.state_error) to ClumoColors.Coral
-    ConnectionState.Disconnected -> stringResource(R.string.state_disconnected) to ClumoColors.MutedLight
-}
+fun connectionLabel(state: ConnectionState): Pair<String, Color> =
+    when (state) {
+        ConnectionState.Ready -> stringResource(R.string.state_connected) to LocalClumoAccents.current.accent
+        ConnectionState.Connecting,
+        ConnectionState.Reconnecting,
+        ConnectionState.Bonding,
+        ConnectionState.Connected,
+        ConnectionState.Synchronizing,
+        -> stringResource(R.string.state_connecting) to ClumoColors.Muted
+        ConnectionState.Error -> stringResource(R.string.state_error) to ClumoColors.Coral
+        ConnectionState.Disconnected -> stringResource(R.string.state_disconnected) to ClumoColors.MutedLight
+    }
 
 // ---------------------------------------------------------------------------
 // Brand motif: thick rounded L-corner stroke
@@ -377,7 +379,7 @@ private fun DeviceKnob(faceSize: Dp, color: Color, outline: Color? = null) {
                     topRight = CornerRadius(capCorner.toPx()),
                     bottomRight = CornerRadius.Zero,
                     bottomLeft = CornerRadius.Zero,
-                )
+                ),
             )
         }
         val boss = Path().apply {
@@ -388,7 +390,7 @@ private fun DeviceKnob(faceSize: Dp, color: Color, outline: Color? = null) {
                     topRight = CornerRadius(bossCorner.toPx()),
                     bottomRight = CornerRadius.Zero,
                     bottomLeft = CornerRadius.Zero,
-                )
+                ),
             )
         }
         val knob = Path().apply { op(cap, boss, PathOperation.Union) }
@@ -435,7 +437,9 @@ fun DeviceFace(
             .then(
                 if (shadowElevation > 0.dp) {
                     Modifier.shadow(shadowElevation, RoundedCornerShape(frameCorner))
-                } else Modifier
+                } else {
+                    Modifier
+                },
             )
             .size(size)
             .clip(RoundedCornerShape(frameCorner))
@@ -445,7 +449,7 @@ fun DeviceFace(
                     Modifier.border(1.dp, frameOutline, RoundedCornerShape(frameCorner))
                 } else {
                     Modifier
-                }
+                },
             )
             .padding(framePadding),
     ) {
@@ -541,7 +545,9 @@ fun SegmentedControl(
                             .then(
                                 if (active) {
                                     Modifier.shadow(3.dp, RoundedCornerShape(999.dp))
-                                } else Modifier
+                                } else {
+                                    Modifier
+                                },
                             )
                             .clip(RoundedCornerShape(999.dp))
                             .background(if (active) LocalClumoAccents.current.knob else Color.Transparent)
@@ -845,16 +851,18 @@ fun Modifier.dashedBorder(
     cornerRadius: Dp,
     dashLength: Dp = 8.dp,
     gapLength: Dp = 7.dp,
-): Modifier = drawBehind {
-    val stroke = Stroke(
-        width = strokeWidth.toPx(),
-        pathEffect = PathEffect.dashPathEffect(
-            floatArrayOf(dashLength.toPx(), gapLength.toPx()), 0f
-        ),
-    )
-    drawRoundRect(
-        color = color,
-        style = stroke,
-        cornerRadius = CornerRadius(cornerRadius.toPx()),
-    )
-}
+): Modifier =
+    drawBehind {
+        val stroke = Stroke(
+            width = strokeWidth.toPx(),
+            pathEffect = PathEffect.dashPathEffect(
+                floatArrayOf(dashLength.toPx(), gapLength.toPx()),
+                0f,
+            ),
+        )
+        drawRoundRect(
+            color = color,
+            style = stroke,
+            cornerRadius = CornerRadius(cornerRadius.toPx()),
+        )
+    }

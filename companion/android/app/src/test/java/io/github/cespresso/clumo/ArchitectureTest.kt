@@ -1,8 +1,8 @@
 package io.github.cespresso.clumo
 
-import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Layering rules the compiler cannot state. Each encodes drift that actually happened here, so
@@ -15,8 +15,7 @@ class ArchitectureTest {
     private val sources: List<File> =
         sourceRoot.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
 
-    private fun File.isUnder(pkg: String) =
-        relativeTo(sourceRoot).invariantSeparatorsPath.startsWith("$pkg/")
+    private fun File.isUnder(pkg: String) = relativeTo(sourceRoot).invariantSeparatorsPath.startsWith("$pkg/")
 
     @Test
     fun sourceTreeWasFound() {

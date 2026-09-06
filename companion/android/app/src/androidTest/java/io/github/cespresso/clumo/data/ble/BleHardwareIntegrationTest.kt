@@ -54,66 +54,67 @@ class BleHardwareIntegrationTest {
     }
 
     @Test
-    fun countdownKeepsRunningAcrossModeSwitchesAndInitialStateIsCanonical(): Unit = runBlocking {
-        val address = requireNotNull(deviceAddress())
-        val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val link = DeviceConnection(targetContext, address, "CLumo hardware test")
-        val deviceSession = DeviceSession(
-            link,
-            CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
-            SystemClock::elapsedRealtime,
-        )
-        session = deviceSession
-        deviceSession.connect()
-
-        withTimeout(CONNECT_TIMEOUT_MS) {
-            deviceSession.state.first { it.link == ConnectionState.Ready }
-        }
-        assertTrue(deviceSession.state.value.observed != null)
-        assertTrue(requireNotNull(link.deviceId.value).isNotBlank())
-        assertTrue(requireNotNull(link.brightness.value) in 0..15)
-        val originalMode = requireNotNull(link.currentMode.value)
-
-        try {
-            deviceSession.setMode(DeviceMode.TIMER)
-            awaitMode(link, DeviceMode.TIMER)
-            deviceSession.timerCancel()
-            awaitTimer(link) { it.isIdle }
-            val originalSetting = requireNotNull(link.timerStatus.value)
-
-            deviceSession.timerSetDuration(0, TEST_DURATION_SECONDS)
-            awaitTimer(link) {
-                it.isIdle && it.configuredTotalSec == TEST_DURATION_SECONDS
-            }
-            deviceSession.timerStart()
-            val started = awaitTimer(link) { it.isRunning }
-
-            delay(1_200)
-            deviceSession.setMode(DeviceMode.DISPLAY)
-            awaitMode(link, DeviceMode.DISPLAY)
-            delay(1_200)
-            deviceSession.setMode(DeviceMode.TIMER)
-            awaitMode(link, DeviceMode.TIMER)
-
-            val resumed = awaitTimer(link) {
-                it.isRunning && it.remainingSec < started.remainingSec
-            }
-            assertTrue(resumed.remainingSec <= TEST_DURATION_SECONDS - 2)
-
-            deviceSession.timerCancel()
-            awaitTimer(link) { it.isIdle }
-            deviceSession.timerSetDuration(
-                originalSetting.configuredMin,
-                originalSetting.configuredSec,
+    fun countdownKeepsRunningAcrossModeSwitchesAndInitialStateIsCanonical(): Unit =
+        runBlocking {
+            val address = requireNotNull(deviceAddress())
+            val targetContext = InstrumentationRegistry.getInstrumentation().targetContext
+            val link = DeviceConnection(targetContext, address, "CLumo hardware test")
+            val deviceSession = DeviceSession(
+                link,
+                CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+                SystemClock::elapsedRealtime,
             )
-            awaitTimer(link) {
-                it.isIdle && it.configuredTotalSec == originalSetting.configuredTotalSec
+            session = deviceSession
+            deviceSession.connect()
+
+            withTimeout(CONNECT_TIMEOUT_MS) {
+                deviceSession.state.first { it.link == ConnectionState.Ready }
             }
-        } finally {
-            deviceSession.setMode(originalMode)
-            awaitMode(link, originalMode)
+            assertTrue(deviceSession.state.value.observed != null)
+            assertTrue(requireNotNull(link.deviceId.value).isNotBlank())
+            assertTrue(requireNotNull(link.brightness.value) in 0..15)
+            val originalMode = requireNotNull(link.currentMode.value)
+
+            try {
+                deviceSession.setMode(DeviceMode.TIMER)
+                awaitMode(link, DeviceMode.TIMER)
+                deviceSession.timerCancel()
+                awaitTimer(link) { it.isIdle }
+                val originalSetting = requireNotNull(link.timerStatus.value)
+
+                deviceSession.timerSetDuration(0, TEST_DURATION_SECONDS)
+                awaitTimer(link) {
+                    it.isIdle && it.configuredTotalSec == TEST_DURATION_SECONDS
+                }
+                deviceSession.timerStart()
+                val started = awaitTimer(link) { it.isRunning }
+
+                delay(1_200)
+                deviceSession.setMode(DeviceMode.DISPLAY)
+                awaitMode(link, DeviceMode.DISPLAY)
+                delay(1_200)
+                deviceSession.setMode(DeviceMode.TIMER)
+                awaitMode(link, DeviceMode.TIMER)
+
+                val resumed = awaitTimer(link) {
+                    it.isRunning && it.remainingSec < started.remainingSec
+                }
+                assertTrue(resumed.remainingSec <= TEST_DURATION_SECONDS - 2)
+
+                deviceSession.timerCancel()
+                awaitTimer(link) { it.isIdle }
+                deviceSession.timerSetDuration(
+                    originalSetting.configuredMin,
+                    originalSetting.configuredSec,
+                )
+                awaitTimer(link) {
+                    it.isIdle && it.configuredTotalSec == originalSetting.configuredTotalSec
+                }
+            } finally {
+                deviceSession.setMode(originalMode)
+                awaitMode(link, originalMode)
+            }
         }
-    }
 
     private suspend fun awaitMode(link: DeviceConnection, expected: Int) {
         withTimeout(COMMAND_TIMEOUT_MS) {
@@ -125,12 +126,12 @@ class BleHardwareIntegrationTest {
     private suspend fun awaitTimer(
         link: DeviceConnection,
         predicate: (io.github.cespresso.clumo.domain.CountdownTimerStatus) -> Boolean,
-    ): io.github.cespresso.clumo.domain.CountdownTimerStatus = withTimeout(COMMAND_TIMEOUT_MS) {
-        link.timerStatus.first { it != null && predicate(it) }!!
-    }
+    ): io.github.cespresso.clumo.domain.CountdownTimerStatus =
+        withTimeout(COMMAND_TIMEOUT_MS) {
+            link.timerStatus.first { it != null && predicate(it) }!!
+        }
 
-    private fun deviceAddress(): String? =
-        InstrumentationRegistry.getArguments().getString("deviceAddress")
+    private fun deviceAddress(): String? = InstrumentationRegistry.getArguments().getString("deviceAddress")
 
     private companion object {
         const val TEST_DURATION_SECONDS = 8

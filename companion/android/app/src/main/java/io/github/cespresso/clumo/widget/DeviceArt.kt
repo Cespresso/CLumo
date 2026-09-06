@@ -196,10 +196,14 @@ private fun drawKnob(
         addRoundRect(
             RectF(capLeft, 0f, capLeft + layout.knobCapWidth, capBottom + 1f),
             floatArrayOf(
-                layout.knobCapCorner, layout.knobCapCorner,
-                layout.knobCapCorner, layout.knobCapCorner,
-                0f, 0f,
-                0f, 0f,
+                layout.knobCapCorner,
+                layout.knobCapCorner,
+                layout.knobCapCorner,
+                layout.knobCapCorner,
+                0f,
+                0f,
+                0f,
+                0f,
             ),
             Path.Direction.CW,
         )
@@ -208,10 +212,14 @@ private fun drawKnob(
         addRoundRect(
             RectF(bossLeft, capBottom, bossLeft + layout.knobBossWidth, bossBottom),
             floatArrayOf(
-                layout.knobBossCorner, layout.knobBossCorner,
-                layout.knobBossCorner, layout.knobBossCorner,
-                0f, 0f,
-                0f, 0f,
+                layout.knobBossCorner,
+                layout.knobBossCorner,
+                layout.knobBossCorner,
+                layout.knobBossCorner,
+                0f,
+                0f,
+                0f,
+                0f,
             ),
             Path.Direction.CW,
         )
@@ -223,7 +231,10 @@ private fun drawKnob(
     paint.isAntiAlias = true
     paint.style = Paint.Style.FILL
     paint.shader = LinearGradient(
-        0f, 0f, 0f, bossBottom,
+        0f,
+        0f,
+        0f,
+        bossBottom,
         intArrayOf(
             ColorUtils.blendARGB(argb, Color.WHITE, 0.10f),
             ColorUtils.blendARGB(argb, Color.BLACK, 0.07f),
@@ -318,7 +329,9 @@ private fun drawScreen(
         if (dot.lit) {
             // The same warm halo the app draws, which is most of why a lit face reads as lit.
             paint.shader = RadialGradient(
-                cx, cy, dot.radius * GLOW_SPREAD,
+                cx,
+                cy,
+                dot.radius * GLOW_SPREAD,
                 ColorUtils.setAlphaComponent(lit, (Color.alpha(lit) * 0.55f).toInt()),
                 ColorUtils.setAlphaComponent(lit, 0),
                 Shader.TileMode.CLAMP,
@@ -341,9 +354,10 @@ private fun outlineFor(argb: Int): Int? =
         null
     }
 
-private fun dim(argb: Int): Int = Color.argb(
-    (Color.alpha(argb) * 0.38f).toInt(),
-    Color.red(argb),
-    Color.green(argb),
-    Color.blue(argb),
-)
+private fun dim(argb: Int): Int =
+    Color.argb(
+        (Color.alpha(argb) * 0.38f).toInt(),
+        Color.red(argb),
+        Color.green(argb),
+        Color.blue(argb),
+    )

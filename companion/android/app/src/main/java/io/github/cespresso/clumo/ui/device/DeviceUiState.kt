@@ -9,8 +9,8 @@ import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
-import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.domain.Pattern
+import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.domain.effectiveModeOf
 import io.github.cespresso.clumo.domain.mirrorBitsFor
 import io.github.cespresso.clumo.domain.resolveAppearance
@@ -40,6 +40,7 @@ enum class DeviceFailureMessage {
     Services,
     Incompatible,
     Sync,
+
     /** Also covers a failure the link never reported. */
     Lost,
 }
@@ -100,36 +101,32 @@ data class DeviceUiState(
  * Builds the whole visible state of the device screen. Every input is a parameter, the blink
  * phase included, so each state it can produce is unit testable.
  */
-/**
- * The mode the selector shows: an unconfirmed tap, else what the device last reported, else
- * Pomodoro. Exposed because the screen needs it before the state is built, to decide whether
- * a completed timer should be blinking.
- */
 object DeviceUiStateFactory {
 
-    fun initial(displayName: String): DeviceUiState = create(
-        connected = false,
-        state = ConnectionState.Disconnected,
-        failure = null,
-        reconnectAttempt = 0,
-        currentMode = null,
-        pendingMode = null,
-        pomodoro = null,
-        timer = null,
-        deviceId = null,
-        scannedName = null,
-        knownDevice = null,
-        aliases = emptyMap(),
-        appearances = emptyMap(),
-        primaryDeviceId = null,
-        selectedPatternBits = null,
-        committedFrame = null,
-        brightnessUi = Brightness.toPercent(Brightness.MAX_LEVEL),
-        columns = IntArray(0),
-        visualizerActive = false,
-        timerBlinkOn = true,
-        dismissedDialogFailure = null,
-    ).copy(displayName = displayName)
+    fun initial(displayName: String): DeviceUiState =
+        create(
+            connected = false,
+            state = ConnectionState.Disconnected,
+            failure = null,
+            reconnectAttempt = 0,
+            currentMode = null,
+            pendingMode = null,
+            pomodoro = null,
+            timer = null,
+            deviceId = null,
+            scannedName = null,
+            knownDevice = null,
+            aliases = emptyMap(),
+            appearances = emptyMap(),
+            primaryDeviceId = null,
+            selectedPatternBits = null,
+            committedFrame = null,
+            brightnessUi = Brightness.toPercent(Brightness.MAX_LEVEL),
+            columns = IntArray(0),
+            visualizerActive = false,
+            timerBlinkOn = true,
+            dismissedDialogFailure = null,
+        ).copy(displayName = displayName)
 
     /** The five failures no amount of retrying from this screen can clear. */
     private val BLOCKING = setOf(
@@ -224,45 +221,49 @@ object DeviceUiStateFactory {
         )
     }
 
-    private fun stateLabelFor(state: ConnectionState): DeviceStateLabel = when (state) {
-        ConnectionState.Connecting -> DeviceStateLabel.Connecting
-        ConnectionState.Reconnecting -> DeviceStateLabel.Reconnecting
-        ConnectionState.Bonding -> DeviceStateLabel.Pairing
-        ConnectionState.Connected -> DeviceStateLabel.Discovering
-        ConnectionState.Synchronizing -> DeviceStateLabel.Synchronizing
-        ConnectionState.Ready -> DeviceStateLabel.Connected
-        ConnectionState.Error -> DeviceStateLabel.Error
-        ConnectionState.Disconnected -> DeviceStateLabel.Disconnected
-    }
+    private fun stateLabelFor(state: ConnectionState): DeviceStateLabel =
+        when (state) {
+            ConnectionState.Connecting -> DeviceStateLabel.Connecting
+            ConnectionState.Reconnecting -> DeviceStateLabel.Reconnecting
+            ConnectionState.Bonding -> DeviceStateLabel.Pairing
+            ConnectionState.Connected -> DeviceStateLabel.Discovering
+            ConnectionState.Synchronizing -> DeviceStateLabel.Synchronizing
+            ConnectionState.Ready -> DeviceStateLabel.Connected
+            ConnectionState.Error -> DeviceStateLabel.Error
+            ConnectionState.Disconnected -> DeviceStateLabel.Disconnected
+        }
 
-    private fun failureMessageFor(failure: ConnectionFailure?): DeviceFailureMessage = when (failure) {
-        ConnectionFailure.BluetoothUnavailable -> DeviceFailureMessage.Unavailable
-        ConnectionFailure.BluetoothDisabled -> DeviceFailureMessage.BluetoothOff
-        ConnectionFailure.PermissionDenied -> DeviceFailureMessage.Permission
-        ConnectionFailure.ConnectionTimedOut -> DeviceFailureMessage.Timeout
-        ConnectionFailure.PairingFailed -> DeviceFailureMessage.Pairing
-        ConnectionFailure.ServiceDiscoveryFailed -> DeviceFailureMessage.Services
-        ConnectionFailure.IncompatibleDevice -> DeviceFailureMessage.Incompatible
-        ConnectionFailure.SynchronizationFailed -> DeviceFailureMessage.Sync
-        ConnectionFailure.ConnectionLost, null -> DeviceFailureMessage.Lost
-    }
+    private fun failureMessageFor(failure: ConnectionFailure?): DeviceFailureMessage =
+        when (failure) {
+            ConnectionFailure.BluetoothUnavailable -> DeviceFailureMessage.Unavailable
+            ConnectionFailure.BluetoothDisabled -> DeviceFailureMessage.BluetoothOff
+            ConnectionFailure.PermissionDenied -> DeviceFailureMessage.Permission
+            ConnectionFailure.ConnectionTimedOut -> DeviceFailureMessage.Timeout
+            ConnectionFailure.PairingFailed -> DeviceFailureMessage.Pairing
+            ConnectionFailure.ServiceDiscoveryFailed -> DeviceFailureMessage.Services
+            ConnectionFailure.IncompatibleDevice -> DeviceFailureMessage.Incompatible
+            ConnectionFailure.SynchronizationFailed -> DeviceFailureMessage.Sync
+            ConnectionFailure.ConnectionLost, null -> DeviceFailureMessage.Lost
+        }
 
-    private fun bannerActionFor(failure: ConnectionFailure?): DeviceFailureAction = when (failure) {
-        ConnectionFailure.PermissionDenied -> DeviceFailureAction.OpenAppSettings
-        ConnectionFailure.BluetoothDisabled -> DeviceFailureAction.OpenBluetoothSettings
-        else -> DeviceFailureAction.Retry
-    }
+    private fun bannerActionFor(failure: ConnectionFailure?): DeviceFailureAction =
+        when (failure) {
+            ConnectionFailure.PermissionDenied -> DeviceFailureAction.OpenAppSettings
+            ConnectionFailure.BluetoothDisabled -> DeviceFailureAction.OpenBluetoothSettings
+            else -> DeviceFailureAction.Retry
+        }
 
-    private fun dialogActionFor(failure: ConnectionFailure): DeviceFailureAction = when (failure) {
-        ConnectionFailure.PermissionDenied -> DeviceFailureAction.OpenAppSettings
-        ConnectionFailure.BluetoothDisabled,
-        ConnectionFailure.PairingFailed,
-        -> DeviceFailureAction.OpenBluetoothSettings
+    private fun dialogActionFor(failure: ConnectionFailure): DeviceFailureAction =
+        when (failure) {
+            ConnectionFailure.PermissionDenied -> DeviceFailureAction.OpenAppSettings
+            ConnectionFailure.BluetoothDisabled,
+            ConnectionFailure.PairingFailed,
+            -> DeviceFailureAction.OpenBluetoothSettings
 
-        ConnectionFailure.BluetoothUnavailable,
-        ConnectionFailure.IncompatibleDevice,
-        -> DeviceFailureAction.BackToList
+            ConnectionFailure.BluetoothUnavailable,
+            ConnectionFailure.IncompatibleDevice,
+            -> DeviceFailureAction.BackToList
 
-        else -> DeviceFailureAction.Retry
-    }
+            else -> DeviceFailureAction.Retry
+        }
 }

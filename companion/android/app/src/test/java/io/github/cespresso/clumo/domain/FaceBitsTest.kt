@@ -16,7 +16,7 @@ class FaceBitsTest {
                     remainingSec = 15 * 60,
                     workMin = 30,
                     breakMin = 5,
-                )
+                ),
             ),
         )
         assertEquals(
@@ -28,7 +28,7 @@ class FaceBitsTest {
                     remainingSec = 1,
                     workMin = 30,
                     breakMin = 5,
-                )
+                ),
             ),
         )
         assertEquals(
@@ -40,7 +40,7 @@ class FaceBitsTest {
                     remainingSec = 0,
                     workMin = 30,
                     breakMin = 5,
-                )
+                ),
             ),
         )
     }
@@ -56,7 +56,7 @@ class FaceBitsTest {
                     remainingSec = 150,
                     configuredMin = 5,
                     configuredSec = 0,
-                )
+                ),
             ),
         )
         assertEquals(
@@ -67,7 +67,7 @@ class FaceBitsTest {
                     remainingSec = 1,
                     configuredMin = 5,
                     configuredSec = 0,
-                )
+                ),
             ),
         )
         assertEquals(
@@ -78,7 +78,7 @@ class FaceBitsTest {
                     remainingSec = 0,
                     configuredMin = 5,
                     configuredSec = 0,
-                )
+                ),
             ),
         )
     }

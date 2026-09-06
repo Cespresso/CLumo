@@ -9,20 +9,21 @@ import org.junit.Test
 /** What a widget is allowed to wake up for. */
 class WidgetSessionTest {
 
-    private fun snapshot(updatedAt: Long) = WidgetSnapshot(
-        link = WidgetLink.Ready,
-        headline = WidgetHeadline.PomodoroWorking,
-        subtitle = WidgetSubtitle.Alias,
-        alias = "つくえ",
-        faceBits = -1L shl 24,
-        actions = listOf(WidgetAction.Pause, WidgetAction.Reset),
-        enclosureArgb = 0xFF7E9E7C.toInt(),
-        ctaArgb = 0xFFE8907E.toInt(),
-        onCtaArgb = 0xFFFFFFFF.toInt(),
-        knobArgb = 0xFFFFFFFF.toInt(),
-        ledArgb = 0xFFF0A35E.toInt(),
-        updatedAtRealtime = updatedAt,
-    )
+    private fun snapshot(updatedAt: Long) =
+        WidgetSnapshot(
+            link = WidgetLink.Ready,
+            headline = WidgetHeadline.PomodoroWorking,
+            subtitle = WidgetSubtitle.Alias,
+            alias = "つくえ",
+            faceBits = -1L shl 24,
+            actions = listOf(WidgetAction.Pause, WidgetAction.Reset),
+            enclosureArgb = 0xFF7E9E7C.toInt(),
+            ctaArgb = 0xFFE8907E.toInt(),
+            onCtaArgb = 0xFFFFFFFF.toInt(),
+            knobArgb = 0xFFFFFFFF.toInt(),
+            ledArgb = 0xFFF0A35E.toInt(),
+            updatedAtRealtime = updatedAt,
+        )
 
     /** Past every timestamp below, and still inside the staleness threshold for all of them. */
     private val now = 1_000L + HEARTBEAT_INTERVAL_MS * 2 + 1_000L
@@ -30,9 +31,10 @@ class WidgetSessionTest {
     private fun collect(
         vararg emissions: WidgetSnapshot?,
         clock: () -> Long = { now },
-    ): List<WidgetSnapshot?> = runBlocking {
-        flowOf(*emissions).freshContentOnly(clock).toList()
-    }
+    ): List<WidgetSnapshot?> =
+        runBlocking {
+            flowOf(*emissions).freshContentOnly(clock).toList()
+        }
 
     @Test
     fun theHeartbeatDoesNotReachTheWidget() {

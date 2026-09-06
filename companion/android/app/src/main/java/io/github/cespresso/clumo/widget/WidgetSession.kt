@@ -10,8 +10,7 @@ import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.map
 
 /** The snapshot as a widget may draw it, or null once it is too old to be believed. */
-internal fun WidgetSnapshot?.freshOrNull(nowRealtime: Long): WidgetSnapshot? =
-    this?.takeUnless { it.isStale(nowRealtime) }
+internal fun WidgetSnapshot?.freshOrNull(nowRealtime: Long): WidgetSnapshot? = this?.takeUnless { it.isStale(nowRealtime) }
 
 /**
  * What a widget is allowed to react to. Timestamp-only changes are dropped, so the service's
@@ -20,8 +19,9 @@ internal fun WidgetSnapshot?.freshOrNull(nowRealtime: Long): WidgetSnapshot? =
  */
 internal fun Flow<WidgetSnapshot?>.freshContentOnly(
     nowRealtime: () -> Long,
-): Flow<WidgetSnapshot?> = map { it.freshOrNull(nowRealtime()) }
-    .distinctUntilChangedBy { it?.copy(updatedAtRealtime = 0L) }
+): Flow<WidgetSnapshot?> =
+    map { it.freshOrNull(nowRealtime()) }
+        .distinctUntilChangedBy { it?.copy(updatedAtRealtime = 0L) }
 
 /**
  * The one way a widget reads the store. Collecting inside the composition, rather than

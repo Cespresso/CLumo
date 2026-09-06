@@ -57,14 +57,14 @@ internal fun CountdownTimerSection(
             status.isPaused -> R.string.timer_state_paused
             status.isCompleted -> R.string.timer_state_completed
             else -> R.string.timer_state_idle
-        }
+        },
     )
     val primaryLabel = stringResource(
         when {
             status.isRunning -> R.string.timer_pause
             status.isPaused -> R.string.timer_resume
             else -> R.string.timer_start
-        }
+        },
     )
 
     Column(
@@ -101,7 +101,7 @@ internal fun CountdownTimerSection(
             fontFamily = RoundedFontFamily,
             color = ClumoColors.Text,
             modifier = Modifier.alpha(
-                if (status.isCompleted && !completionBlinkOn) 0.12f else 1f
+                if (status.isCompleted && !completionBlinkOn) 0.12f else 1f,
             ),
         )
 

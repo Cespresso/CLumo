@@ -140,15 +140,16 @@ class WidgetStatePublisher(
     }
 
     /** Emits on every adapter transition. Only the trigger matters, never the value. */
-    private fun bluetoothStateChanges(): Flow<Unit> = callbackFlow {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                trySend(Unit)
+    private fun bluetoothStateChanges(): Flow<Unit> =
+        callbackFlow {
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    trySend(Unit)
+                }
             }
+            context.registerReceiver(receiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+            awaitClose { runCatching { context.unregisterReceiver(receiver) } }
         }
-        context.registerReceiver(receiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
-        awaitClose { runCatching { context.unregisterReceiver(receiver) } }
-    }
 
     /**
      * Re-reads platform state. [block] conflates, so an unchanged block costs nothing. Every
@@ -199,7 +200,7 @@ class WidgetStatePublisher(
                     appearance = DeviceAppearance.DEFAULT,
                     commandFailed = false,
                     nowRealtime = SystemClock.elapsedRealtime(),
-                )
+                ),
             )
         }
     }
@@ -239,7 +240,7 @@ class WidgetStatePublisher(
                     // frame of "Can't connect" over a working link first.
                     commandFailed = failedFlag && !ready,
                     nowRealtime = SystemClock.elapsedRealtime(),
-                )
+                ),
             )
         }
     }

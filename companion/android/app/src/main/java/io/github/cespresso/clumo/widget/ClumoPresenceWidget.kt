@@ -78,7 +78,7 @@ class ClumoPresenceWidget : GlanceAppWidget() {
                 maxLines = 1,
                 style = TextStyle(
                     color = ColorProvider(
-                        if (connected) WidgetPalette.Text else WidgetPalette.Muted
+                        if (connected) WidgetPalette.Text else WidgetPalette.Muted,
                     ),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,

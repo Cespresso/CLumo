@@ -7,12 +7,12 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.domain.Pattern
-import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 private val Context.patternStore by preferencesDataStore(name = "clumo_patterns")
 
@@ -35,10 +35,11 @@ internal fun saveAndApplyPattern(
     appliedPatternIds: Map<String, String>,
     deviceId: String,
     pattern: Pattern,
-): PatternApplicationUpdate = PatternApplicationUpdate(
-    patterns = upsertPattern(patterns, pattern),
-    appliedPatternIds = appliedPatternIds + (deviceId to pattern.id),
-)
+): PatternApplicationUpdate =
+    PatternApplicationUpdate(
+        patterns = upsertPattern(patterns, pattern),
+        appliedPatternIds = appliedPatternIds + (deviceId to pattern.id),
+    )
 
 internal fun appliedPatternIdsAfterRemoval(
     appliedPatternIds: Map<String, String>,
@@ -112,18 +113,36 @@ class PatternRepository(
         private val KEY_SEEDED = booleanPreferencesKey("patterns_seeded")
 
         private val HEART_BITS = listOf(
-            "00000000", "01100110", "11111111", "11111111",
-            "01111110", "00111100", "00011000", "00000000",
+            "00000000",
+            "01100110",
+            "11111111",
+            "11111111",
+            "01111110",
+            "00111100",
+            "00011000",
+            "00000000",
         ).joinToString("")
 
         private val SMILE_BITS = listOf(
-            "00000000", "01100110", "01100110", "00000000",
-            "00000000", "10000001", "01000010", "00111100",
+            "00000000",
+            "01100110",
+            "01100110",
+            "00000000",
+            "00000000",
+            "10000001",
+            "01000010",
+            "00111100",
         ).joinToString("")
 
         private val STAR_BITS = listOf(
-            "00011000", "00011000", "01111110", "00111100",
-            "00011000", "00111100", "01100110", "00000000",
+            "00011000",
+            "00011000",
+            "01111110",
+            "00111100",
+            "00011000",
+            "00111100",
+            "01100110",
+            "00000000",
         ).joinToString("")
     }
 
@@ -253,7 +272,7 @@ class PatternRepository(
                     put("id", p.id)
                     put("name", p.name)
                     put("bits", p.bits)
-                }
+                },
             )
         }
         return array.toString()

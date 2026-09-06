@@ -8,20 +8,18 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.cespresso.clumo.domain.DeviceAppearance
-import java.io.IOException
-import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import org.json.JSONObject
+import java.io.IOException
+import kotlin.math.roundToInt
 
 private val Context.dataStore by preferencesDataStore(name = "clumo_prefs")
 
-internal fun sanitizeVisualizerSensitivity(value: Float): Float =
-    if (value.isFinite()) value.coerceIn(0f, 1f) else 0.6f
+internal fun sanitizeVisualizerSensitivity(value: Float): Float = if (value.isFinite()) value.coerceIn(0f, 1f) else 0.6f
 
-internal fun interpretStoredVisualizerSensitivity(value: Float?): Float =
-    sanitizeVisualizerSensitivity(value ?: 0.6f)
+internal fun interpretStoredVisualizerSensitivity(value: Float?): Float = sanitizeVisualizerSensitivity(value ?: 0.6f)
 
 internal const val VISUALIZER_SENSITIVITY_STEP = 0.1f
 

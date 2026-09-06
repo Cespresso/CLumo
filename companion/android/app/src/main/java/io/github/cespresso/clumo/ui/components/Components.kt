@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -158,9 +160,13 @@ fun BrandCorner(
         val sw = stroke.toPx()
         val half = sw / 2f
         val side = this.size.width
-        val centerRadius = (side / 2f - half).coerceAtLeast(1f)
+        // Match the launcher foreground: a quarter-size inner curve with rounded ends.
+        // Keeping endpoints half a stroke inside the bounds prevents the round caps from
+        // extending beyond this composable's requested size.
+        val centerRadius = (side / 4f).coerceAtLeast(1f)
+        val terminal = (side - half).coerceAtLeast(half)
         val path = Path().apply {
-            moveTo(half, side)
+            moveTo(half, terminal)
             lineTo(half, half + centerRadius)
             arcTo(
                 rect = Rect(half, half, half + centerRadius * 2, half + centerRadius * 2),
@@ -168,9 +174,13 @@ fun BrandCorner(
                 sweepAngleDegrees = 90f,
                 forceMoveTo = false,
             )
-            lineTo(side, half)
+            lineTo(terminal, half)
         }
-        drawPath(path, color, style = Stroke(width = sw))
+        drawPath(
+            path,
+            color,
+            style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round),
+        )
     }
 }
 

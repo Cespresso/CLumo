@@ -10,7 +10,7 @@ use crate::utils::bluetooth::PomodoroCommand;
 
 use super::ModeHandler;
 
-pub const NVS_NAMESPACE: &str = "TIMER";
+const NVS_NAMESPACE: &str = "TIMER";
 const KEY_WORK_MIN: &str = "WORK_MIN";
 const KEY_BREAK_MIN: &str = "BREAK_MIN";
 
@@ -63,19 +63,6 @@ pub fn load_durations(nvs: &EspNvs<NvsDefault>) -> (u8, u8) {
         .unwrap_or(DEFAULT_BREAK_MIN)
         .clamp(1, 99);
     (work, brk)
-}
-
-/// Status frame for an idle pomodoro: full work duration remaining, work phase.
-pub fn idle_status(work_min: u8, break_min: u8) -> [u8; 6] {
-    let remaining = work_min as u16 * 60;
-    [
-        STATE_IDLE,
-        PHASE_WORK,
-        (remaining >> 8) as u8,
-        remaining as u8,
-        work_min,
-        break_min,
-    ]
 }
 
 /// Work/break pomodoro with app-settable durations.
@@ -137,7 +124,7 @@ impl PomodoroHandler {
         lit.min(PIXELS_TOTAL) as u8
     }
 
-    fn status(&self) -> [u8; 6] {
+    pub fn current_status(&self) -> [u8; 6] {
         let state = match self.state {
             PomodoroState::Idle => STATE_IDLE,
             PomodoroState::Running => STATE_RUNNING,
@@ -288,7 +275,7 @@ impl ModeHandler for PomodoroHandler {
         }
         self.status_pending = false;
         self.last_notified_secs = self.remaining_secs();
-        Some(self.status())
+        Some(self.current_status())
     }
 
     fn tick(&mut self) -> Option<[u8; 8]> {

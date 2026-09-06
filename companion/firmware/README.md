@@ -35,10 +35,11 @@ Pomodoro and Timer the firmware acts on the press itself, so those modes stay
 usable while disconnected. In Display and Visualizer the firmware only notifies
 BUTTON, so those presses do nothing while disconnected.
 
-Mode handlers are recreated on every mode switch. Leaving Pomodoro or Timer
-discards its current execution state and notifies an idle status. Pomodoro work
-and break durations remain persisted in NVS. Timer duration and execution state
-are not persisted; Timer starts at `05:00` after boot or handler recreation.
+All mode handlers live for the process lifetime. Pomodoro and Timer continue
+counting while another mode is visible and resume from the same state when
+selected again. Pomodoro work and break durations remain persisted in NVS.
+Timer duration and execution state are not persisted; Timer starts at `05:00`
+after boot.
 
 ## Build & flash
 

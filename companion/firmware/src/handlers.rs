@@ -21,9 +21,6 @@ pub trait ModeHandler {
     /// Called on a sub (white) button press.
     fn on_sub_button(&mut self) {}
 
-    /// Called when BLE display data is received.
-    fn on_ble_data(&mut self, _data: [u8; 8]) {}
-
     /// Called when a BLE pomodoro command is received. Only Pomodoro mode reacts.
     fn on_pomodoro_command(&mut self, _cmd: PomodoroCommand) {}
 
@@ -89,18 +86,19 @@ impl Runtime {
         }
     }
 
-    pub fn on_display_data(&mut self, mode: Mode, data: [u8; 8]) {
-        match mode {
-            Mode::Display => self.display.on_ble_data(data),
-            Mode::Visualizer => self.visualizer.on_ble_data(data),
-            Mode::Pomodoro | Mode::Timer => {}
-        }
+    /// A DISPLAY_PREVIEW write. The caller has already checked the mode.
+    pub fn on_display_preview(&mut self, frame: [u8; 8]) {
+        self.display.on_preview(frame);
     }
 
-    /// Commits the pending display preview, if any, and returns the
-    /// resulting committed frame.
-    pub fn commit_display_preview(&mut self) -> [u8; 8] {
-        self.display.commit_preview()
+    /// A VISUALIZER write. The caller has already checked the mode.
+    pub fn on_visualizer_columns(&mut self, heights: [u8; 8]) {
+        self.visualizer.on_columns(heights);
+    }
+
+    /// A DISPLAY_FRAME write: commits `frame`.
+    pub fn commit_display(&mut self, frame: [u8; 8]) {
+        self.display.commit(frame);
     }
 
     pub fn cancel_display_preview(&mut self) {

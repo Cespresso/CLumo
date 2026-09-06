@@ -48,16 +48,11 @@ impl VisualizerHandler {
             dirty: false,
         }
     }
-}
 
-impl ModeHandler for VisualizerHandler {
-    fn on_enter(&mut self) -> [u8; 8] {
-        visualizer_values::idle_frame()
-    }
-
-    fn on_ble_data(&mut self, data: [u8; 8]) {
+    /// Column heights from VISUALIZER. Bars rise at once; tick() lets them fall.
+    pub fn on_columns(&mut self, heights: [u8; 8]) {
         for i in 0..8 {
-            let incoming = data[i].min(8);
+            let incoming = heights[i].min(8);
             self.target[i] = incoming;
             // Rise instantly
             if incoming > self.display[i] {
@@ -66,6 +61,12 @@ impl ModeHandler for VisualizerHandler {
             }
         }
         self.last_receive = Instant::now();
+    }
+}
+
+impl ModeHandler for VisualizerHandler {
+    fn on_enter(&mut self) -> [u8; 8] {
+        visualizer_values::idle_frame()
     }
 
     fn tick(&mut self) -> Option<[u8; 8]> {

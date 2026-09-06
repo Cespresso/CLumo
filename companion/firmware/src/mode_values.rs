@@ -1,3 +1,9 @@
+// The MODE characteristic's values, shared with the Android companion.
+pub const MODE_POMODORO: u8 = 0;
+pub const MODE_TIMER: u8 = 1;
+pub const MODE_DISPLAY: u8 = 2;
+pub const MODE_VISUALIZER: u8 = 3;
+
 pub const MODE_COUNT: u8 = 4;
 
 /// Schema version at which the protocol v2 mode values became current.

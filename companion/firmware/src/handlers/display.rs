@@ -10,9 +10,10 @@ const NVS_NAMESPACE: &str = "DISPLAY";
 const KEY_PATTERN: &str = "PATTERN";
 const PREVIEW_TTL_MS: u64 = 5_000;
 
-/// Custom display: shows the last 8-byte row bitmap received over BLE.
-/// The pattern is persisted in NVS so it survives reboots.
-/// Blank until the first bitmap arrives. No button actions.
+/// Custom display: shows the frame committed over DISPLAY_FRAME, with live previews
+/// from DISPLAY_PREVIEW drawn on top until they expire. The committed frame is
+/// persisted in NVS so it survives reboots. Blank until the first commit arrives.
+/// No button actions.
 pub struct DisplayHandler {
     nvs: EspNvs<NvsDefault>,
     state: DisplayState,
@@ -40,19 +41,23 @@ impl DisplayHandler {
         })
     }
 
-    /// Commits the pending preview, if any, and returns the resulting
-    /// committed frame.
-    pub fn commit_preview(&mut self) -> [u8; 8] {
-        let previous = self.state.committed_frame();
-        if let Some(committed) = self.state.commit_preview() {
-            self.dirty = true;
-            if committed != previous {
-                if let Err(e) = self.nvs.set_blob(KEY_PATTERN, &committed) {
-                    log::warn!("Display: failed to persist committed pattern: {:?}", e);
-                }
+    /// Makes `frame` the committed frame, persisting it when it changed and
+    /// discarding any live preview.
+    pub fn commit(&mut self, frame: [u8; 8]) {
+        let changed = self.state.commit(frame);
+        // Redraw even when unchanged: a preview may have been covering this frame.
+        self.dirty = true;
+        if changed {
+            if let Err(e) = self.nvs.set_blob(KEY_PATTERN, &frame) {
+                log::warn!("Display: failed to persist committed pattern: {:?}", e);
             }
         }
-        self.state.committed_frame()
+    }
+
+    /// A live preview: shown at once, never persisted, gone after the TTL.
+    pub fn on_preview(&mut self, frame: [u8; 8]) {
+        self.state.preview(frame, self.now_ms());
+        self.dirty = true;
     }
 
     pub fn committed_frame(&self) -> [u8; 8] {
@@ -74,11 +79,6 @@ impl ModeHandler for DisplayHandler {
     fn on_enter(&mut self) -> [u8; 8] {
         self.dirty = false;
         self.state.visible_frame()
-    }
-
-    fn on_ble_data(&mut self, data: [u8; 8]) {
-        self.state.preview(data, self.now_ms());
-        self.dirty = true;
     }
 
     fn tick(&mut self) -> Option<[u8; 8]> {

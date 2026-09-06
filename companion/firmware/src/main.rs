@@ -3,7 +3,7 @@ use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs};
 use std::time::Instant;
 
-use crate::display_commit_policy::should_auto_commit_display;
+use crate::display_routing::DisplayWrite;
 use crate::handlers::Runtime;
 use crate::mode::Mode;
 use crate::utils::bluetooth::{
@@ -15,7 +15,7 @@ use crate::utils::led::Display;
 
 mod assets;
 mod countdown;
-mod display_commit_policy;
+mod display_routing;
 mod display_state;
 mod handlers;
 mod mode;
@@ -92,7 +92,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut connection_icon_on = true;
     let mut last_connection_blink = Instant::now();
     let mut disconnected_notice_started = Some(Instant::now());
-    let mut explicit_display_commit = false;
     let mut client_ready_wait_started: Option<Instant> = None;
 
     // Main loop
@@ -106,10 +105,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::ConnectionChanged(connected) => {
                     ble_connected = connected;
                     client_ready = false;
-                    explicit_display_commit = false;
                     connection_icon_on = true;
                     last_connection_blink = Instant::now();
-                    client_ready_wait_started = if connected { Some(Instant::now()) } else { None };
+                    client_ready_wait_started = if connected {
+                        Some(Instant::now())
+                    } else {
+                        None
+                    };
                     disconnected_notice_started = if connected {
                         None
                     } else {
@@ -127,7 +129,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BleCommand::AuthenticationFailed => {
                     ble_connected = false;
                     client_ready = false;
-                    explicit_display_commit = false;
                     client_ready_wait_started = None;
                     runtime.cancel_display_preview();
                     disconnected_notice_started = Some(Instant::now());
@@ -142,15 +143,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 BleCommand::SwitchMode(m) => {
                     let new_mode = Mode::from_u8(m);
+                    // Nothing rides on MODE but the mode itself, so a same-value write
+                    // has nothing to do.
                     if new_mode == mode_manager.current() {
-                        if new_mode == Mode::Display {
-                            let committed = runtime.commit_display_preview();
-                            ble.set_display_committed_frame(&committed);
-                            explicit_display_commit = true;
-                        }
                         continue;
                     }
-                    explicit_display_commit = false;
                     runtime.cancel_display_preview();
                     if let Err(e) = mode_manager.switch_to(new_mode) {
                         log::error!("BLE switch_to failed: {:?}", e);
@@ -160,17 +157,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         display.show(&runtime.on_enter(mode_manager.current()));
                     }
                 }
-                BleCommand::SetDisplayData(data) => {
-                    let mode = mode_manager.current();
-                    runtime.on_display_data(mode, data);
-                    if mode == Mode::Display && should_auto_commit_display(explicit_display_commit)
+                BleCommand::CommitDisplayFrame(frame) => {
+                    // Nothing is drawn here: Display picks the committed frame up through
+                    // on_enter, or through the handler's dirty flag while it is already up.
+                    runtime.commit_display(frame);
+                    ble.notify_display_frame(&frame);
+                }
+                BleCommand::PreviewDisplayFrame(frame) => {
+                    if display_routing::accepts(mode_manager.current() as u8, DisplayWrite::Preview)
                     {
-                        runtime.commit_display_preview();
+                        runtime.on_display_preview(frame);
                     }
-                    // NimBLE has already replaced the characteristic value with the write
-                    // payload, a live preview in Display and column heights in Visualizer.
-                    // Restore the committed frame so READ keeps its contract in every mode.
-                    ble.set_display_committed_frame(&runtime.display_committed_frame());
+                }
+                BleCommand::VisualizerColumns(heights) => {
+                    if display_routing::accepts(
+                        mode_manager.current() as u8,
+                        DisplayWrite::Visualizer,
+                    ) {
+                        runtime.on_visualizer_columns(heights);
+                    }
                 }
                 BleCommand::SetBrightness(level) => match mode_manager.set_brightness(level) {
                     Ok(applied) => {

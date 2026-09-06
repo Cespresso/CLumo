@@ -25,10 +25,13 @@ impl DisplayState {
         });
     }
 
-    pub fn commit_preview(&mut self) -> Option<[u8; 8]> {
-        let preview = self.preview.take()?;
-        self.committed = preview.frame;
-        Some(self.committed)
+    /// Makes `frame` the committed frame and discards any preview.
+    /// Returns whether the committed frame changed, which is what decides an NVS write.
+    pub fn commit(&mut self, frame: [u8; 8]) -> bool {
+        self.preview = None;
+        let changed = self.committed != frame;
+        self.committed = frame;
+        changed
     }
 
     pub fn cancel_preview(&mut self) -> bool {
@@ -72,13 +75,33 @@ mod tests {
     }
 
     #[test]
-    fn explicit_commit_promotes_preview() {
+    fn commit_replaces_committed_and_discards_preview() {
+        const NEXT: [u8; 8] = [0x42; 8];
         let mut state = DisplayState::new(COMMITTED);
         state.preview(PREVIEW, 100);
 
-        assert_eq!(state.commit_preview(), Some(PREVIEW));
-        assert_eq!(state.committed_frame(), PREVIEW);
-        assert_eq!(state.visible_frame(), PREVIEW);
+        assert!(state.commit(NEXT));
+        assert_eq!(state, DisplayState::new(NEXT));
+        assert!(!state.expire_preview(u64::MAX, 0));
+    }
+
+    #[test]
+    fn committing_the_shown_frame_again_reports_no_change() {
+        let mut state = DisplayState::new(COMMITTED);
+        assert!(!state.commit(COMMITTED));
+        assert_eq!(state.committed_frame(), COMMITTED);
+    }
+
+    #[test]
+    fn committing_the_same_frame_under_a_preview_still_uncovers_it() {
+        // The value does not move, but what is visible does: a caller that skipped
+        // the redraw on "unchanged" would leave the preview on the matrix.
+        let mut state = DisplayState::new(COMMITTED);
+        state.preview(PREVIEW, 100);
+
+        assert!(!state.commit(COMMITTED));
+        assert_eq!(state.visible_frame(), COMMITTED);
+        assert!(!state.cancel_preview());
     }
 
     #[test]

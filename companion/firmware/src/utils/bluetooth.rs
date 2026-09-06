@@ -39,7 +39,12 @@ pub enum BleCommand {
     AuthenticationFailed,
     ClientReady,
     SwitchMode(u8),
-    SetDisplayData([u8; 8]),
+    /// DISPLAY_FRAME write: commit this frame.
+    CommitDisplayFrame([u8; 8]),
+    /// DISPLAY_PREVIEW write: show this frame until it expires.
+    PreviewDisplayFrame([u8; 8]),
+    /// VISUALIZER write: column heights.
+    VisualizerColumns([u8; 8]),
     SetBrightness(u8),
     Pomodoro(PomodoroCommand),
     Timer(TimerCommand),
@@ -50,11 +55,23 @@ pub struct BluetoothManager {
     has_bonded_peer: bool,
     current_conn_handle: Arc<Mutex<Option<u16>>>,
     mode_characteristic: Arc<Mutex<BLECharacteristic>>,
-    display_characteristic: Arc<Mutex<BLECharacteristic>>,
+    display_frame_characteristic: Arc<Mutex<BLECharacteristic>>,
     pomodoro_characteristic: Arc<Mutex<BLECharacteristic>>,
     timer_characteristic: Arc<Mutex<BLECharacteristic>>,
     brightness_characteristic: Arc<Mutex<BLECharacteristic>>,
     button_characteristic: Arc<Mutex<BLECharacteristic>>,
+}
+
+/// The 8 bytes of a display write, or None with a warning for anything shorter.
+fn frame_from_write(data: &[u8], what: &str) -> Option<[u8; 8]> {
+    if data.len() >= 8 {
+        let mut buf = [0u8; 8];
+        buf.copy_from_slice(&data[..8]);
+        Some(buf)
+    } else {
+        log::warn!("BLE: {} needs 8 bytes, got {}", what, data.len());
+        None
+    }
 }
 
 impl BluetoothManager {
@@ -176,33 +193,64 @@ impl BluetoothManager {
             }
         });
 
-        // --- Display Data Characteristic (READ | WRITE | WRITE_NR) ---
-        // 8 bytes, interpreted by the current mode:
-        // Display mode -> row bitmap, Visualizer mode -> column heights.
-        let display_characteristic = service.lock().create_characteristic(
-            uuid128!("681285a6-247f-48c6-80ad-68c3dce18585"),
+        // --- Display Preview Characteristic (WRITE_NR) ---
+        // Volatile: nothing to read, nothing to notify, nothing persisted.
+        // MUST stay first among the display characteristics: this value handle is where
+        // the v2 DISPLAY value sat, so a bonded v2 client reading its cached GATT table
+        // lands its frames on a stream that cannot reach NVS.
+        let display_preview_characteristic = service.lock().create_characteristic(
+            uuid128!("681285a6-247f-48c6-80ad-68c3dce1858d"),
+            NimbleProperties::WRITE_NO_RSP | NimbleProperties::WRITE_ENC,
+        );
+        let commands_clone = commands.clone();
+        display_preview_characteristic
+            .lock()
+            .on_write(move |value| {
+                if let Some(frame) = frame_from_write(value.recv_data(), "display preview") {
+                    commands_clone
+                        .lock()
+                        .push_back(BleCommand::PreviewDisplayFrame(frame));
+                }
+            });
+
+        // --- Display Frame Characteristic (READ | WRITE | NOTIFY) ---
+        // The committed frame. A write commits; every commit notifies.
+        let display_frame_characteristic = service.lock().create_characteristic(
+            uuid128!("681285a6-247f-48c6-80ad-68c3dce1858c"),
             NimbleProperties::READ
                 | NimbleProperties::READ_ENC
                 | NimbleProperties::WRITE
                 | NimbleProperties::WRITE_ENC
-                | NimbleProperties::WRITE_NO_RSP,
+                | NimbleProperties::NOTIFY,
         );
-        display_characteristic
+        display_frame_characteristic
             .lock()
             .set_value(&initial_committed_display);
 
         let commands_clone = commands.clone();
-        display_characteristic.lock().on_write(move |value| {
-            let data = value.recv_data();
+        display_frame_characteristic.lock().on_write(move |value| {
+            match frame_from_write(value.recv_data(), "display frame") {
+                Some(frame) => commands_clone
+                    .lock()
+                    .push_back(BleCommand::CommitDisplayFrame(frame)),
+                // Rejecting keeps NimBLE from storing the short payload as the readable
+                // committed frame. 0x0D is ATT "invalid attribute value length".
+                None => value.reject_with_error_code(0x0D),
+            }
+        });
 
-            if data.len() >= 8 {
-                let mut buf = [0u8; 8];
-                buf.copy_from_slice(&data[..8]);
+        // --- Visualizer Characteristic (WRITE_NR) ---
+        // Column heights 0..=8. Volatile, like the preview.
+        let visualizer_characteristic = service.lock().create_characteristic(
+            uuid128!("681285a6-247f-48c6-80ad-68c3dce1858e"),
+            NimbleProperties::WRITE_NO_RSP | NimbleProperties::WRITE_ENC,
+        );
+        let commands_clone = commands.clone();
+        visualizer_characteristic.lock().on_write(move |value| {
+            if let Some(heights) = frame_from_write(value.recv_data(), "visualizer columns") {
                 commands_clone
                     .lock()
-                    .push_back(BleCommand::SetDisplayData(buf));
-            } else {
-                log::warn!("BLE: display data needs 8 bytes, got {}", data.len());
+                    .push_back(BleCommand::VisualizerColumns(heights));
             }
         });
 
@@ -353,13 +401,11 @@ impl BluetoothManager {
 
         // Configure and start advertising
         let advertising_name = format!("CLumo-{}", device_id::short(&device_id));
-        ble_advertiser
-            .lock()
-            .set_data(
-                BLEAdvertisementData::new()
-                    .name(&advertising_name)
-                    .add_service_uuid(uuid128!("455aa9f0-2999-43de-81b4-54e0de255927")),
-            )?;
+        ble_advertiser.lock().set_data(
+            BLEAdvertisementData::new()
+                .name(&advertising_name)
+                .add_service_uuid(uuid128!("455aa9f0-2999-43de-81b4-54e0de255927")),
+        )?;
         ble_advertiser.lock().start()?;
         log::info!("BLE advertising started as '{}'", advertising_name);
 
@@ -368,7 +414,7 @@ impl BluetoothManager {
             has_bonded_peer,
             current_conn_handle,
             mode_characteristic,
-            display_characteristic,
+            display_frame_characteristic,
             pomodoro_characteristic,
             timer_characteristic,
             brightness_characteristic,
@@ -412,10 +458,14 @@ impl BluetoothManager {
         self.mode_characteristic.lock().set_value(&[mode]).notify();
     }
 
-    /// Publish the committed frame, never a live preview, as the value a READ or a
-    /// reconnect observes. DISPLAY has no NOTIFY property, so this does not notify.
-    pub fn set_display_committed_frame(&self, frame: &[u8; 8]) {
-        self.display_characteristic.lock().set_value(frame);
+    /// Publish the committed frame, never a live preview, and tell subscribers.
+    /// Every accepted commit ends here, changed or not, so a client's pending write
+    /// is always answered.
+    pub fn notify_display_frame(&self, frame: &[u8; 8]) {
+        self.display_frame_characteristic
+            .lock()
+            .set_value(frame)
+            .notify();
     }
 
     /// Update the Brightness Characteristic value and notify connected clients.

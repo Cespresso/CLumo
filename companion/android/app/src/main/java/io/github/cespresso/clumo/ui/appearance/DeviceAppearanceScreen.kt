@@ -63,6 +63,7 @@ import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.settings.ScreenHeader
 import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.launch
 
@@ -415,7 +416,10 @@ private fun CustomColorDialog(
                 Button(
                     onClick = { picker.confirmedColorOrNull()?.let(onConfirm) },
                     enabled = picker.canConfirm,
-                    colors = ButtonDefaults.buttonColors(containerColor = ClumoColors.Coral),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LocalClumoAccents.current.cta,
+                        contentColor = LocalClumoAccents.current.onCta,
+                    ),
                 ) {
                     Text(stringResource(R.string.appearance_use_color))
                 }

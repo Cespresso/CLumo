@@ -43,6 +43,9 @@
     <!-- Device screen -->
     <string name="device_menu_rename">Rename</string>
     <string name="device_menu_appearance">Appearance settings</string>
+    <string name="device_menu_set_primary">Set as main CLumo</string>
+    <string name="device_menu_unset_primary">Unset main CLumo</string>
+    <string name="device_primary_marker">Main CLumo</string>
     <string name="device_menu_settings">Settings</string>
     <string name="device_menu_refresh_gatt">Refresh device info</string>
     <string name="device_menu_disconnect">Disconnect</string>

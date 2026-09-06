@@ -43,6 +43,9 @@
     <!-- Device screen -->
     <string name="device_menu_rename">名前を変更</string>
     <string name="device_menu_appearance">外観設定</string>
+    <string name="device_menu_set_primary">メインのCLumoに設定</string>
+    <string name="device_menu_unset_primary">メイン設定を解除</string>
+    <string name="device_primary_marker">メインのCLumo</string>
     <string name="device_menu_settings">設定</string>
     <string name="device_menu_refresh_gatt">デバイス情報を再取得</string>
     <string name="device_menu_disconnect">切断</string>

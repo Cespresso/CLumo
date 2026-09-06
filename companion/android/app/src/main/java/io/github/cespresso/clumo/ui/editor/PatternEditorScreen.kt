@@ -51,7 +51,7 @@ import androidx.compose.ui.window.Dialog
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.service.DeviceHubService
-import io.github.cespresso.clumo.ui.components.CoralPillButton
+import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.ContentTone
@@ -63,6 +63,7 @@ import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.components.contentToneFor
 import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.theme.ClumoColors
+import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import java.util.UUID
 import kotlinx.coroutines.delay
@@ -174,10 +175,11 @@ fun PatternEditorScreen(
                 color = ClumoColors.Text,
                 modifier = Modifier.weight(1f),
             )
+            val accents = LocalClumoAccents.current
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(999.dp))
-                    .background(if (updating) ClumoColors.MutedLight else ClumoColors.Coral)
+                    .background(if (updating) ClumoColors.MutedLight else accents.cta)
                     .clickable(enabled = !updating) { saveOpen = true }
                     .padding(horizontal = 20.dp, vertical = 9.dp),
             ) {
@@ -188,7 +190,7 @@ fun PatternEditorScreen(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = RoundedFontFamily,
-                    color = ClumoColors.White,
+                    color = if (updating) ClumoColors.White else accents.onCta,
                 )
             }
         }
@@ -477,7 +479,7 @@ private fun DeleteConfirmDialog(
                     verticalPadding = 12.dp,
                     modifier = Modifier.weight(1f),
                 )
-                CoralPillButton(
+                CtaPillButton(
                     text = stringResource(R.string.editor_delete_confirm),
                     onClick = onConfirm,
                     fontSize = 14.sp,

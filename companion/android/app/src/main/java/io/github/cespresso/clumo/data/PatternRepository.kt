@@ -39,6 +39,23 @@ internal fun saveAndSelectPattern(
 )
 
 /**
+ * The id of the pattern one step after [currentId] in list order, wrapping at both
+ * ends. Returns the first pattern when [currentId] is missing from [patterns], and
+ * null when there is nothing to select.
+ */
+internal fun cyclePatternId(
+    patterns: List<Pattern>,
+    currentId: String?,
+    forward: Boolean,
+): String? {
+    if (patterns.isEmpty()) return null
+    val currentIndex = patterns.indexOfFirst { it.id == currentId }
+    if (currentIndex < 0) return patterns.first().id
+    val step = if (forward) 1 else -1
+    return patterns[(currentIndex + step + patterns.size) % patterns.size].id
+}
+
+/**
  * DataStore-backed store of user display patterns (JSON list of
  * {id, name, bits}) plus the currently selected pattern id.
  * Seeds three default patterns on first run.

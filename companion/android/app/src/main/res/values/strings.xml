@@ -46,6 +46,7 @@
     <string name="device_menu_set_primary">メインのCLumoに設定</string>
     <string name="device_menu_unset_primary">メイン設定を解除</string>
     <string name="device_primary_marker">メインのCLumo</string>
+    <string name="device_primary_badge">メイン</string>
     <string name="device_menu_settings">設定</string>
     <string name="device_menu_refresh_gatt">デバイス情報を再取得</string>
     <string name="device_menu_disconnect">切断</string>
@@ -81,9 +82,12 @@
     <string name="button_role_viz_main">感度を上げる</string>
     <string name="button_role_viz_sub">感度を下げる</string>
 
+    <!-- Main CLumo help -->
+    <string name="primary_help_open">メインのCLumoの説明を開く</string>
+    <string name="primary_help_body">いちばんよく使うCLumoを1台だけ選べます。アプリの配色が、メインに選んだCLumoの筐体・ボタン・LEDの色に合わせて変わります。\n\n一覧の☆をタップすると設定、★をもう一度タップすると解除できます。</string>
+
     <!-- Mode help -->
     <string name="mode_help_open">%1$sの説明を開く</string>
-    <string name="mode_help_acknowledge">わかった</string>
     <string name="mode_help_device_display">本体の表示</string>
     <string name="mode_help_coral_button">コーラルボタン</string>
     <string name="mode_help_white_button">ホワイトボタン</string>
@@ -147,6 +151,7 @@
     <string name="editor_operation_error_body">データを更新できませんでした。もう一度お試しください。</string>
     <string name="dialog_cancel">キャンセル</string>
     <string name="dialog_save">保存</string>
+    <string name="dialog_acknowledge">わかった</string>
 
     <!-- Rename dialog -->
     <string name="rename_title">名前を変更</string>

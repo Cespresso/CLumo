@@ -46,6 +46,7 @@
     <string name="device_menu_set_primary">Set as main CLumo</string>
     <string name="device_menu_unset_primary">Unset main CLumo</string>
     <string name="device_primary_marker">Main CLumo</string>
+    <string name="device_primary_badge">Main</string>
     <string name="device_menu_settings">Settings</string>
     <string name="device_menu_refresh_gatt">Refresh device info</string>
     <string name="device_menu_disconnect">Disconnect</string>
@@ -81,9 +82,12 @@
     <string name="button_role_viz_main">Sensitivity up</string>
     <string name="button_role_viz_sub">Sensitivity down</string>
 
+    <!-- Main CLumo help -->
+    <string name="primary_help_open">Open main CLumo help</string>
+    <string name="primary_help_body">Pick the one CLumo you use most. The app\'s colors follow your main CLumo\'s enclosure, button and LED colors.\n\nTap ☆ in the list to set it, or tap ★ again to clear it.</string>
+
     <!-- Mode help -->
     <string name="mode_help_open">Open %1$s help</string>
-    <string name="mode_help_acknowledge">Got it</string>
     <string name="mode_help_device_display">Device display</string>
     <string name="mode_help_coral_button">Coral button</string>
     <string name="mode_help_white_button">White button</string>
@@ -147,6 +151,7 @@
     <string name="editor_operation_error_body">The data couldn’t be updated. Please try again.</string>
     <string name="dialog_cancel">Cancel</string>
     <string name="dialog_save">Save</string>
+    <string name="dialog_acknowledge">Got it</string>
 
     <!-- Rename dialog -->
     <string name="rename_title">Rename</string>

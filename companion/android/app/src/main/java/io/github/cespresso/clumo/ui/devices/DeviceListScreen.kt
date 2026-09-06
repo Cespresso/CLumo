@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
@@ -68,8 +69,10 @@ import io.github.cespresso.clumo.ui.components.BrandCorner
 import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
+import io.github.cespresso.clumo.ui.components.ClumoInfoDialog
 import io.github.cespresso.clumo.ui.components.ClumoNavigationBarSpacer
 import io.github.cespresso.clumo.ui.components.FaceBits
+import io.github.cespresso.clumo.ui.components.HelpBadge
 import io.github.cespresso.clumo.ui.components.ScanningIndicator
 import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.components.connectionLabel
@@ -120,6 +123,7 @@ fun DeviceListScreen(
     var scanFinishedEmpty by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<PendingBluetoothAction?>(null) }
     var showPermissionDialog by remember { mutableStateOf(false) }
+    var showPrimaryHelp by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -223,14 +227,23 @@ fun DeviceListScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 BrandCorner(size = 30.dp, stroke = 9.dp)
-                Text(
-                    text = stringResource(R.string.list_title),
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontFamily = RoundedFontFamily,
-                    color = ClumoColors.Text,
+                Row(
                     modifier = Modifier.weight(1f),
-                )
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.list_title),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFamily = RoundedFontFamily,
+                        color = ClumoColors.Text,
+                    )
+                    HelpBadge(
+                        description = stringResource(R.string.primary_help_open),
+                        onClick = { showPrimaryHelp = true },
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(999.dp))
@@ -390,6 +403,14 @@ fun DeviceListScreen(
             onDismiss = { showPermissionDialog = false },
         )
     }
+
+    if (showPrimaryHelp) {
+        ClumoInfoDialog(
+            title = stringResource(R.string.device_primary_marker),
+            body = stringResource(R.string.primary_help_body),
+            onDismiss = { showPrimaryHelp = false },
+        )
+    }
 }
 
 @Composable
@@ -445,6 +466,9 @@ private fun KnownDeviceCard(
                 color = labelColor,
                 modifier = Modifier.padding(top = 5.dp),
             )
+            if (isPrimary) {
+                PrimaryBadge(modifier = Modifier.padding(top = 6.dp))
+            }
         }
         val toggleLabel = stringResource(
             if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary
@@ -472,6 +496,31 @@ private fun KnownDeviceCard(
             fontFamily = RoundedFontFamily,
             color = ClumoColors.Chevron,
             modifier = Modifier.padding(end = 4.dp),
+        )
+    }
+}
+
+/**
+ * Visible counterpart of the filled star, so the star's meaning is readable
+ * without tapping it. Semantics are cleared because the star button already
+ * announces the same state.
+ */
+@Composable
+private fun PrimaryBadge(modifier: Modifier = Modifier) {
+    val accents = LocalClumoAccents.current
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(accents.accent)
+            .clearAndSetSemantics {}
+            .padding(horizontal = 9.dp, vertical = 3.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.device_primary_badge),
+            fontSize = 10.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = RoundedFontFamily,
+            color = accents.onAccent,
         )
     }
 }

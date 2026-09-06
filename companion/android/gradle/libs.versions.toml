@@ -1,6 +1,6 @@
 [versions]
 # The compose compiler plugin has to match the Kotlin that AGP carries internally.
-agp = "9.3.2"
+agp = "9.4.0"
 composeCompiler = "2.2.21"
 
 # The plugin's own default engine is older than what composeRules is built against,

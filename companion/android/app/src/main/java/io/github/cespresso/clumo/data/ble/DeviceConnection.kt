@@ -556,6 +556,9 @@ class DeviceConnection(
                 BleUuids.MODE, BleUuids.DISPLAY, BleUuids.POMODORO, BleUuids.TIMER,
                 BleUuids.BRIGHTNESS, BleUuids.DEVICE_ID,
             )
+            // Absent on firmware older than the button-roles release, so its absence
+            // must not reject the device — but it does warrant one cache refresh.
+            val optional = setOf(BleUuids.BUTTON)
             val discovered = service?.characteristics
                 ?.mapTo(mutableSetOf()) { it.uuid }
                 .orEmpty()
@@ -564,30 +567,37 @@ class DeviceConnection(
                 "$address: discovered CLumo characteristics=" +
                     discovered.joinToString(),
             )
-            when (gattCompatibilityAction(discovered, required, gattCacheRefreshAttempted)) {
+            when (gattCompatibilityAction(discovered, required, optional, gattCacheRefreshAttempted)) {
                 GattCompatibilityAction.ACCEPT -> Unit
                 GattCompatibilityAction.REFRESH_CACHE -> {
                     gattCacheRefreshAttempted = true
                     if (!refreshGattCache(g)) {
-                        Log.w(TAG, "$address: required CLumo characteristics are missing")
-                        fail(ConnectionFailure.IncompatibleDevice, retry = false)
+                        // A refresh we could not perform is only fatal when something
+                        // required is absent. Firmware that genuinely predates an
+                        // optional characteristic still works without it.
+                        if (!discovered.containsAll(required)) {
+                            Log.w(TAG, "$address: required CLumo characteristics are missing")
+                            fail(ConnectionFailure.IncompatibleDevice, retry = false)
+                            return
+                        }
+                        Log.w(TAG, "$address: could not refresh GATT cache; continuing without optional characteristics")
+                    } else {
+                        Log.i(TAG, "$address: stale GATT cache cleared; rediscovering services")
+                        startPhaseTimeout(
+                            SYNC_TIMEOUT_MS,
+                            ConnectionFailure.ServiceDiscoveryFailed,
+                            retry = true,
+                        )
+                        scope.launch {
+                            delay(GATT_CACHE_REFRESH_DELAY_MS)
+                            if (g !== gatt) return@launch
+                            val started = runCatching { g.discoverServices() }.getOrDefault(false)
+                            if (!started) {
+                                fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+                            }
+                        }
                         return
                     }
-                    Log.i(TAG, "$address: stale GATT cache cleared; rediscovering services")
-                    startPhaseTimeout(
-                        SYNC_TIMEOUT_MS,
-                        ConnectionFailure.ServiceDiscoveryFailed,
-                        retry = true,
-                    )
-                    scope.launch {
-                        delay(GATT_CACHE_REFRESH_DELAY_MS)
-                        if (g !== gatt) return@launch
-                        val started = runCatching { g.discoverServices() }.getOrDefault(false)
-                        if (!started) {
-                            fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
-                        }
-                    }
-                    return
                 }
                 GattCompatibilityAction.REJECT -> {
                     Log.w(

@@ -302,18 +302,6 @@ impl BluetoothManager {
                 .push_back(BleCommand::SetBrightness(level));
         });
 
-        // --- Button Characteristic (NOTIFY only) ---
-        // Notify: [mode, button]. Sent only for modes whose buttons the firmware
-        // does not consume itself, so the app can act on them.
-        // No READ/READ_ENC on purpose: there is nothing worth reading, and a
-        // readable value would outlive the press it describes. Encryption flags
-        // here could not restrict subscribers anyway — NimBLE registers the
-        // auto-generated CCCD with plain READ|WRITE.
-        let button_characteristic = service.lock().create_characteristic(
-            uuid128!("681285a6-247f-48c6-80ad-68c3dce1858b"),
-            NimbleProperties::NOTIFY,
-        );
-
         // --- Device ID Characteristic (READ only) ---
         let device_id_characteristic = service.lock().create_characteristic(
             uuid128!("681285a6-247f-48c6-80ad-68c3dce18589"),
@@ -329,6 +317,23 @@ impl BluetoothManager {
                     commands_clone.lock().push_back(BleCommand::ClientReady);
                 }
             });
+
+        // --- Button Characteristic (NOTIFY only) ---
+        // Notify: [mode, button]. Sent only for modes whose buttons the firmware
+        // does not consume itself, so the app can act on them.
+        // No READ/READ_ENC on purpose: there is nothing worth reading, and a
+        // readable value would outlive the press it describes. Encryption flags
+        // here could not restrict subscribers anyway — NimBLE registers the
+        // auto-generated CCCD with plain READ|WRITE.
+        //
+        // MUST stay last: NimBLE assigns ATT handles in creation order, so any
+        // characteristic added ahead of an existing one shifts that one's handle
+        // and breaks every already-bonded client that reconnects from its cached
+        // GATT database. New characteristics go at the end, never in the middle.
+        let button_characteristic = service.lock().create_characteristic(
+            uuid128!("681285a6-247f-48c6-80ad-68c3dce1858b"),
+            NimbleProperties::NOTIFY,
+        );
 
         // Configure and start advertising
         let advertising_name = format!("CLumo-{}", device_id::short(&device_id));

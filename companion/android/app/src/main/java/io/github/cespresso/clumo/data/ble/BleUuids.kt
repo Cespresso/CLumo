@@ -8,14 +8,27 @@ internal enum class GattCompatibilityAction {
     REJECT,
 }
 
+/**
+ * A missing [optional] characteristic is indistinguishable from a GATT cache written
+ * before the firmware gained it, so refresh once before believing it is really absent.
+ * Without this, a device bonded against older firmware would keep its stale cache
+ * forever and the features behind the newer characteristic would never come alive.
+ */
 internal fun gattCompatibilityAction(
     discovered: Set<UUID>,
     required: Set<UUID>,
+    optional: Set<UUID>,
     cacheRefreshAttempted: Boolean,
 ): GattCompatibilityAction = when {
-    discovered.containsAll(required) -> GattCompatibilityAction.ACCEPT
-    !cacheRefreshAttempted -> GattCompatibilityAction.REFRESH_CACHE
-    else -> GattCompatibilityAction.REJECT
+    !discovered.containsAll(required) ->
+        if (cacheRefreshAttempted) {
+            GattCompatibilityAction.REJECT
+        } else {
+            GattCompatibilityAction.REFRESH_CACHE
+        }
+    !discovered.containsAll(optional) && !cacheRefreshAttempted ->
+        GattCompatibilityAction.REFRESH_CACHE
+    else -> GattCompatibilityAction.ACCEPT
 }
 
 /** BLE protocol v2 identifiers for the CLumo firmware. */

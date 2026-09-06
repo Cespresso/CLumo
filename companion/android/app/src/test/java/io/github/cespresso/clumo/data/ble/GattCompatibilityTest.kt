@@ -9,6 +9,8 @@ class GattCompatibilityTest {
         UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18587"),
         UUID.fromString("681285a6-247f-48c6-80ad-68c3dce1858a"),
     )
+    private val button = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce1858b")
+    private val optional = setOf(button)
 
     @Test
     fun refreshesStaleGattCacheOnceBeforeRejectingDevice() {
@@ -16,11 +18,11 @@ class GattCompatibilityTest {
 
         assertEquals(
             GattCompatibilityAction.REFRESH_CACHE,
-            gattCompatibilityAction(legacyCache, required, cacheRefreshAttempted = false),
+            gattCompatibilityAction(legacyCache, required, optional, cacheRefreshAttempted = false),
         )
         assertEquals(
             GattCompatibilityAction.REJECT,
-            gattCompatibilityAction(legacyCache, required, cacheRefreshAttempted = true),
+            gattCompatibilityAction(legacyCache, required, optional, cacheRefreshAttempted = true),
         )
     }
 
@@ -28,7 +30,7 @@ class GattCompatibilityTest {
     fun acceptsCompleteGattDatabaseWithoutRefresh() {
         assertEquals(
             GattCompatibilityAction.ACCEPT,
-            gattCompatibilityAction(required, required, cacheRefreshAttempted = false),
+            gattCompatibilityAction(required + button, required, optional, cacheRefreshAttempted = false),
         )
     }
 
@@ -36,11 +38,43 @@ class GattCompatibilityTest {
     fun refreshesEmptyGattDatabaseBeforeRejectingDevice() {
         assertEquals(
             GattCompatibilityAction.REFRESH_CACHE,
-            gattCompatibilityAction(emptySet(), required, cacheRefreshAttempted = false),
+            gattCompatibilityAction(emptySet(), required, optional, cacheRefreshAttempted = false),
         )
         assertEquals(
             GattCompatibilityAction.REJECT,
-            gattCompatibilityAction(emptySet(), required, cacheRefreshAttempted = true),
+            gattCompatibilityAction(emptySet(), required, optional, cacheRefreshAttempted = true),
+        )
+    }
+
+    @Test
+    fun refreshesOnceWhenOnlyAnOptionalCharacteristicIsMissing() {
+        assertEquals(
+            GattCompatibilityAction.REFRESH_CACHE,
+            gattCompatibilityAction(required, required, optional, cacheRefreshAttempted = false),
+        )
+    }
+
+    @Test
+    fun acceptsMissingOptionalCharacteristicAfterRefreshingOnce() {
+        assertEquals(
+            GattCompatibilityAction.ACCEPT,
+            gattCompatibilityAction(required, required, optional, cacheRefreshAttempted = true),
+        )
+    }
+
+    @Test
+    fun missingRequiredCharacteristicOutranksMissingOptionalOne() {
+        assertEquals(
+            GattCompatibilityAction.REJECT,
+            gattCompatibilityAction(emptySet(), required, optional, cacheRefreshAttempted = true),
+        )
+    }
+
+    @Test
+    fun acceptsWhenThereAreNoOptionalCharacteristicsToLookFor() {
+        assertEquals(
+            GattCompatibilityAction.ACCEPT,
+            gattCompatibilityAction(required, required, emptySet(), cacheRefreshAttempted = false),
         )
     }
 }

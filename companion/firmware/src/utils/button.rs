@@ -2,22 +2,15 @@ use esp_idf_hal::gpio::{AnyIOPin, Input, PinDriver, Pull};
 use esp_idf_hal::sys::EspError;
 use std::time::Instant;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PressType {
-    Short,
-    Long,
-}
-
 pub struct Button<'d> {
     pin: PinDriver<'d, AnyIOPin, Input>,
     last_state: bool,
     press_start: Option<Instant>,
     debounce_ms: u32,
-    long_press_ms: u64,
 }
 
 impl<'d> Button<'d> {
-    pub fn new(pin: AnyIOPin, debounce_ms: u32, long_press_ms: u64) -> Result<Self, EspError> {
+    pub fn new(pin: AnyIOPin, debounce_ms: u32) -> Result<Self, EspError> {
         let mut pin_driver = PinDriver::input(pin)?;
         pin_driver.set_pull(Pull::Up)?;
 
@@ -26,39 +19,28 @@ impl<'d> Button<'d> {
             last_state: true, // Pull-up: HIGH when not pressed
             press_start: None,
             debounce_ms,
-            long_press_ms,
         })
     }
 
-    /// Poll button state. Returns Some(PressType) on button release.
-    pub fn poll(&mut self) -> Option<PressType> {
+    /// Returns true once per press, on release.
+    pub fn poll(&mut self) -> bool {
         let current = self.pin.is_high();
+        let previous = std::mem::replace(&mut self.last_state, current);
 
         // Press start (HIGH -> LOW)
-        if self.last_state && !current {
+        if previous && !current {
             self.press_start = Some(Instant::now());
-            self.last_state = current;
-            return None;
+            return false;
         }
 
         // Press end (LOW -> HIGH)
-        if !self.last_state && current {
-            self.last_state = current;
+        if !previous && current {
             if let Some(start) = self.press_start.take() {
-                let duration_ms = start.elapsed().as_millis() as u64;
-                if duration_ms < self.debounce_ms as u64 {
-                    return None;
-                }
-                if duration_ms >= self.long_press_ms {
-                    return Some(PressType::Long);
-                } else {
-                    return Some(PressType::Short);
-                }
+                return start.elapsed().as_millis() >= self.debounce_ms as u128;
             }
         }
 
-        self.last_state = current;
-        None
+        false
     }
 }
 
@@ -68,10 +50,12 @@ pub struct Buttons<'d> {
 }
 
 impl<'d> Buttons<'d> {
+    /// The debounce threshold assumes the main loop's poll cadence; shortening the
+    /// loop period would make it start rejecting real presses.
     pub fn new(red_pin: AnyIOPin, white_pin: AnyIOPin) -> Result<Self, EspError> {
         Ok(Self {
-            red: Button::new(red_pin, 50, 1000)?,
-            white: Button::new(white_pin, 50, 1000)?,
+            red: Button::new(red_pin, 50)?,
+            white: Button::new(white_pin, 50)?,
         })
     }
 }

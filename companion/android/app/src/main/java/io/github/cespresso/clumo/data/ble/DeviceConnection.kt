@@ -29,7 +29,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
@@ -89,6 +91,9 @@ class DeviceConnection(
     private val _deviceName = MutableStateFlow(initialName)
     val deviceName = _deviceName.asStateFlow()
 
+    private val _buttonEvents = MutableSharedFlow<ButtonEvent>(extraBufferCapacity = 8)
+    val buttonEvents = _buttonEvents.asSharedFlow()
+
     val audioVisualizer = AudioVisualizerManager()
 
     // --- GATT operation queue ---
@@ -113,6 +118,7 @@ class DeviceConnection(
     private var reconnectAttempts = 0
     private var initialSync = false
     private var gattCacheRefreshAttempted = false
+    @Volatile private var forceCacheRefresh = false
     @Volatile private var userDisconnect = false
 
     private val bondReceiver = object : BroadcastReceiver() {
@@ -212,6 +218,16 @@ class DeviceConnection(
         startPhaseTimeout(CONNECT_TIMEOUT_MS, ConnectionFailure.ConnectionTimedOut, retry = true)
     }
 
+    /**
+     * Reconnect, re-enumerating the GATT database instead of trusting Android's cached
+     * copy. The automatic refresh only fires when a known characteristic is missing.
+     */
+    fun reconnectWithCacheRefresh() {
+        forceCacheRefresh = true
+        disconnect()
+        connect()
+    }
+
     @SuppressLint("MissingPermission")
     fun disconnect() {
         userDisconnect = true
@@ -306,6 +322,25 @@ class DeviceConnection(
     }.onFailure {
         Log.w(TAG, "$address: GATT cache refresh failed", it)
     }.getOrDefault(false)
+
+    /**
+     * Drop Android's cached GATT table and run discovery again. Returns false when the
+     * hidden refresh call is unavailable, leaving the caller to decide whether the stale
+     * cache is survivable.
+     */
+    private fun refreshCacheAndRediscover(g: BluetoothGatt): Boolean {
+        if (!refreshGattCache(g)) return false
+        startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+        scope.launch {
+            delay(GATT_CACHE_REFRESH_DELAY_MS)
+            if (g !== gatt) return@launch
+            val started = runCatching { g.discoverServices() }.getOrDefault(false)
+            if (!started) {
+                fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
+            }
+        }
+        return true
+    }
 
     // --- Queue machinery ---
 
@@ -551,6 +586,7 @@ class DeviceConnection(
                 BleUuids.MODE, BleUuids.DISPLAY, BleUuids.POMODORO, BleUuids.TIMER,
                 BleUuids.BRIGHTNESS, BleUuids.DEVICE_ID,
             )
+            val optional = setOf(BleUuids.BUTTON)
             val discovered = service?.characteristics
                 ?.mapTo(mutableSetOf()) { it.uuid }
                 .orEmpty()
@@ -559,30 +595,30 @@ class DeviceConnection(
                 "$address: discovered CLumo characteristics=" +
                     discovered.joinToString(),
             )
-            when (gattCompatibilityAction(discovered, required, gattCacheRefreshAttempted)) {
+            if (forceCacheRefresh) {
+                forceCacheRefresh = false
+                gattCacheRefreshAttempted = true
+                if (refreshCacheAndRediscover(g)) {
+                    Log.i(TAG, "$address: GATT cache refresh requested; rediscovering services")
+                    return
+                }
+                Log.w(TAG, "$address: requested GATT cache refresh is unavailable on this device")
+            }
+
+            when (gattCompatibilityAction(discovered, required, optional, gattCacheRefreshAttempted)) {
                 GattCompatibilityAction.ACCEPT -> Unit
                 GattCompatibilityAction.REFRESH_CACHE -> {
                     gattCacheRefreshAttempted = true
-                    if (!refreshGattCache(g)) {
+                    if (refreshCacheAndRediscover(g)) {
+                        Log.i(TAG, "$address: stale GATT cache cleared; rediscovering services")
+                        return
+                    }
+                    if (!discovered.containsAll(required)) {
                         Log.w(TAG, "$address: required CLumo characteristics are missing")
                         fail(ConnectionFailure.IncompatibleDevice, retry = false)
                         return
                     }
-                    Log.i(TAG, "$address: stale GATT cache cleared; rediscovering services")
-                    startPhaseTimeout(
-                        SYNC_TIMEOUT_MS,
-                        ConnectionFailure.ServiceDiscoveryFailed,
-                        retry = true,
-                    )
-                    scope.launch {
-                        delay(GATT_CACHE_REFRESH_DELAY_MS)
-                        if (g !== gatt) return@launch
-                        val started = runCatching { g.discoverServices() }.getOrDefault(false)
-                        if (!started) {
-                            fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
-                        }
-                    }
-                    return
+                    Log.w(TAG, "$address: GATT cache refresh unavailable; continuing without optional characteristics")
                 }
                 GattCompatibilityAction.REJECT -> {
                     Log.w(
@@ -600,6 +636,8 @@ class DeviceConnection(
             required.forEach { uuid ->
                 compatibleService.getCharacteristic(uuid)?.let { characteristics[uuid] = it }
             }
+            val hasButton = compatibleService.getCharacteristic(BleUuids.BUTTON)
+                ?.also { characteristics[BleUuids.BUTTON] = it } != null
 
             _connectionState.value = ConnectionState.Synchronizing
             _deviceId.value = null
@@ -614,6 +652,7 @@ class DeviceConnection(
             enqueue(GattOp.Subscribe(BleUuids.POMODORO))
             enqueue(GattOp.Subscribe(BleUuids.TIMER))
             enqueue(GattOp.Subscribe(BleUuids.BRIGHTNESS))
+            if (hasButton) enqueue(GattOp.Subscribe(BleUuids.BUTTON))
             readDeviceId()
             readMode()
             readPomodoroStatus()
@@ -664,6 +703,11 @@ class DeviceConnection(
             BleUuids.TIMER -> CountdownTimerStatus.parse(value)?.let { _timerStatus.value = it }
             BleUuids.BRIGHTNESS -> _brightness.value = value[0].toInt() and 0xFF
             BleUuids.DEVICE_ID -> _deviceId.value = formatDeviceId(value)
+            BleUuids.BUTTON -> ButtonEvent.parse(value)?.let {
+                if (!_buttonEvents.tryEmit(it)) {
+                    Log.w(TAG, "$address: button event dropped, buffer full")
+                }
+            }
         }
     }
 

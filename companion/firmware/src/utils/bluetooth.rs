@@ -6,8 +6,11 @@ use esp32_nimble::utilities::mutex::Mutex;
 use esp32_nimble::{uuid128, BLEAdvertisementData, BLECharacteristic, BLEDevice, NimbleProperties};
 
 use crate::countdown::{parse_timer_duration, DurationSetting};
-use crate::mode::MODE_COUNT;
+use crate::mode::{Mode, MODE_COUNT};
 use crate::utils::device_id::{self, DeviceId};
+
+pub const BUTTON_MAIN: u8 = 0;
+pub const BUTTON_SUB: u8 = 1;
 
 /// Pomodoro control commands received over BLE (POMODORO characteristic writes).
 #[derive(Debug, Clone, Copy)]
@@ -49,6 +52,7 @@ pub struct BluetoothManager {
     pomodoro_characteristic: Arc<Mutex<BLECharacteristic>>,
     timer_characteristic: Arc<Mutex<BLECharacteristic>>,
     brightness_characteristic: Arc<Mutex<BLECharacteristic>>,
+    button_characteristic: Arc<Mutex<BLECharacteristic>>,
 }
 
 impl BluetoothManager {
@@ -313,6 +317,17 @@ impl BluetoothManager {
                 }
             });
 
+        // --- Button Characteristic (NOTIFY only) ---
+        // MUST stay last: NimBLE assigns ATT handles in creation order, so a
+        // characteristic added ahead of an existing one shifts that one's handle and
+        // breaks every bonded client reconnecting from its cached GATT database.
+        // Encryption flags would not restrict subscribers here either, because NimBLE
+        // registers the auto-generated CCCD with plain READ|WRITE.
+        let button_characteristic = service.lock().create_characteristic(
+            uuid128!("681285a6-247f-48c6-80ad-68c3dce1858b"),
+            NimbleProperties::NOTIFY,
+        );
+
         // Configure and start advertising
         let advertising_name = format!("CLumo-{}", device_id::short(&device_id));
         ble_advertiser
@@ -333,6 +348,7 @@ impl BluetoothManager {
             pomodoro_characteristic,
             timer_characteristic,
             brightness_characteristic,
+            button_characteristic,
         })
     }
 
@@ -382,5 +398,14 @@ impl BluetoothManager {
     /// Update the Timer Characteristic value without notifying.
     pub fn set_timer_status(&self, status: &[u8; 5]) {
         self.timer_characteristic.lock().set_value(status);
+    }
+
+    /// Notify subscribers that a physical button was pressed in a mode the
+    /// firmware does not handle itself.
+    pub fn notify_button(&self, mode: Mode, button: u8) {
+        self.button_characteristic
+            .lock()
+            .set_value(&[mode as u8, button])
+            .notify();
     }
 }

@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use crate::handlers::{pomodoro, timer};
 use crate::mode::Mode;
-use crate::utils::bluetooth::{BleCommand, BluetoothManager};
+use crate::utils::bluetooth::{BleCommand, BluetoothManager, BUTTON_MAIN, BUTTON_SUB};
 use crate::utils::button::Buttons;
 use crate::utils::device_id;
 use crate::utils::led::Display;
@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ble_bonded = ble.has_bonded_peer();
     display.show(disconnected_icon(ble_bonded));
 
-    // Initialize buttons (red=GPIO3, white=GPIO4)
+    // main = red, sub = white
     let mut buttons = Buttons::new(peripherals.pins.gpio3.into(), peripherals.pins.gpio4.into())?;
     log::info!("Buttons initialized (red=GPIO3, white=GPIO4)");
 
@@ -88,8 +88,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Main loop
     loop {
-        let red_press = buttons.red.poll();
-        let white_press = buttons.white.poll();
+        let main_pressed = buttons.red.poll();
+        let sub_pressed = buttons.white.poll();
 
         // Drain BLE commands
         while let Some(cmd) = ble.take_command() {
@@ -167,14 +167,39 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
-        // Mode-specific button handling
-        if let Some(press) = red_press {
-            log::info!("[{}] Red: {:?}", mode_manager.current().name(), press);
-            handler.on_red_button(press);
-        }
-        if let Some(press) = white_press {
-            log::info!("[{}] White: {:?}", mode_manager.current().name(), press);
-            handler.on_white_button(press);
+        // Pomodoro and Timer own their state, so they handle their own presses
+        // and keep working while disconnected. Display and Visualizer content
+        // lives in the app, so their presses are forwarded and the app decides
+        // what they mean.
+        // The mode must be read after the BLE command drain: SwitchMode rebuilds
+        // `handler`, so an earlier read could dispatch a press to a handler for a
+        // different mode.
+        let mode = mode_manager.current();
+        for (pressed, is_main) in [(main_pressed, true), (sub_pressed, false)] {
+            if !pressed {
+                continue;
+            }
+            log::info!(
+                "[{}] {} button",
+                mode.name(),
+                if is_main { "Main" } else { "Sub" }
+            );
+            match mode {
+                Mode::Pomodoro | Mode::Timer => {
+                    if is_main {
+                        handler.on_main_button();
+                    } else {
+                        handler.on_sub_button();
+                    }
+                }
+                Mode::Display | Mode::Visualizer => {
+                    if client_ready {
+                        ble.notify_button(mode, if is_main { BUTTON_MAIN } else { BUTTON_SUB });
+                    } else {
+                        log::info!("Button press dropped: no synced client");
+                    }
+                }
+            }
         }
 
         // Display update

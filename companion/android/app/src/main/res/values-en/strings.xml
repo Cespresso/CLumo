@@ -43,6 +43,7 @@
     <!-- Device screen -->
     <string name="device_menu_rename">Rename</string>
     <string name="device_menu_settings">Settings</string>
+    <string name="device_menu_refresh_gatt">Refresh device info</string>
     <string name="device_menu_disconnect">Disconnect</string>
     <string name="device_error_banner">Connection lost</string>
     <string name="device_error_retry">Reconnect</string>
@@ -56,7 +57,7 @@
     <string name="connection_error_pairing">Pairing failed. Check Android Bluetooth settings and try again.</string>
     <string name="connection_error_services">Couldn’t load CLumo connection information.</string>
     <string name="connection_error_incompatible">This CLumo firmware is not supported. Update the device firmware.</string>
-    <string name="connection_error_sync">Couldn’t finish preparing CLumo.</string>
+    <string name="connection_error_sync">Couldn’t finish preparing CLumo. Try “Refresh device info” from the menu. If that doesn’t help, forget CLumo in Bluetooth settings and pair it again.</string>
     <string name="permission_dialog_title">Bluetooth permission required</string>
     <string name="permission_dialog_body">Allow Bluetooth in Android Settings to find and connect to nearby CLumo devices.</string>
     <string name="action_open_settings">Open Settings</string>

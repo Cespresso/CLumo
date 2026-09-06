@@ -1,6 +1,7 @@
 package io.github.cespresso.clumo.data.ble
 
 import io.github.cespresso.clumo.domain.ConnectionState
+import io.github.cespresso.clumo.domain.DeviceMode
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,9 +9,9 @@ import org.junit.Test
 class VisualizerStreamPolicyTest {
     @Test
     fun allowsVisualizerOnlyWhileReadyInConfirmedVisualizerMode() {
-        assertTrue(canRunAudioVisualizer(ConnectionState.Ready, BleUuids.MODE_VISUALIZER))
-        assertFalse(canRunAudioVisualizer(ConnectionState.Ready, BleUuids.MODE_DISPLAY))
-        assertFalse(canRunAudioVisualizer(ConnectionState.Synchronizing, BleUuids.MODE_VISUALIZER))
+        assertTrue(canRunAudioVisualizer(ConnectionState.Ready, DeviceMode.VISUALIZER))
+        assertFalse(canRunAudioVisualizer(ConnectionState.Ready, DeviceMode.DISPLAY))
+        assertFalse(canRunAudioVisualizer(ConnectionState.Synchronizing, DeviceMode.VISUALIZER))
         assertFalse(canRunAudioVisualizer(ConnectionState.Ready, null))
     }
 
@@ -19,19 +20,19 @@ class VisualizerStreamPolicyTest {
         assertTrue(
             shouldStopVisualizerForModeChange(
                 visualizerActive = true,
-                requestedMode = BleUuids.MODE_DISPLAY,
+                requestedMode = DeviceMode.DISPLAY,
             )
         )
         assertFalse(
             shouldStopVisualizerForModeChange(
                 visualizerActive = true,
-                requestedMode = BleUuids.MODE_VISUALIZER,
+                requestedMode = DeviceMode.VISUALIZER,
             )
         )
         assertFalse(
             shouldStopVisualizerForModeChange(
                 visualizerActive = false,
-                requestedMode = BleUuids.MODE_DISPLAY,
+                requestedMode = DeviceMode.DISPLAY,
             )
         )
     }

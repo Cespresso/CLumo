@@ -16,12 +16,12 @@ import io.github.cespresso.clumo.data.AppPreferences
 import io.github.cespresso.clumo.data.DeviceRegistry
 import io.github.cespresso.clumo.data.DeviceRepository
 import io.github.cespresso.clumo.data.PatternRepository
-import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.data.ble.ButtonEvent
 import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.data.steppedVisualizerSensitivity
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.resolvePrimaryTarget
 import io.github.cespresso.clumo.widget.ClumoControlWidget
 import io.github.cespresso.clumo.widget.ClumoPresenceWidget
@@ -308,8 +308,8 @@ class DeviceHubService : Service() {
     private suspend fun applyButtonEvent(connection: DeviceConnection, event: ButtonEvent) {
         try {
             when (event.mode) {
-                BleUuids.MODE_DISPLAY -> cycleDisplayPattern(connection, event.isMain)
-                BleUuids.MODE_VISUALIZER -> stepVisualizerSensitivity(event.isMain)
+                DeviceMode.DISPLAY -> cycleDisplayPattern(connection, event.isMain)
+                DeviceMode.VISUALIZER -> stepVisualizerSensitivity(event.isMain)
             }
         } catch (e: CancellationException) {
             throw e

@@ -1,5 +1,6 @@
 package io.github.cespresso.clumo.data.ble
 
+import io.github.cespresso.clumo.domain.DeviceMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -11,11 +12,11 @@ class ButtonEventTest {
     @Test
     fun decodesDisplayAndVisualizerPresses() {
         assertEquals(
-            ButtonEvent(BleUuids.MODE_DISPLAY, BleUuids.BUTTON_MAIN),
+            ButtonEvent(DeviceMode.DISPLAY, BleUuids.BUTTON_MAIN),
             ButtonEvent.parse(byteArrayOf(2, 0)),
         )
         assertEquals(
-            ButtonEvent(BleUuids.MODE_VISUALIZER, BleUuids.BUTTON_SUB),
+            ButtonEvent(DeviceMode.VISUALIZER, BleUuids.BUTTON_SUB),
             ButtonEvent.parse(byteArrayOf(3, 1)),
         )
         assertTrue(ButtonEvent.parse(byteArrayOf(2, 0))!!.isMain)
@@ -43,7 +44,7 @@ class ButtonEventTest {
     @Test
     fun ignoresTrailingBytes() {
         assertEquals(
-            ButtonEvent(BleUuids.MODE_DISPLAY, BleUuids.BUTTON_MAIN),
+            ButtonEvent(DeviceMode.DISPLAY, BleUuids.BUTTON_MAIN),
             ButtonEvent.parse(byteArrayOf(2, 0, 7)),
         )
     }

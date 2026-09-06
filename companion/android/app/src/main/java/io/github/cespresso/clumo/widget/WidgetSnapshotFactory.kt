@@ -1,7 +1,6 @@
 package io.github.cespresso.clumo.widget
 
 import androidx.compose.ui.graphics.toArgb
-import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.design.ContentTone
 import io.github.cespresso.clumo.design.accentContentToneFor
@@ -9,6 +8,7 @@ import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
 
@@ -105,18 +105,18 @@ object WidgetSnapshotFactory {
         }
 
         return when (mode) {
-            BleUuids.MODE_TIMER -> timerState(
+            DeviceMode.TIMER -> timerState(
                 base.copy(family = WidgetFamily.Timer),
                 timer ?: CountdownTimerStatus.DEFAULT,
                 alias,
             )
-            BleUuids.MODE_DISPLAY -> base.copy(
+            DeviceMode.DISPLAY -> base.copy(
                 headline = WidgetHeadline.MyDisplay,
                 subtitle = WidgetSubtitle.PatternName,
                 subtitleText = patternName.orEmpty(),
                 faceBits = patternBits,
             )
-            BleUuids.MODE_VISUALIZER -> base.copy(
+            DeviceMode.VISUALIZER -> base.copy(
                 headline = WidgetHeadline.Visualizer,
                 subtitle = WidgetSubtitle.ReactingToSound,
                 faceBits = VISUALIZER_GLYPH,

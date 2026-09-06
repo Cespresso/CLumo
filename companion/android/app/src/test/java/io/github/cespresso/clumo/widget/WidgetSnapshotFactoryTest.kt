@@ -1,10 +1,10 @@
 package io.github.cespresso.clumo.widget
 
-import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.domain.RgbColor
@@ -21,7 +21,7 @@ class WidgetSnapshotFactoryTest {
         target: Device? = this.target,
         block: WidgetBlock? = null,
         connectionState: ConnectionState = ConnectionState.Ready,
-        mode: Int? = BleUuids.MODE_POMODORO,
+        mode: Int? = DeviceMode.POMODORO,
         pomodoro: PomodoroStatus? = PomodoroStatus.DEFAULT,
         timer: CountdownTimerStatus? = CountdownTimerStatus.DEFAULT,
         patternName: String? = "ハート",
@@ -64,9 +64,9 @@ class WidgetSnapshotFactoryTest {
     @Test
     fun familyDistinguishesPomodoroFromTimerWithoutInspectingButtons() {
         assertEquals(WidgetFamily.Pomodoro, create().family)
-        assertEquals(WidgetFamily.Timer, create(mode = BleUuids.MODE_TIMER).family)
-        assertEquals(WidgetFamily.Neither, create(mode = BleUuids.MODE_DISPLAY).family)
-        assertEquals(WidgetFamily.Neither, create(mode = BleUuids.MODE_VISUALIZER).family)
+        assertEquals(WidgetFamily.Timer, create(mode = DeviceMode.TIMER).family)
+        assertEquals(WidgetFamily.Neither, create(mode = DeviceMode.DISPLAY).family)
+        assertEquals(WidgetFamily.Neither, create(mode = DeviceMode.VISUALIZER).family)
     }
 
     @Test
@@ -99,7 +99,7 @@ class WidgetSnapshotFactoryTest {
     @Test
     fun state4_timerRunningOffersCancelNotReset() {
         val t = CountdownTimerStatus(CountdownTimerStatus.STATE_RUNNING, 120, 5, 0)
-        val s = create(mode = BleUuids.MODE_TIMER, timer = t)
+        val s = create(mode = DeviceMode.TIMER, timer = t)
         assertEquals(WidgetHeadline.Timer, s.headline)
         assertEquals(WidgetFamily.Timer, s.family)
         assertEquals(FaceBits.fromCountdownTimer(t), s.faceBits)
@@ -109,7 +109,7 @@ class WidgetSnapshotFactoryTest {
     @Test
     fun state5_timerPausedDimsTheFace() {
         val t = CountdownTimerStatus(CountdownTimerStatus.STATE_PAUSED, 120, 5, 0)
-        val s = create(mode = BleUuids.MODE_TIMER, timer = t)
+        val s = create(mode = DeviceMode.TIMER, timer = t)
         assertEquals(WidgetHeadline.Paused, s.headline)
         assertTrue(s.faceDimmed)
         assertEquals(listOf(WidgetAction.Start, WidgetAction.Cancel), s.actions)
@@ -118,7 +118,7 @@ class WidgetSnapshotFactoryTest {
     @Test
     fun state6_timerIdleShowsConfiguredDuration() {
         val t = CountdownTimerStatus(CountdownTimerStatus.STATE_IDLE, 90, 1, 30)
-        val s = create(mode = BleUuids.MODE_TIMER, timer = t)
+        val s = create(mode = DeviceMode.TIMER, timer = t)
         assertEquals(WidgetHeadline.TimerIdle, s.headline)
         assertEquals(WidgetSubtitle.TimerDuration, s.subtitle)
         assertEquals(1, s.subtitleArgA)
@@ -130,7 +130,7 @@ class WidgetSnapshotFactoryTest {
     @Test
     fun state6_timerCompletedShowsSameAsIdle() {
         val t = CountdownTimerStatus(CountdownTimerStatus.STATE_COMPLETED, 0, 1, 30)
-        val s = create(mode = BleUuids.MODE_TIMER, timer = t)
+        val s = create(mode = DeviceMode.TIMER, timer = t)
         assertEquals(WidgetHeadline.TimerIdle, s.headline)
         assertEquals(WidgetSubtitle.TimerDuration, s.subtitle)
         assertEquals(1, s.subtitleArgA)
@@ -142,7 +142,7 @@ class WidgetSnapshotFactoryTest {
 
     @Test
     fun timerNullFallsBackToDefaultAndShowsIdle() {
-        val s = create(mode = BleUuids.MODE_TIMER, timer = null)
+        val s = create(mode = DeviceMode.TIMER, timer = null)
         assertEquals(WidgetHeadline.TimerIdle, s.headline)
         assertEquals(WidgetSubtitle.TimerDuration, s.subtitle)
         assertEquals(5, s.subtitleArgA)
@@ -155,7 +155,7 @@ class WidgetSnapshotFactoryTest {
     @Test
     fun state7_displayModeMirrorsThePatternAndOffersNoButtons() {
         val bits = FaceBits.fromBitsString("1".repeat(8) + "0".repeat(56))
-        val s = create(mode = BleUuids.MODE_DISPLAY, patternBits = bits)
+        val s = create(mode = DeviceMode.DISPLAY, patternBits = bits)
         assertEquals(WidgetHeadline.MyDisplay, s.headline)
         assertEquals(WidgetSubtitle.PatternName, s.subtitle)
         assertEquals("ハート", s.subtitleText)
@@ -165,7 +165,7 @@ class WidgetSnapshotFactoryTest {
 
     @Test
     fun state8_visualizerUsesTheFixedGlyph() {
-        val s = create(mode = BleUuids.MODE_VISUALIZER)
+        val s = create(mode = DeviceMode.VISUALIZER)
         assertEquals(WidgetHeadline.Visualizer, s.headline)
         assertEquals(VISUALIZER_GLYPH, s.faceBits)
         assertTrue(s.actions.isEmpty())
@@ -258,12 +258,12 @@ class WidgetSnapshotFactoryTest {
     fun everyStateCarriesTheAliasBesideWhateverTheSubtitleHolds() {
         // The subtitle is polymorphic; the alias is not, which is what lets the presence
         // widget name the device in states where the subtitle is something else entirely.
-        assertEquals("つくえ", create(mode = BleUuids.MODE_DISPLAY).alias)
-        assertEquals("ハート", create(mode = BleUuids.MODE_DISPLAY).subtitleText)
-        assertEquals("つくえ", create(mode = BleUuids.MODE_VISUALIZER).alias)
+        assertEquals("つくえ", create(mode = DeviceMode.DISPLAY).alias)
+        assertEquals("ハート", create(mode = DeviceMode.DISPLAY).subtitleText)
+        assertEquals("つくえ", create(mode = DeviceMode.VISUALIZER).alias)
         assertEquals("つくえ", create(pomodoro = PomodoroStatus.DEFAULT).alias)
         assertEquals("つくえ", create(pomodoro = running).alias)
-        assertEquals("つくえ", create(mode = BleUuids.MODE_TIMER).alias)
+        assertEquals("つくえ", create(mode = DeviceMode.TIMER).alias)
         assertEquals("つくえ", create(connectionState = ConnectionState.Connecting).alias)
         assertEquals("つくえ", create(connectionState = ConnectionState.Error).alias)
         assertEquals("つくえ", create(connectionState = ConnectionState.Disconnected).alias)

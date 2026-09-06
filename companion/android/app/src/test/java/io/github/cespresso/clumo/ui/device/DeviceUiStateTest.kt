@@ -1,11 +1,11 @@
 package io.github.cespresso.clumo.ui.device
 
-import io.github.cespresso.clumo.data.ble.BleUuids
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import org.junit.Assert.assertEquals
@@ -22,7 +22,7 @@ class DeviceUiStateTest {
         state: ConnectionState = ConnectionState.Ready,
         failure: ConnectionFailure? = null,
         reconnectAttempt: Int = 0,
-        currentMode: Int? = BleUuids.MODE_POMODORO,
+        currentMode: Int? = DeviceMode.POMODORO,
         pendingMode: Int? = null,
         pomodoro: PomodoroStatus? = null,
         timer: CountdownTimerStatus? = null,
@@ -113,22 +113,22 @@ class DeviceUiStateTest {
 
     @Test
     fun anUnconfirmedTapWinsOverTheModeTheDeviceLastReported() {
-        val s = create(currentMode = BleUuids.MODE_POMODORO, pendingMode = BleUuids.MODE_TIMER)
-        assertEquals(BleUuids.MODE_TIMER, s.effectiveMode)
+        val s = create(currentMode = DeviceMode.POMODORO, pendingMode = DeviceMode.TIMER)
+        assertEquals(DeviceMode.TIMER, s.effectiveMode)
     }
 
     @Test
     fun theDeviceModeIsUsedOnceNothingIsPending() {
         assertEquals(
-            BleUuids.MODE_VISUALIZER,
-            create(currentMode = BleUuids.MODE_VISUALIZER, pendingMode = null).effectiveMode,
+            DeviceMode.VISUALIZER,
+            create(currentMode = DeviceMode.VISUALIZER, pendingMode = null).effectiveMode,
         )
     }
 
     @Test
     fun pomodoroIsTheModeShownBeforeTheDeviceHasAnswered() {
         assertEquals(
-            BleUuids.MODE_POMODORO,
+            DeviceMode.POMODORO,
             create(currentMode = null, pendingMode = null).effectiveMode,
         )
     }
@@ -289,7 +289,7 @@ class DeviceUiStateTest {
         val status = PomodoroStatus(PomodoroStatus.STATE_RUNNING, PomodoroStatus.PHASE_WORK, 300, 10, 5)
         assertEquals(
             FaceBits.fromPomodoro(status),
-            create(currentMode = BleUuids.MODE_POMODORO, pomodoro = status).mirrorBits,
+            create(currentMode = DeviceMode.POMODORO, pomodoro = status).mirrorBits,
         )
     }
 
@@ -298,7 +298,7 @@ class DeviceUiStateTest {
         val bits = "1".repeat(8) + "0".repeat(56)
         assertEquals(
             FaceBits.fromBitsString(bits),
-            create(currentMode = BleUuids.MODE_DISPLAY, selectedPatternBits = bits).mirrorBits,
+            create(currentMode = DeviceMode.DISPLAY, selectedPatternBits = bits).mirrorBits,
         )
     }
 
@@ -307,11 +307,11 @@ class DeviceUiStateTest {
         val done = CountdownTimerStatus(CountdownTimerStatus.STATE_COMPLETED, 0, 5, 0)
         assertEquals(
             -1L,
-            create(currentMode = BleUuids.MODE_TIMER, timer = done, timerBlinkOn = true).mirrorBits,
+            create(currentMode = DeviceMode.TIMER, timer = done, timerBlinkOn = true).mirrorBits,
         )
         assertEquals(
             FaceBits.EMPTY,
-            create(currentMode = BleUuids.MODE_TIMER, timer = done, timerBlinkOn = false).mirrorBits,
+            create(currentMode = DeviceMode.TIMER, timer = done, timerBlinkOn = false).mirrorBits,
         )
     }
 
@@ -319,13 +319,13 @@ class DeviceUiStateTest {
     fun theMirrorFollowsTheDeviceWhileTheSelectorFollowsTheTap() {
         val running = PomodoroStatus(PomodoroStatus.STATE_RUNNING, PomodoroStatus.PHASE_WORK, 300, 10, 5)
         val s = create(
-            currentMode = BleUuids.MODE_POMODORO,
-            pendingMode = BleUuids.MODE_DISPLAY,
+            currentMode = DeviceMode.POMODORO,
+            pendingMode = DeviceMode.DISPLAY,
             pomodoro = running,
             selectedPatternBits = "1".repeat(64),
         )
         // The segment moves at once so the tap feels answered...
-        assertEquals(BleUuids.MODE_DISPLAY, s.effectiveMode)
+        assertEquals(DeviceMode.DISPLAY, s.effectiveMode)
         // ...but the face still reports the pomodoro the LED is actually showing.
         assertEquals(FaceBits.fromPomodoro(running), s.mirrorBits)
     }
@@ -335,11 +335,11 @@ class DeviceUiStateTest {
         val columns = intArrayOf(8, 7, 6, 5, 4, 3, 2, 1)
         assertEquals(
             FaceBits.EMPTY,
-            create(currentMode = BleUuids.MODE_VISUALIZER, columns = columns, visualizerActive = false).mirrorBits,
+            create(currentMode = DeviceMode.VISUALIZER, columns = columns, visualizerActive = false).mirrorBits,
         )
         assertEquals(
             FaceBits.fromColumns(columns),
-            create(currentMode = BleUuids.MODE_VISUALIZER, columns = columns, visualizerActive = true).mirrorBits,
+            create(currentMode = DeviceMode.VISUALIZER, columns = columns, visualizerActive = true).mirrorBits,
         )
     }
 

@@ -1,5 +1,7 @@
 package io.github.cespresso.clumo.data.ble
 
+import io.github.cespresso.clumo.domain.DeviceMode
+
 /**
  * A physical button press the firmware forwarded instead of handling itself.
  * [mode] is the mode the press happened in, so it stays correct even if the
@@ -14,7 +16,7 @@ data class ButtonEvent(val mode: Int, val button: Int) {
             if (value.size < 2) return null
             val mode = value[0].toInt() and 0xFF
             val button = value[1].toInt() and 0xFF
-            if (mode != BleUuids.MODE_DISPLAY && mode != BleUuids.MODE_VISUALIZER) return null
+            if (mode != DeviceMode.DISPLAY && mode != DeviceMode.VISUALIZER) return null
             if (button != BleUuids.BUTTON_MAIN && button != BleUuids.BUTTON_SUB) return null
             return ButtonEvent(mode, button)
         }

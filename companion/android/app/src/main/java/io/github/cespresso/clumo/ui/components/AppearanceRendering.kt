@@ -9,6 +9,11 @@ enum class ContentTone { Dark, Light }
 
 enum class ConnectionRing { None, Pulse, Error }
 
+enum class DeviceVisualLayer(val zIndex: Float) {
+    ConnectionRing(0f),
+    PhysicalDevice(1f),
+}
+
 fun contentToneFor(color: RgbColor): ContentTone =
     if (relativeLuminance(color) > 0.179f) ContentTone.Dark else ContentTone.Light
 

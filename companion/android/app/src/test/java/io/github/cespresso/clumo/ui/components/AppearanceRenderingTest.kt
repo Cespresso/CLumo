@@ -3,6 +3,7 @@ package io.github.cespresso.clumo.ui.components
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.RgbColor
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppearanceRenderingTest {
@@ -37,6 +38,13 @@ class AppearanceRenderingTest {
         assertEquals(ConnectionRing.Error, connectionRingFor(ConnectionState.Error))
         assertEquals(ConnectionRing.None, connectionRingFor(ConnectionState.Ready))
         assertEquals(ConnectionRing.None, connectionRingFor(ConnectionState.Disconnected))
+    }
+
+    @Test
+    fun connectionRingIsPaintedBehindThePhysicalDevice() {
+        assertTrue(
+            DeviceVisualLayer.ConnectionRing.zIndex < DeviceVisualLayer.PhysicalDevice.zIndex,
+        )
     }
 
     private fun color(hex: String): RgbColor = requireNotNull(RgbColor.parseOrNull(hex))

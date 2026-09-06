@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
@@ -254,37 +255,53 @@ fun ClumoDevice(
     glow: Boolean = true,
     shadowElevation: Dp = 0.dp,
 ) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        DeviceKnobs(faceSize = size, appearance = appearance)
-        Box(
+    Box(modifier = modifier) {
+        ConnectionRingCanvas(
+            state = connectionState,
+            size = size + 8.dp,
             modifier = Modifier
-                .size(size + 8.dp)
-                .offset(y = (-4).dp),
-            contentAlignment = Alignment.Center,
+                .align(Alignment.BottomCenter)
+                .offset(y = (-4).dp)
+                .zIndex(DeviceVisualLayer.ConnectionRing.zIndex),
+        )
+        Column(
+            modifier = Modifier.zIndex(DeviceVisualLayer.PhysicalDevice.zIndex),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            ConnectionRingCanvas(state = connectionState, size = size + 8.dp)
-            DeviceFace(
-                bits = bits,
-                frameColor = appearance.enclosureColor.toComposeColor(),
-                ledColor = appearance.ledColor.toComposeColor(),
-                size = size,
-                frameOutline = if (
-                    contentToneFor(appearance.enclosureColor) == ContentTone.Dark
-                ) {
-                    ClumoColors.OutlineBorder
-                } else {
-                    null
-                },
-                litAlpha = litAlpha,
-                glow = glow,
-                shadowElevation = shadowElevation,
-            )
+            DeviceKnobs(faceSize = size, appearance = appearance)
+            Box(
+                modifier = Modifier
+                    .size(size + 8.dp)
+                    .offset(y = (-4).dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                DeviceFace(
+                    bits = bits,
+                    frameColor = appearance.enclosureColor.toComposeColor(),
+                    ledColor = appearance.ledColor.toComposeColor(),
+                    size = size,
+                    frameOutline = if (
+                        contentToneFor(appearance.enclosureColor) == ContentTone.Dark
+                    ) {
+                        ClumoColors.OutlineBorder
+                    } else {
+                        null
+                    },
+                    litAlpha = litAlpha,
+                    glow = glow,
+                    shadowElevation = shadowElevation,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun ConnectionRingCanvas(state: ConnectionState?, size: Dp) {
+private fun ConnectionRingCanvas(
+    state: ConnectionState?,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
     val ring = state?.let(::connectionRingFor) ?: ConnectionRing.None
     if (ring == ConnectionRing.None) return
     val ringColor = if (ring == ConnectionRing.Pulse) {
@@ -299,7 +316,7 @@ private fun ConnectionRingCanvas(state: ConnectionState?, size: Dp) {
     } else {
         ClumoColors.Coral
     }
-    Canvas(modifier = Modifier.size(size)) {
+    Canvas(modifier = modifier.size(size)) {
         drawRoundRect(
             color = ringColor,
             cornerRadius = CornerRadius(size.toPx() * 42f / 188f),

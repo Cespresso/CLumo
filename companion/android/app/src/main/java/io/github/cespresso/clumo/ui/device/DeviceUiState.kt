@@ -10,6 +10,7 @@ import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
+import io.github.cespresso.clumo.domain.effectiveModeOf
 import io.github.cespresso.clumo.domain.mirrorBitsFor
 import io.github.cespresso.clumo.domain.resolveAppearance
 
@@ -91,9 +92,6 @@ data class DeviceUiState(
  * Pomodoro. Exposed because the screen needs it before the state is built, to decide whether
  * a completed timer should be blinking.
  */
-fun effectiveModeOf(pendingMode: Int?, currentMode: Int?): Int =
-    pendingMode ?: currentMode ?: DeviceMode.POMODORO
-
 object DeviceUiStateFactory {
 
     /** The five failures no amount of retrying from this screen can clear. */

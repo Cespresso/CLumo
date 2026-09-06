@@ -100,10 +100,11 @@ starred in the device list.
 |---|---|---|
 | "Find CLumo" finds nothing | The device runs the standalone firmware, which has no Bluetooth | Flash the companion firmware from the installer |
 | "This CLumo firmware is not supported" | The companion firmware is out of date | Flash the latest companion firmware from the installer |
-| "Couldn't finish preparing CLumo" on a device that used to work | The device was reflashed and lost its side of the pairing | Forget CLumo in Android's Bluetooth settings, then connect again |
+| "Connection lost", over and over, on a device that used to work | The device was reflashed and lost its side of the pairing | Forget CLumo in Android's Bluetooth settings, then connect again |
 
 A reflashed device introduces itself as a new one, but the app recognises it as the
-same CLumo, so its name, colors, and main-device setting carry over. A device you no
+same CLumo, so its name, colors, and main-device setting carry over. Enter the passkey
+within 30 seconds; after that the device gives up on the pairing and you start over. A device you no
 longer use can be removed from the list with "Remove this device" in the device
 screen's menu. The app cannot remove the Android pairing, so forget it in Bluetooth
 settings separately.

@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import kotlinx.coroutines.CoroutineScope
@@ -535,7 +536,7 @@ class DeviceConnection(
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     phaseTimeoutJob?.cancel()
-                    _deviceName.value = g.device.name ?: _deviceName.value
+                    _deviceName.value = DeviceNaming.ownName(g.device.name) ?: _deviceName.value
                     if (g.device.bondState == BluetoothDevice.BOND_BONDED) {
                         _connectionState.value = ConnectionState.Connected
                         val started = runCatching { g.discoverServices() }.getOrDefault(false)

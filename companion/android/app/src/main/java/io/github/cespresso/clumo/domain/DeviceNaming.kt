@@ -10,6 +10,16 @@ object DeviceNaming {
     /** A device that has told us nothing yet is still called something. */
     const val DEFAULT = "CLumo"
 
+    private const val PREFIX = "CLumo-"
+
+    /**
+     * A name is CLumo's own only if it looks like one. Firmware that leaves the GAP
+     * name at NimBLE's default, so a phone that read it over GATT stored "nimble" against
+     * the bond and hands that back on every reconnect. Dropping it lets the name derived
+     * from the device id stand instead, without the user having to pair again.
+     */
+    fun ownName(raw: String?): String? = raw?.takeIf { it.startsWith(PREFIX) }
+
     /**
      * The name the user gave it, else the name it advertises, else the name it was stored
      * under. [scannedName] outranks [fallbackName] because it comes from the live link, and

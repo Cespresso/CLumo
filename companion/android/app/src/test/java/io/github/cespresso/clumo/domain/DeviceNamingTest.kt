@@ -1,9 +1,17 @@
 package io.github.cespresso.clumo.domain
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class DeviceNamingTest {
+
+    @Test
+    fun aNameThatIsNotCLumosOwnIsDropped() {
+        assertEquals("CLumo-4E6F", DeviceNaming.ownName("CLumo-4E6F"))
+        assertNull(DeviceNaming.ownName("nimble"))
+        assertNull(DeviceNaming.ownName(null))
+    }
 
     @Test
     fun theNameTheUserGaveItWins() {

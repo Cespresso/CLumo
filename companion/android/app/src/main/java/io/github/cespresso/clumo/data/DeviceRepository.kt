@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import io.github.cespresso.clumo.domain.Device
+import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.mergeKnownDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,7 +53,9 @@ class DeviceRepository(context: Context) {
                 Device(
                     id = obj.getString("id"),
                     address = obj.getString("address"),
-                    name = obj.optString("name").takeIf { it.isNotEmpty() },
+                    // Filtered on the way in, so a "nimble" stored by an older build stops
+                    // being this device's name without the user having to pair again.
+                    name = DeviceNaming.ownName(obj.optString("name")),
                     lastSeenAt = obj.optLong("lastSeenAt"),
                 )
             }

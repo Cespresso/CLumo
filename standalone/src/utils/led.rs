@@ -48,26 +48,25 @@ impl<'d> Display<'d> {
     #[allow(dead_code)]
     pub fn set_intensity(&mut self, level: u8) {
         let level = level.min(0x0F);
-        self.spi.write(&[0x0A, level]).unwrap();
+        if let Err(e) = self.spi.write(&[0x0A, level]) {
+            log::warn!("Display: failed to set intensity: {:?}", e);
+        }
     }
 
     /// Write 8 bytes of row data to the LED matrix.
-    /// Falls back to a default smiley face if data is shorter than 8 bytes.
-    /// Data is rotated 180° to compensate for the upside-down mounted MAX7219.
-    pub fn show(&mut self, data: &[u8]) {
-        if data.len() >= 8 {
-            for addr in 1..=8u8 {
-                // Rotate 180°: reverse row order and reverse bits in each row
-                self.spi
-                    .write(&[addr, data[(8 - addr) as usize].reverse_bits()])
-                    .unwrap();
-            }
-        } else {
-            let default: [u8; 8] = [0x00, 0x66, 0x66, 0x00, 0x00, 0x42, 0x3C, 0x00];
-            for addr in 1..=8u8 {
-                self.spi
-                    .write(&[addr, default[(8 - addr) as usize].reverse_bits()])
-                    .unwrap();
+    /// Data is rotated 180 degrees to compensate for the upside-down mounted MAX7219.
+    ///
+    /// Stops at the first failed row: UART logging blocks the main loop, so
+    /// logging all eight would cost more than the frames it loses.
+    pub fn show(&mut self, data: &[u8; 8]) {
+        for addr in 1..=8u8 {
+            // Rotate 180 degrees: reverse row order and reverse bits in each row
+            if let Err(e) = self
+                .spi
+                .write(&[addr, data[(8 - addr) as usize].reverse_bits()])
+            {
+                log::warn!("Display: failed to write row {}: {:?}", addr, e);
+                return;
             }
         }
     }

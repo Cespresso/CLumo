@@ -2,6 +2,7 @@ package io.github.cespresso.clumo.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import io.github.cespresso.clumo.domain.Device
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -70,6 +71,6 @@ class DeviceRepository(context: Context) {
                 },
             )
         }
-        prefs.edit().putString(KEY_DEVICES, array.toString()).apply()
+        prefs.edit { putString(KEY_DEVICES, array.toString()) }
     }
 }

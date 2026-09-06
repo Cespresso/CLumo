@@ -69,6 +69,7 @@ import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 fun PatternEditorScreen(
     viewModel: PatternEditorViewModel,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val existing = ui.existing
@@ -80,9 +81,12 @@ fun PatternEditorScreen(
     var saveOpen by remember { mutableStateOf(false) }
     var deleteOpen by remember { mutableStateOf(false) }
 
+    // The collector outlives every recomposition, so it has to read onBack at
+    // call time rather than close over the instance it saw first.
+    val currentOnBack by rememberUpdatedState(onBack)
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
-            if (event == PatternEditorEvent.Close) onBack()
+            if (event == PatternEditorEvent.Close) currentOnBack()
         }
     }
 
@@ -94,7 +98,7 @@ fun PatternEditorScreen(
 
     val title = existing?.name ?: stringResource(R.string.editor_new_title)
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         // Header
         Row(
             modifier = Modifier

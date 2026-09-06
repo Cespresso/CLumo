@@ -21,14 +21,13 @@ internal fun ReadyGate(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Box {
+    Box(modifier = modifier) {
         Box(
             modifier = Modifier
                 .alpha(if (ready) 1f else 0.45f)
                 .then(
                     if (ready) Modifier else Modifier.clearAndSetSemantics { disabled() },
-                )
-                .then(modifier),
+                ),
         ) {
             content()
         }

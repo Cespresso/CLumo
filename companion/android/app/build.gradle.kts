@@ -58,9 +58,7 @@ android {
     }
 
     lint {
-        // Together these leave only newly introduced issues failing the build.
         warningsAsErrors = true
-        baseline = file("lint-baseline.xml")
         // Fires on the targetSdk above, which is held back on purpose.
         disable += "OldTargetApi"
         // Reaches for the network on every run.

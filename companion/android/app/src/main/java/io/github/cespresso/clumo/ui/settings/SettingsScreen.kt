@@ -1,7 +1,6 @@
 package io.github.cespresso.clumo.ui.settings
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import io.github.cespresso.clumo.BuildConfig
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
@@ -44,10 +44,11 @@ private const val GITHUB_URL = "https://github.com/Cespresso/CLumo"
 fun SettingsScreen(
     onBack: () -> Unit,
     onOpenLicenses: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         ScreenHeader(title = stringResource(R.string.settings_title), onBack = onBack)
 
         Column(
@@ -81,7 +82,7 @@ fun SettingsScreen(
                     label = stringResource(R.string.settings_github),
                     chevron = true,
                     onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, GITHUB_URL.toUri()))
                     },
                 )
             }
@@ -193,8 +194,8 @@ private val LICENSE_ENTRIES = listOf(
 )
 
 @Composable
-fun LicensesScreen(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize()) {
+fun LicensesScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxSize()) {
         ScreenHeader(title = stringResource(R.string.licenses_title), onBack = onBack)
 
         Column(

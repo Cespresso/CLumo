@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">CLumo</string>
 
     <!-- Onboarding -->
     <string name="ob1_title">Welcome to CLumo</string>
@@ -89,8 +88,6 @@
     <!-- Mode help -->
     <string name="mode_help_open">Open %1$s help</string>
     <string name="mode_help_device_display">Device display</string>
-    <string name="mode_help_coral_button">Coral button</string>
-    <string name="mode_help_white_button">White button</string>
     <string name="mode_help_pomodoro_summary">Alternates focused work sessions with short breaks.</string>
     <string name="mode_help_pomodoro_display">The 64 lights turn off gradually from top-left to bottom-right as time runs out.</string>
     <string name="mode_help_timer_summary">Counts down from the time you set.</string>
@@ -198,7 +195,6 @@
     <string name="settings_title">Settings</string>
     <string name="settings_version">Version</string>
     <string name="settings_licenses">Open-source licenses</string>
-    <string name="settings_github" translatable="false">GitHub</string>
     <string name="licenses_title">Open-source licenses</string>
 
     <!-- Default pattern names -->
@@ -209,7 +205,6 @@
 
     <!-- Foreground service notification -->
     <string name="notif_channel_name">Device connection</string>
-    <string name="notif_title" translatable="false">CLumo</string>
     <string name="notif_idle">Idle</string>
     <string name="notif_connected">Connected to a device</string>
 

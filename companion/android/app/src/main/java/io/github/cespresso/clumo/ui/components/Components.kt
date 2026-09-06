@@ -644,10 +644,11 @@ fun ClumoSlider(
 fun ClumoToggleSwitch(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val accents = LocalClumoAccents.current
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(width = 48.dp, height = 28.dp)
             .clip(RoundedCornerShape(999.dp))
             .background(if (checked) accents.accent else ClumoColors.SwitchOff)
@@ -717,9 +718,10 @@ fun NameInputDialog(
     placeholder: String?,
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     var text by remember { mutableStateOf(initialValue) }
-    DialogCard(onDismiss = onDismiss) {
+    DialogCard(onDismiss = onDismiss, modifier = modifier) {
         DialogTitle(title)
         ClumoTextField(
             value = text,
@@ -753,10 +755,11 @@ fun ClumoActionDialog(
     body: String,
     confirmText: String,
     onConfirm: () -> Unit,
-    dismissText: String = stringResource(R.string.dialog_cancel),
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    dismissText: String = stringResource(R.string.dialog_cancel),
 ) {
-    DialogCard(onDismiss = onDismiss) {
+    DialogCard(onDismiss = onDismiss, modifier = modifier) {
         DialogTitle(title)
         DialogBody(body)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -784,9 +787,10 @@ fun ClumoInfoDialog(
     title: String,
     body: String,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
     acknowledgeText: String = stringResource(R.string.dialog_acknowledge),
 ) {
-    DialogCard(onDismiss = onDismiss) {
+    DialogCard(onDismiss = onDismiss, modifier = modifier) {
         DialogTitle(title)
         DialogBody(body)
         CtaPillButton(
@@ -803,11 +807,12 @@ fun ClumoInfoDialog(
 @Composable
 private fun DialogCard(
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Column(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(26.dp))
                 .background(ClumoColors.White)

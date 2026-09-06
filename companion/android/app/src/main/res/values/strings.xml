@@ -89,8 +89,6 @@
     <!-- Mode help -->
     <string name="mode_help_open">%1$sの説明を開く</string>
     <string name="mode_help_device_display">本体の表示</string>
-    <string name="mode_help_coral_button">コーラルボタン</string>
-    <string name="mode_help_white_button">ホワイトボタン</string>
     <string name="mode_help_pomodoro_summary">集中する「作業」と短い「休憩」を交互に繰り返すモードです。</string>
     <string name="mode_help_pomodoro_display">残り時間に合わせて、64個の光が左上から右下へ少しずつ減ります。</string>
     <string name="mode_help_timer_summary">設定した時間をカウントダウンするモードです。</string>

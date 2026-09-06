@@ -12,6 +12,7 @@ import android.graphics.RectF
 import android.graphics.Shader
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
+import androidx.core.graphics.createBitmap
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.design.ContentTone
 import io.github.cespresso.clumo.design.contentToneFor
@@ -105,7 +106,7 @@ internal fun renderDeviceBitmap(
         else -> WidgetPalette.RingIdle.toArgb()
     }
     val layout = deviceArtLayout(facePx.toFloat(), ringed = ringed)
-    val bitmap = Bitmap.createBitmap(
+    val bitmap = createBitmap(
         layout.widthPx.toInt().coerceAtLeast(1),
         layout.heightPx.toInt().coerceAtLeast(1),
         Bitmap.Config.ARGB_8888,

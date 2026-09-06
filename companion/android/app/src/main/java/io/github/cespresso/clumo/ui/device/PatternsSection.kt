@@ -45,7 +45,7 @@ internal fun PatternsSection(
     appearance: DeviceAppearance,
     onSelect: (Pattern) -> Unit,
     onAddNew: () -> Unit,
-    onEditSelected: () -> Unit,
+    onEdit: () -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // 3-column grid of saved patterns plus the "add new" tile.
@@ -79,7 +79,7 @@ internal fun PatternsSection(
 
         OutlinePillButton(
             text = stringResource(R.string.patterns_edit_selected),
-            onClick = onEditSelected,
+            onClick = onEdit,
             fontSize = 14.sp,
             verticalPadding = 13.dp,
             modifier = Modifier

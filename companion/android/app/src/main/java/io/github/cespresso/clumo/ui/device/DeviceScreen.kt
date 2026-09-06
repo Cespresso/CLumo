@@ -1,7 +1,6 @@
 package io.github.cespresso.clumo.ui.device
 
 import android.content.Intent
-import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
@@ -60,6 +60,7 @@ fun DeviceScreen(
     onOpenSettings: () -> Unit,
     onOpenAppearance: (deviceId: String) -> Unit,
     onOpenEditor: (patternId: String?) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
@@ -102,7 +103,7 @@ fun DeviceScreen(
             DeviceFailureAction.OpenAppSettings -> settingsLauncher.launch(
                 Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:${context.packageName}"),
+                    "package:${context.packageName}".toUri(),
                 ),
             )
             DeviceFailureAction.OpenBluetoothSettings -> settingsLauncher.launch(
@@ -117,7 +118,7 @@ fun DeviceScreen(
     var renameOpen by remember { mutableStateOf(false) }
     var modeHelpOpen by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             DeviceTopBar(
                 title = displayName,
@@ -263,7 +264,7 @@ fun DeviceScreen(
                                     appearance = appearance,
                                     onSelect = viewModel::onPatternApplied,
                                     onAddNew = { onOpenEditor(null) },
-                                    onEditSelected = {
+                                    onEdit = {
                                         selectedPatternId?.let { onOpenEditor(it) }
                                     },
                                 )
@@ -284,7 +285,7 @@ fun DeviceScreen(
 
                                 DeviceMode.POMODORO -> PomodoroSection(
                                     status = pomodoroStatus,
-                                    onDurationsChanged = viewModel::onPomodoroDurationsChanged,
+                                    onDurationsChange = viewModel::onPomodoroDurationsChanged,
                                     onStart = viewModel::onPomodoroStart,
                                     onPause = viewModel::onPomodoroPause,
                                     onReset = viewModel::onPomodoroReset,
@@ -293,7 +294,7 @@ fun DeviceScreen(
                                 DeviceMode.TIMER -> CountdownTimerSection(
                                     status = timerStatus,
                                     completionBlinkOn = timerBlinkOn,
-                                    onDurationChanged = viewModel::onTimerDurationChanged,
+                                    onDurationChange = viewModel::onTimerDurationChanged,
                                     onStart = viewModel::onTimerStart,
                                     onPause = viewModel::onTimerPause,
                                     onCancel = viewModel::onTimerCancel,

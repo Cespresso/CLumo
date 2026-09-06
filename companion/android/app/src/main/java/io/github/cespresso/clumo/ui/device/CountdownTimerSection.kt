@@ -39,7 +39,7 @@ import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 internal fun CountdownTimerSection(
     status: CountdownTimerStatus,
     completionBlinkOn: Boolean,
-    onDurationChanged: (Int, Int) -> Unit,
+    onDurationChange: (Int, Int) -> Unit,
     onStart: () -> Unit,
     onPause: () -> Unit,
     onCancel: () -> Unit,
@@ -118,12 +118,12 @@ internal fun CountdownTimerSection(
                     onDecrement = {
                         val next = minutes - 1
                         minutes = next
-                        onDurationChanged(next, seconds)
+                        onDurationChange(next, seconds)
                     },
                     onIncrement = {
                         val next = minutes + 1
                         minutes = next
-                        onDurationChanged(next, seconds)
+                        onDurationChange(next, seconds)
                     },
                 )
                 TimerStepperRow(
@@ -134,12 +134,12 @@ internal fun CountdownTimerSection(
                     onDecrement = {
                         val next = seconds - 1
                         seconds = next
-                        onDurationChanged(minutes, next)
+                        onDurationChange(minutes, next)
                     },
                     onIncrement = {
                         val next = seconds + 1
                         seconds = next
-                        onDurationChanged(minutes, next)
+                        onDurationChange(minutes, next)
                     },
                 )
             }

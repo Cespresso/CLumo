@@ -38,6 +38,9 @@ import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
+// onVisualizerSensitivityChangeFinished carries the name of the Material3 Slider
+// callback it is handed to, so the correspondence survives a reader jumping between them.
+@Suppress("ktlint:compose:parameter-naming")
 @Composable
 internal fun VisualizerSection(
     visualizerActive: Boolean,

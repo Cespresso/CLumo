@@ -81,21 +81,21 @@ internal fun BoxScope.DeviceMenu(
             .padding(8.dp),
     ) {
         @Composable
-        fun entry(label: String, color: Color, enabled: Boolean = true, action: () -> Unit) {
+        fun Entry(label: String, color: Color, enabled: Boolean = true, action: () -> Unit) {
             MenuItem(label = label, color = color, enabled = enabled) {
                 onDismiss()
                 action()
             }
         }
 
-        entry(stringResource(R.string.device_menu_rename), ClumoColors.Text, action = onRename)
-        entry(
+        Entry(stringResource(R.string.device_menu_rename), ClumoColors.Text, action = onRename)
+        Entry(
             label = stringResource(R.string.device_menu_appearance),
             color = ClumoColors.Text,
             enabled = identified,
             action = onAppearance,
         )
-        entry(
+        Entry(
             label = stringResource(
                 if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary,
             ),
@@ -103,13 +103,13 @@ internal fun BoxScope.DeviceMenu(
             enabled = identified,
             action = onTogglePrimary,
         )
-        entry(stringResource(R.string.device_menu_settings), ClumoColors.Text, action = onSettings)
-        entry(
+        Entry(stringResource(R.string.device_menu_settings), ClumoColors.Text, action = onSettings)
+        Entry(
             stringResource(R.string.device_menu_refresh_gatt),
             ClumoColors.Text,
             action = onRefreshGatt,
         )
-        entry(stringResource(R.string.device_menu_disconnect), ClumoColors.Coral, action = onDisconnect)
+        Entry(stringResource(R.string.device_menu_disconnect), ClumoColors.Coral, action = onDisconnect)
     }
 }
 

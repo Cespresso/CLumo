@@ -32,10 +32,11 @@ import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 fun ScreenHeader(
     title: String,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(
                 WindowInsets.safeDrawing.only(

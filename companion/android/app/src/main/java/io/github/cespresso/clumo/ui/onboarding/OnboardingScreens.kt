@@ -62,9 +62,9 @@ private val BT_FACE_BITS = FaceBits.fromBitsString(
 )
 
 @Composable
-fun OnboardingWelcomeScreen(onStart: () -> Unit) {
+fun OnboardingWelcomeScreen(onStart: () -> Unit, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .safeDrawingPadding()
             .padding(horizontal = 26.dp)
@@ -121,6 +121,7 @@ fun OnboardingWelcomeScreen(onStart: () -> Unit) {
 fun OnboardingBluetoothScreen(
     preferences: AppPreferences,
     onDone: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scope = rememberCoroutineScope()
     var permissionDenied by remember { mutableStateOf(false) }
@@ -139,7 +140,7 @@ fun OnboardingBluetoothScreen(
     }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxSize()
             .safeDrawingPadding()
             .padding(horizontal = 26.dp)

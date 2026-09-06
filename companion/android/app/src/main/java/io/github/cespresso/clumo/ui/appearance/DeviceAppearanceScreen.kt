@@ -75,12 +75,13 @@ private const val PREVIEW_BITS =
 fun DeviceAppearanceScreen(
     viewModel: DeviceAppearanceViewModel,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
     val appearance = ui.appearance
     var editingPart by remember { mutableStateOf<AppearancePart?>(null) }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = modifier.fillMaxSize()) {
         ScreenHeader(title = stringResource(R.string.appearance_title), onBack = onBack)
         Column(
             modifier = Modifier

@@ -37,7 +37,7 @@ import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 @Composable
 internal fun PomodoroSection(
     status: PomodoroStatus,
-    onDurationsChanged: (Int, Int) -> Unit,
+    onDurationsChange: (Int, Int) -> Unit,
     onStart: () -> Unit,
     onPause: () -> Unit,
     onReset: () -> Unit,
@@ -50,7 +50,7 @@ internal fun PomodoroSection(
     }
 
     fun pushDurations() {
-        onDurationsChanged(workMin, breakMin)
+        onDurationsChange(workMin, breakMin)
     }
 
     Column(

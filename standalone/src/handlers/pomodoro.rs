@@ -69,23 +69,8 @@ impl PomodoroHandler {
         }
     }
 
-    fn is_work_phase(&self) -> bool {
-        matches!(
-            self.phase,
-            TimerPhase::Working
-                | TimerPhase::Paused {
-                    from: ActivePhase::Working
-                }
-        )
-    }
-
-    /// Work drains the matrix; break fills it.
     fn filled_pixels(&self) -> u8 {
-        lit_pixels(
-            self.elapsed_ms,
-            self.active_duration_ms(),
-            self.is_work_phase(),
-        )
+        lit_pixels(self.elapsed_ms, self.active_duration_ms())
     }
 
     fn start_notification(&mut self) {

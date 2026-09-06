@@ -12,7 +12,7 @@ to flash (NVS), so the device comes back in the same mode after a power cycle.
 | # | Mode | Description |
 |---|----------|-------------|
 | 0 | Pet | A tiny digital pet. It gets hungry over time, changes mood, blinks, and occasionally looks around. |
-| 1 | Pomodoro | 25-minute work / 5-minute break timer. The 64 pixels drain as work time passes, then fill during the break. Blinks on each phase change. |
+| 1 | Pomodoro | 25-minute work / 5-minute break timer. The 64 pixels drain from the top-left toward the bottom-right as a phase passes, break included. Blinks on each phase change. |
 | 2 | Dice | Slot-style dice roll with a deceleration animation that lands on a random 1-6. |
 
 ## Button controls

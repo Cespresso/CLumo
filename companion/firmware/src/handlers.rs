@@ -60,7 +60,7 @@ impl Runtime {
     pub fn new(nvs_partition: EspDefaultNvsPartition) -> Result<Self, EspError> {
         Ok(Self {
             pomodoro: pomodoro::PomodoroHandler::new(nvs_partition.clone())?,
-            timer: timer::TimerHandler::new(),
+            timer: timer::TimerHandler::new(nvs_partition.clone())?,
             display: display::DisplayHandler::new(nvs_partition)?,
             visualizer: visualizer::VisualizerHandler::new(),
         })

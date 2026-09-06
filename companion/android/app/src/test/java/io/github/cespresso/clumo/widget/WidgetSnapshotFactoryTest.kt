@@ -301,4 +301,24 @@ class WidgetSnapshotFactoryTest {
                 .faceBits,
         )
     }
+
+    @Test
+    fun anUnknownModeRendersPomodoroWithoutAlsoCallingItBackgrounded() {
+        // mode is null until the first snapshot lands; the `else` arm draws Pomodoro, so
+        // flagging it as running elsewhere would badge the very thing being shown.
+        val s = create(mode = null, pomodoro = running)
+        assertEquals(WidgetHeadline.PomodoroWorking, s.headline)
+        assertFalse(s.backgroundTimerActive)
+    }
+
+    @Test
+    fun backgroundTimerActiveFlagsAPomodoroOrTimerRunningInAnotherMode() {
+        assertTrue(create(mode = DeviceMode.DISPLAY, pomodoro = running).backgroundTimerActive)
+        assertFalse(create(mode = DeviceMode.POMODORO, pomodoro = running).backgroundTimerActive)
+        assertFalse(create(mode = DeviceMode.DISPLAY).backgroundTimerActive)
+
+        val runningTimer = CountdownTimerStatus(CountdownTimerStatus.STATE_RUNNING, 30, 1, 0)
+        assertTrue(create(mode = DeviceMode.VISUALIZER, timer = runningTimer).backgroundTimerActive)
+        assertFalse(create(mode = DeviceMode.TIMER, timer = runningTimer).backgroundTimerActive)
+    }
 }

@@ -96,6 +96,8 @@ data class WidgetSnapshot(
     val faceBits: Long = FaceBits.EMPTY,
     val faceDimmed: Boolean = false,
     val facePlaceholder: Boolean = false,
+    /** Covers a Pomodoro as well as a Timer. */
+    val backgroundTimerActive: Boolean = false,
     val family: WidgetFamily = WidgetFamily.Neither,
     val actions: List<WidgetAction> = emptyList(),
     val enclosureArgb: Int,

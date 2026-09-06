@@ -86,7 +86,7 @@ internal fun PomodoroSection(
 
         // Remaining time
         Text(
-            text = "%02d:%02d".format(status.remainingSec / 60, status.remainingSec % 60),
+            text = status.formatRemaining(),
             fontSize = 52.sp,
             fontWeight = FontWeight.ExtraBold,
             fontFamily = RoundedFontFamily,

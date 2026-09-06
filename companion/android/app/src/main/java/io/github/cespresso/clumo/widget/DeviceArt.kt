@@ -126,7 +126,22 @@ internal fun renderDeviceBitmap(
         dimmed = snapshot.faceDimmed,
         placeholder = snapshot.facePlaceholder,
     )
+    if (connected && snapshot.backgroundTimerActive) {
+        drawBackgroundTimerBadge(canvas, paint, layout, snapshot.ledArgb)
+    }
     return bitmap
+}
+
+/** Marks a Pomodoro or Timer counting down in a mode other than the one being shown. */
+private fun drawBackgroundTimerBadge(canvas: Canvas, paint: Paint, layout: DeviceArtLayout, argb: Int) {
+    val radius = layout.facePx * 0.045f
+    val cx = layout.faceLeft + layout.facePx - layout.frameCorner - radius - layout.facePx * 0.02f
+    val cy = layout.faceTop + layout.facePx * 0.07f
+    paint.reset()
+    paint.isAntiAlias = true
+    paint.style = Paint.Style.FILL
+    paint.color = argb
+    canvas.drawCircle(cx, cy, radius, paint)
 }
 
 private fun drawRing(canvas: Canvas, paint: Paint, layout: DeviceArtLayout, argb: Int) {

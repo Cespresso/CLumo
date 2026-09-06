@@ -6,7 +6,9 @@ use std::time::Instant;
 use crate::display_commit_policy::should_auto_commit_display;
 use crate::handlers::Runtime;
 use crate::mode::Mode;
-use crate::utils::bluetooth::{BleCommand, BluetoothManager, BUTTON_MAIN, BUTTON_SUB};
+use crate::utils::bluetooth::{
+    BleCommand, BluetoothManager, PomodoroCommand, TimerCommand, BUTTON_MAIN, BUTTON_SUB,
+};
 use crate::utils::button::Buttons;
 use crate::utils::device_id;
 use crate::utils::led::Display;
@@ -181,18 +183,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         ble.notify_brightness_change(mode_manager.brightness());
                     }
                 },
-                BleCommand::Pomodoro(timer_cmd) => {
-                    if mode_manager.current() == Mode::Pomodoro {
-                        runtime.on_pomodoro_command(timer_cmd);
+                BleCommand::Pomodoro(cmd) => {
+                    // Reset is accepted from any mode: Pomodoro keeps running in the
+                    // background while another mode is shown, so stopping it can't
+                    // require switching back first. Everything else stays mode-scoped.
+                    if mode_manager.current() == Mode::Pomodoro
+                        || matches!(cmd, PomodoroCommand::Reset)
+                    {
+                        runtime.on_pomodoro_command(cmd);
                     } else {
-                        // Pomodoro commands are ignored outside Pomodoro mode; restore
-                        // the status value so READ stays accurate.
+                        // Ignored outside Pomodoro mode; restore the status value so
+                        // READ stays accurate.
                         ble.set_pomodoro_status(&runtime.pomodoro_status());
                     }
                 }
-                BleCommand::Timer(timer_cmd) => {
-                    if mode_manager.current() == Mode::Timer {
-                        runtime.on_timer_command(timer_cmd);
+                BleCommand::Timer(cmd) => {
+                    if mode_manager.current() == Mode::Timer || matches!(cmd, TimerCommand::Cancel)
+                    {
+                        runtime.on_timer_command(cmd);
                     } else {
                         ble.set_timer_status(&runtime.timer_status());
                     }

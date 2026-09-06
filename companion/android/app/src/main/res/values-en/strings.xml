@@ -109,6 +109,8 @@
     <string name="pomodoro_start">Start</string>
     <string name="pomodoro_pause">Pause</string>
     <string name="pomodoro_reset">Reset</string>
+    <string name="pomodoro_running_elsewhere">Pomodoro is running (%1$s left)</string>
+    <string name="pomodoro_paused_elsewhere">Pomodoro is paused (%1$s left)</string>
 
     <!-- Timer -->
     <string name="timer_state_idle">Ready</string>
@@ -121,6 +123,9 @@
     <string name="timer_pause">Pause</string>
     <string name="timer_resume">Resume</string>
     <string name="timer_cancel">Cancel</string>
+    <string name="timer_running_elsewhere">Timer is running (%1$s left)</string>
+    <string name="timer_paused_elsewhere">Timer is paused (%1$s left)</string>
+    <string name="timer_completed_elsewhere">Timer finished</string>
 
     <!-- Patterns -->
     <string name="patterns_add_new">New display</string>

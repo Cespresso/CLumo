@@ -41,6 +41,7 @@ import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.DeviceMode
+import io.github.cespresso.clumo.domain.backgroundCountdownsFor
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.ClumoSlider
@@ -147,6 +148,19 @@ fun DeviceScreen(
                         action = ui.bannerAction.takeIf { state == ConnectionState.Error },
                         onAction = { runFailureAction(ui.bannerAction) },
                     )
+                }
+
+                if (ready) {
+                    backgroundCountdownsFor(effectiveMode, pomodoroStatus, timerStatus)
+                        .forEach { countdown ->
+                            BackgroundCountdownBanner(
+                                countdown = countdown,
+                                pomodoro = pomodoroStatus,
+                                timer = timerStatus,
+                                onPomodoroReset = viewModel::onPomodoroReset,
+                                onTimerCancel = viewModel::onTimerCancel,
+                            )
+                        }
                 }
 
                 // Device face: the live LED mirror

@@ -16,6 +16,7 @@ internal fun encodeWidgetSnapshot(snapshot: WidgetSnapshot): String = JSONObject
     put("faceBits", snapshot.faceBits.toString())
     put("faceDimmed", snapshot.faceDimmed)
     put("facePlaceholder", snapshot.facePlaceholder)
+    put("backgroundTimerActive", snapshot.backgroundTimerActive)
     put("family", snapshot.family.name)
     put("actions", JSONArray().apply { snapshot.actions.forEach { put(it.name) } })
     put("enclosureArgb", snapshot.enclosureArgb)
@@ -42,6 +43,7 @@ internal fun decodeWidgetSnapshot(raw: String?): WidgetSnapshot? {
             faceBits = root.getString("faceBits").toLong(),
             faceDimmed = root.optBoolean("faceDimmed"),
             facePlaceholder = root.optBoolean("facePlaceholder"),
+            backgroundTimerActive = root.optBoolean("backgroundTimerActive"),
             family = enumValueOf<WidgetFamily>(root.getString("family")),
             actions = List(actionsArray.length()) {
                 enumValueOf<WidgetAction>(actionsArray.getString(it))

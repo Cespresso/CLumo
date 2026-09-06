@@ -18,6 +18,8 @@ data class PomodoroStatus(
     /** Total seconds of the current phase, used by the pixel-countdown mirror. */
     val phaseTotalSec: Int get() = (if (isWorkPhase) workMin else breakMin) * 60
 
+    fun formatRemaining(): String = "%02d:%02d".format(remainingSec / 60, remainingSec % 60)
+
     companion object {
         const val STATE_IDLE = 0
         const val STATE_RUNNING = 1

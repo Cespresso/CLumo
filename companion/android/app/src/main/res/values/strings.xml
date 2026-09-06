@@ -109,6 +109,8 @@
     <string name="pomodoro_start">開始</string>
     <string name="pomodoro_pause">一時停止</string>
     <string name="pomodoro_reset">リセット</string>
+    <string name="pomodoro_running_elsewhere">ポモドーロが実行中（残り %1$s）</string>
+    <string name="pomodoro_paused_elsewhere">ポモドーロが一時停止中（残り %1$s）</string>
 
     <!-- Timer -->
     <string name="timer_state_idle">準備完了</string>
@@ -121,6 +123,9 @@
     <string name="timer_pause">一時停止</string>
     <string name="timer_resume">再開</string>
     <string name="timer_cancel">キャンセル</string>
+    <string name="timer_running_elsewhere">タイマーが実行中（残り %1$s）</string>
+    <string name="timer_paused_elsewhere">タイマーが一時停止中（残り %1$s）</string>
+    <string name="timer_completed_elsewhere">タイマーが完了しました</string>
 
     <!-- Patterns -->
     <string name="patterns_add_new">あたらしい表示</string>

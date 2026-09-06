@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
+import io.github.cespresso.clumo.domain.BackgroundCountdown
+import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 
@@ -116,4 +119,82 @@ internal fun ConnectionTroubleBanner(
             }
         }
     }
+}
+
+@Composable
+private fun BackgroundCountdownBanner(message: String, actionLabel: String, onAction: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 22.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(ClumoColors.White)
+            .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(18.dp))
+            .padding(start = 14.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(LocalClumoAccents.current.accent),
+        )
+        Text(
+            text = message,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = RoundedFontFamily,
+            color = ClumoColors.Text,
+            modifier = Modifier.weight(1f),
+        )
+        val accents = LocalClumoAccents.current
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(accents.cta)
+                .clickable(onClick = onAction)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        ) {
+            Text(
+                text = actionLabel,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = RoundedFontFamily,
+                color = accents.onCta,
+            )
+        }
+    }
+}
+
+@Composable
+internal fun BackgroundCountdownBanner(
+    countdown: BackgroundCountdown,
+    pomodoro: PomodoroStatus,
+    timer: CountdownTimerStatus,
+    onPomodoroReset: () -> Unit,
+    onTimerCancel: () -> Unit,
+) {
+    val pomodoroBanner = countdown == BackgroundCountdown.PomodoroRunning ||
+        countdown == BackgroundCountdown.PomodoroPaused
+    BackgroundCountdownBanner(
+        message = when (countdown) {
+            BackgroundCountdown.PomodoroRunning ->
+                stringResource(R.string.pomodoro_running_elsewhere, pomodoro.formatRemaining())
+            BackgroundCountdown.PomodoroPaused ->
+                stringResource(R.string.pomodoro_paused_elsewhere, pomodoro.formatRemaining())
+            BackgroundCountdown.TimerRunning ->
+                stringResource(R.string.timer_running_elsewhere, timer.formatRemaining())
+            BackgroundCountdown.TimerPaused ->
+                stringResource(R.string.timer_paused_elsewhere, timer.formatRemaining())
+            BackgroundCountdown.TimerCompleted ->
+                stringResource(R.string.timer_completed_elsewhere)
+        },
+        actionLabel = if (pomodoroBanner) {
+            stringResource(R.string.pomodoro_reset)
+        } else {
+            stringResource(R.string.timer_cancel)
+        },
+        onAction = if (pomodoroBanner) onPomodoroReset else onTimerCancel,
+    )
 }

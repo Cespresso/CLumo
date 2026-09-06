@@ -18,6 +18,9 @@ class WidgetSnapshotJsonTest {
         faceBits = -1L shl 24,
         faceDimmed = true,
         facePlaceholder = false,
+        // Non-default on purpose: a field left at its default round-trips even when the
+        // encoder drops it entirely.
+        backgroundTimerActive = true,
         family = WidgetFamily.Pomodoro,
         actions = listOf(WidgetAction.Pause, WidgetAction.Reset),
         enclosureArgb = 0xFF7E9E7C.toInt(),

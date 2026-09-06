@@ -201,7 +201,10 @@ Companion apps are expected to treat main as "next / increase" and sub as
 | `[0x10, work_min, break_min]` | Set durations in minutes. Both values are clamped to `1..=99` and persisted in NVS. Applied immediately when idle; otherwise the new values take effect from the next reset or phase change. |
 
 Every accepted command results in a status notify, including no-ops as a status
-echo. Pomodoro commands are processed only while the device is in Pomodoro mode.
+echo. Pomodoro keeps running in the background while another mode is shown, so
+Reset is accepted from any mode; Start, Pause, and Set durations are processed
+only while the device is in Pomodoro mode (ignored, with a status echo,
+otherwise).
 
 ### POMODORO status (read value and notify payload, 6 bytes)
 
@@ -227,7 +230,10 @@ full-screen blink, switches phase, and keeps running.
 | `[0x10, minutes, seconds]` | Set duration while idle. Minutes and seconds must each be `0..=59`, and `00:00` is rejected. While running, paused, or completed, the setting is left unchanged and the current status is echoed. Accepted values are persisted in NVS. |
 
 Every accepted command results in a status notify, including no-ops as a status
-echo. Timer commands are processed only while the device is in Timer mode.
+echo. The timer keeps running in the background while another mode is shown, so
+Cancel is accepted from any mode; Start, Pause, and Set duration are processed
+only while the device is in Timer mode (ignored, with a status echo,
+otherwise).
 
 ### TIMER status (read value and notify payload, 5 bytes)
 

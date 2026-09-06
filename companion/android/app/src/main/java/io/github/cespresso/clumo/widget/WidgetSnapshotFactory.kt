@@ -11,6 +11,7 @@ import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
+import io.github.cespresso.clumo.domain.backgroundCountdownsFor
 
 /** A condition a widget cannot recover from on its own. */
 enum class WidgetBlock {
@@ -105,27 +106,35 @@ object WidgetSnapshotFactory {
             )
         }
 
-        return when (mode) {
+        // An unknown mode falls through to the Pomodoro layout below, so the flag has to be
+        // resolved against the mode actually rendered, not the raw one.
+        val renderedMode = if (mode in DeviceMode.ORDER) mode else DeviceMode.POMODORO
+        val withBackgroundFlag = base.copy(
+            backgroundTimerActive =
+                backgroundCountdownsFor(renderedMode, pomodoro, timer).isNotEmpty(),
+        )
+
+        return when (renderedMode) {
             DeviceMode.TIMER -> timerState(
-                base.copy(family = WidgetFamily.Timer),
+                withBackgroundFlag.copy(family = WidgetFamily.Timer),
                 timer ?: CountdownTimerStatus.DEFAULT,
                 alias,
             )
             // The frame follows the device, as on the app screen, but the name stays local:
             // the device has no concept of a pattern name.
-            DeviceMode.DISPLAY -> base.copy(
+            DeviceMode.DISPLAY -> withBackgroundFlag.copy(
                 headline = WidgetHeadline.MyDisplay,
                 subtitle = WidgetSubtitle.PatternName,
                 subtitleText = patternName.orEmpty(),
                 faceBits = committedFrame ?: patternBits,
             )
-            DeviceMode.VISUALIZER -> base.copy(
+            DeviceMode.VISUALIZER -> withBackgroundFlag.copy(
                 headline = WidgetHeadline.Visualizer,
                 subtitle = WidgetSubtitle.ReactingToSound,
                 faceBits = VISUALIZER_GLYPH,
             )
             else -> pomodoroState(
-                base.copy(family = WidgetFamily.Pomodoro),
+                withBackgroundFlag.copy(family = WidgetFamily.Pomodoro),
                 pomodoro ?: PomodoroStatus.DEFAULT,
                 alias,
             )

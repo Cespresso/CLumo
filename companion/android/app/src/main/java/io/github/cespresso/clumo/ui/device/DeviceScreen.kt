@@ -59,10 +59,12 @@ import io.github.cespresso.clumo.data.ble.DeviceConnection
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.DeviceAppearance
 import io.github.cespresso.clumo.domain.Pattern
 import io.github.cespresso.clumo.domain.PomodoroStatus
 import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.ClumoSlider
+import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.ButtonRoleTags
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
@@ -73,8 +75,10 @@ import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.NameInputDialog
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.components.SegmentedControl
-import io.github.cespresso.clumo.ui.components.connectionFrameColor
+import io.github.cespresso.clumo.ui.components.ContentTone
+import io.github.cespresso.clumo.ui.components.contentToneFor
 import io.github.cespresso.clumo.ui.components.dashedBorder
+import io.github.cespresso.clumo.ui.components.toComposeColor
 import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlin.math.roundToInt
@@ -159,6 +163,7 @@ fun DeviceScreen(
     val scannedName = connection?.deviceName?.collectAsState()?.value
 
     val aliases by service.preferences.aliases.collectAsState(initial = emptyMap())
+    val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
     val visualizerSensitivity by service.preferences.visualizerSensitivity.collectAsState(initial = 0.6f)
     val automaticLowVolumeBoost by service.preferences.automaticLowVolumeBoost.collectAsState(initial = false)
     val patterns by service.patterns.patterns.collectAsState(initial = emptyList())
@@ -167,6 +172,7 @@ fun DeviceScreen(
 
     val knownDevice = service.repository.getByAddress(address)
     val stableId = deviceId ?: knownDevice?.id
+    val appearance = resolveAppearance(stableId, appearances)
     val displayName = stableId?.let { aliases[it] }
         ?: scannedName
         ?: knownDevice?.fallbackName
@@ -216,7 +222,6 @@ fun DeviceScreen(
         effectiveMode == BleUuids.MODE_TIMER && timerStatus?.isCompleted == true
     )
     val mirrorBits = liveMirrorBits(connection, selectedPattern?.bits)
-    val frameColor = connectionFrameColor(state)
     val stateLabel = when (state) {
         ConnectionState.Connecting -> stringResource(R.string.state_connecting)
         ConnectionState.Reconnecting -> stringResource(R.string.state_reconnecting, reconnectAttempt)
@@ -411,13 +416,15 @@ fun DeviceScreen(
                 ) {
                     ClumoDevice(
                         bits = mirrorBits,
-                        frameColor = frameColor,
                         size = 188.dp,
+                        appearance = appearance,
+                        connectionState = state,
                         litAlpha = litAlpha,
                         shadowElevation = 14.dp,
                     )
                     ButtonRoleTags(
                         mode = effectiveMode,
+                        appearance = appearance,
                         modifier = Modifier.alpha(if (ready) 1f else 0.45f),
                     )
                     Text(
@@ -493,6 +500,7 @@ fun DeviceScreen(
                                 BleUuids.MODE_DISPLAY -> PatternsSection(
                                     patterns = patterns,
                                     selectedId = selectedPatternId,
+                                    appearance = appearance,
                                     onSelect = { pattern ->
                                         scope.launch { service.patterns.select(pattern.id) }
                                     },
@@ -1033,6 +1041,7 @@ private fun StepperButton(text: String, enabled: Boolean, onClick: () -> Unit) {
 private fun PatternsSection(
     patterns: List<Pattern>,
     selectedId: String?,
+    appearance: DeviceAppearance,
     onSelect: (Pattern) -> Unit,
     onAddNew: () -> Unit,
     onEditSelected: () -> Unit,
@@ -1055,6 +1064,7 @@ private fun PatternsSection(
                             PatternTile(
                                 pattern = pattern,
                                 selected = pattern.id == selectedId,
+                                appearance = appearance,
                                 onClick = { onSelect(pattern) },
                             )
                         }
@@ -1083,6 +1093,7 @@ private fun PatternsSection(
 private fun PatternTile(
     pattern: Pattern,
     selected: Boolean,
+    appearance: DeviceAppearance,
     onClick: () -> Unit,
 ) {
     Column(
@@ -1099,7 +1110,15 @@ private fun PatternTile(
         Box {
             DeviceFace(
                 bits = FaceBits.fromBitsString(pattern.bits),
-                frameColor = if (selected) ClumoColors.Sage else ClumoColors.Gray,
+                frameColor = appearance.enclosureColor.toComposeColor(),
+                ledColor = appearance.ledColor.toComposeColor(),
+                frameOutline = when {
+                    selected -> ClumoColors.Text
+                    contentToneFor(appearance.enclosureColor) == ContentTone.Dark -> {
+                        ClumoColors.OutlineBorder
+                    }
+                    else -> null
+                },
                 size = 96.dp,
                 frameCorner = 22.dp,
                 framePadding = 12.dp,

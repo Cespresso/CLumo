@@ -38,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -53,10 +54,14 @@ import io.github.cespresso.clumo.service.DeviceHubService
 import io.github.cespresso.clumo.ui.components.CoralPillButton
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
 import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
+import io.github.cespresso.clumo.ui.components.ContentTone
 import io.github.cespresso.clumo.ui.components.DeviceFace
 import io.github.cespresso.clumo.ui.components.FaceBits
 import io.github.cespresso.clumo.ui.components.NameInputDialog
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
+import io.github.cespresso.clumo.ui.components.toComposeColor
+import io.github.cespresso.clumo.ui.components.contentToneFor
+import io.github.cespresso.clumo.ui.appearance.resolveAppearance
 import io.github.cespresso.clumo.ui.theme.ClumoColors
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import java.util.UUID
@@ -76,6 +81,10 @@ fun PatternEditorScreen(
     val patterns by service.patterns.patterns.collectAsState(initial = emptyList())
     val existing = patternId?.let { id -> patterns.firstOrNull { it.id == id } }
     val connection = address?.let { service.registry.get(it) }
+    val connectedDeviceId = connection?.deviceId?.collectAsState()?.value
+    val knownDeviceId = address?.let(service.repository::getByAddress)?.id
+    val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
+    val appearance = resolveAppearance(connectedDeviceId ?: knownDeviceId, appearances)
 
     var cells by remember(patternId) {
         mutableLongStateOf(existing?.let { FaceBits.fromBitsString(it.bits) } ?: FaceBits.EMPTY)
@@ -203,6 +212,7 @@ fun PatternEditorScreen(
             ) {
                 EditorGrid(
                     cells = cells,
+                    ledColor = appearance.ledColor.toComposeColor(),
                     onCellsChange = { cells = it },
                 )
             }
@@ -260,7 +270,15 @@ fun PatternEditorScreen(
                 ) {
                     DeviceFace(
                         bits = cells,
-                        frameColor = ClumoColors.Sage,
+                        frameColor = appearance.enclosureColor.toComposeColor(),
+                        ledColor = appearance.ledColor.toComposeColor(),
+                        frameOutline = if (
+                            contentToneFor(appearance.enclosureColor) == ContentTone.Dark
+                        ) {
+                            ClumoColors.OutlineBorder
+                        } else {
+                            null
+                        },
                         size = 104.dp,
                         frameCorner = 24.dp,
                         framePadding = 13.dp,
@@ -345,6 +363,7 @@ fun PatternEditorScreen(
 @Composable
 private fun EditorGrid(
     cells: Long,
+    ledColor: Color,
     onCellsChange: (Long) -> Unit,
 ) {
     val gap = 8.dp
@@ -389,8 +408,8 @@ private fun EditorGrid(
                         drawCircle(
                             brush = Brush.radialGradient(
                                 colors = listOf(
-                                    ClumoColors.LitDot.copy(alpha = 0.5f),
-                                    ClumoColors.LitDot.copy(alpha = 0f),
+                                    ledColor.copy(alpha = 0.5f),
+                                    ledColor.copy(alpha = 0f),
                                 ),
                                 center = center,
                                 radius = radius * 1.7f,
@@ -398,7 +417,7 @@ private fun EditorGrid(
                             radius = radius * 1.7f,
                             center = center,
                         )
-                        drawCircle(ClumoColors.LitDot, radius, center)
+                        drawCircle(ledColor, radius, center)
                     } else {
                         drawCircle(ClumoColors.EditorOffCell, radius, center)
                     }

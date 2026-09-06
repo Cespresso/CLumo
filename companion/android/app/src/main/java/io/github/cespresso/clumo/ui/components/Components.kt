@@ -1,7 +1,6 @@
 package io.github.cespresso.clumo.ui.components
 
 import androidx.compose.animation.animateColor
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -126,33 +125,6 @@ object FaceBits {
 // Connection-state visuals
 // ---------------------------------------------------------------------------
 
-/** Frame color for a device face; pulses gray<->sage while connecting. */
-@Composable
-fun connectionFrameColor(state: ConnectionState): Color {
-    val connecting = state == ConnectionState.Connecting ||
-        state == ConnectionState.Reconnecting ||
-        state == ConnectionState.Bonding ||
-        state == ConnectionState.Connected ||
-        state == ConnectionState.Synchronizing
-    if (connecting) {
-        val transition = rememberInfiniteTransition(label = "framePulse")
-        val color by transition.animateColor(
-            initialValue = ClumoColors.Gray,
-            targetValue = ClumoColors.Sage,
-            animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
-            label = "framePulseColor",
-        )
-        return color
-    }
-    val target = when (state) {
-        ConnectionState.Ready -> ClumoColors.Sage
-        ConnectionState.Error -> ClumoColors.Coral
-        else -> ClumoColors.Gray
-    }
-    val color by animateColorAsState(target, label = "frameColor")
-    return color
-}
-
 @Composable
 fun connectionLabel(state: ConnectionState): Pair<String, Color> = when (state) {
     ConnectionState.Ready -> stringResource(R.string.state_connected) to ClumoColors.Sage
@@ -274,7 +246,6 @@ fun OutlinePillButton(
 @Composable
 fun ClumoDevice(
     bits: Long,
-    frameColor: Color? = null,
     size: Dp,
     modifier: Modifier = Modifier,
     appearance: DeviceAppearance = DeviceAppearance.DEFAULT,
@@ -283,18 +254,21 @@ fun ClumoDevice(
     glow: Boolean = true,
     shadowElevation: Dp = 0.dp,
 ) {
-    val enclosureColor = frameColor ?: appearance.enclosureColor.toComposeColor()
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         DeviceKnobs(faceSize = size, appearance = appearance)
-        Box(contentAlignment = Alignment.Center) {
-            ConnectionRingCanvas(state = connectionState, size = size)
+        Box(
+            modifier = Modifier
+                .size(size + 8.dp)
+                .offset(y = (-4).dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            ConnectionRingCanvas(state = connectionState, size = size + 8.dp)
             DeviceFace(
                 bits = bits,
-                frameColor = enclosureColor,
+                frameColor = appearance.enclosureColor.toComposeColor(),
                 ledColor = appearance.ledColor.toComposeColor(),
                 size = size,
                 frameOutline = if (
-                    frameColor == null &&
                     contentToneFor(appearance.enclosureColor) == ContentTone.Dark
                 ) {
                     ClumoColors.OutlineBorder

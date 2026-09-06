@@ -78,7 +78,7 @@ fun DeviceAppearanceScreen(
     val scope = rememberCoroutineScope()
     val appearances by service.preferences.deviceAppearances.collectAsState(initial = emptyMap())
     val aliases by service.preferences.aliases.collectAsState(initial = emptyMap())
-    val persisted = appearances[deviceId] ?: DeviceAppearance.DEFAULT
+    val persisted = resolveAppearance(deviceId, appearances)
     val deviceName = aliases[deviceId] ?: service.repository.get(deviceId)?.fallbackName ?: "CLumo"
     var appearance by remember(deviceId) { mutableStateOf(persisted) }
     var saveFailed by remember(deviceId) { mutableStateOf(false) }

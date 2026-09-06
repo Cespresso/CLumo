@@ -35,10 +35,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
-internal fun displayWriteMayBeCoalesced(noResponse: Boolean): Boolean = noResponse
+/**
+ * Whether a queued write is made obsolete by a newer frame for [incomingUuid]. Only the
+ * two write-without-response streams coalesce, and each only with itself: a preview
+ * must never displace queued visualizer columns or the other way round.
+ */
+internal fun streamWriteMayBeCoalesced(pendingUuid: UUID, pendingNoResponse: Boolean, incomingUuid: UUID): Boolean = pendingNoResponse && pendingUuid == incomingUuid
 
 /**
- * Per-device GATT connection and state for BLE protocol v2.
+ * Per-device GATT connection and state for BLE protocol v3.
  * Owns its coroutine scope and reconnect job.
  * One instance per CLumo device; created and disposed by
  * [io.github.cespresso.clumo.data.session.DeviceSessionRegistry].
@@ -441,12 +446,11 @@ class DeviceConnection(
         if (!initialSync) return
         val idle = synchronized(queueLock) { !opInFlight && opQueue.isEmpty() }
         if (!idle) return
-        // Firmware predating the committed-frame contract leaves DISPLAY unset, so its
-        // READ returns zero bytes. Requiring one here would lock the app out of every
-        // un-reflashed device.
+        // All six reads must land: the session builds its first snapshot from them, so a
+        // Ready with a hole in it would sit inert, dropping every observation.
         if (_deviceId.value == null || _currentMode.value == null ||
             _pomodoroStatus.value == null || _timerStatus.value == null ||
-            _brightness.value == null
+            _brightness.value == null || _displayCommittedFrame.value == null
         ) {
             fail(ConnectionFailure.SynchronizationFailed, retry = true)
             return
@@ -466,22 +470,19 @@ class DeviceConnection(
         enqueue(GattOp.Write(BleUuids.MODE, byteArrayOf(mode.toByte()), noResponse = false))
     }
 
-    /**
-     * Write 8 bytes to DISPLAY. When [stream] is true (visualizer frames,
-     * live-preview edits) pending display writes are coalesced so only the
-     * newest frame is sent, using write-without-response.
-     */
-    override fun writeDisplay(data: ByteArray, stream: Boolean) {
+    override fun commitFrame(rowBytes: ByteArray) = enqueue(GattOp.Write(BleUuids.DISPLAY_FRAME, rowBytes.copyOf(8), noResponse = false))
+
+    override fun previewFrame(rowBytes: ByteArray) = writeStream(BleUuids.DISPLAY_PREVIEW, rowBytes)
+
+    override fun writeVisualizerColumns(heights: ByteArray) = writeStream(BleUuids.VISUALIZER, heights)
+
+    private fun writeStream(uuid: UUID, data: ByteArray) {
         val payload = data.copyOf(8)
         synchronized(queueLock) {
-            if (stream) {
-                opQueue.removeAll {
-                    it is GattOp.Write &&
-                        it.uuid == BleUuids.DISPLAY &&
-                        displayWriteMayBeCoalesced(it.noResponse)
-                }
+            opQueue.removeAll {
+                it is GattOp.Write && streamWriteMayBeCoalesced(it.uuid, it.noResponse, uuid)
             }
-            opQueue.add(GattOp.Write(BleUuids.DISPLAY, payload, noResponse = stream))
+            opQueue.add(GattOp.Write(uuid, payload, noResponse = true))
         }
         processQueue()
     }
@@ -519,7 +520,7 @@ class DeviceConnection(
     fun readTimerStatus() = enqueue(GattOp.Read(BleUuids.TIMER))
     fun readBrightness() = enqueue(GattOp.Read(BleUuids.BRIGHTNESS))
     fun readDeviceId() = enqueue(GattOp.Read(BleUuids.DEVICE_ID))
-    override fun readDisplayCommittedFrame() = enqueue(GattOp.Read(BleUuids.DISPLAY))
+    private fun readDisplayFrame() = enqueue(GattOp.Read(BleUuids.DISPLAY_FRAME))
 
     // --- GATT callback ---
 
@@ -578,15 +579,6 @@ class DeviceConnection(
                 return
             }
             val service = g.getService(BleUuids.SERVICE)
-            val required = setOf(
-                BleUuids.MODE,
-                BleUuids.DISPLAY,
-                BleUuids.POMODORO,
-                BleUuids.TIMER,
-                BleUuids.BRIGHTNESS,
-                BleUuids.DEVICE_ID,
-            )
-            val optional = setOf(BleUuids.BUTTON)
             val discovered = service?.characteristics
                 ?.mapTo(mutableSetOf()) { it.uuid }
                 .orEmpty()
@@ -605,7 +597,7 @@ class DeviceConnection(
                 Log.w(TAG, "$address: requested GATT cache refresh is unavailable on this device")
             }
 
-            when (gattCompatibilityAction(discovered, required, optional, gattCacheRefreshAttempted)) {
+            when (gattCompatibilityAction(discovered, BleUuids.REQUIRED, BleUuids.OPTIONAL, gattCacheRefreshAttempted)) {
                 GattCompatibilityAction.ACCEPT -> Unit
                 GattCompatibilityAction.REFRESH_CACHE -> {
                     gattCacheRefreshAttempted = true
@@ -613,7 +605,7 @@ class DeviceConnection(
                         Log.i(TAG, "$address: stale GATT cache cleared; rediscovering services")
                         return
                     }
-                    if (!discovered.containsAll(required)) {
+                    if (!discovered.containsAll(BleUuids.REQUIRED)) {
                         Log.w(TAG, "$address: required CLumo characteristics are missing")
                         fail(ConnectionFailure.IncompatibleDevice, retry = false)
                         return
@@ -636,7 +628,7 @@ class DeviceConnection(
 
             val compatibleService = service ?: return
             characteristics.clear()
-            required.forEach { uuid ->
+            BleUuids.REQUIRED.forEach { uuid ->
                 compatibleService.getCharacteristic(uuid)?.let { characteristics[uuid] = it }
             }
             val hasButton = compatibleService.getCharacteristic(BleUuids.BUTTON)
@@ -656,13 +648,14 @@ class DeviceConnection(
             enqueue(GattOp.Subscribe(BleUuids.POMODORO))
             enqueue(GattOp.Subscribe(BleUuids.TIMER))
             enqueue(GattOp.Subscribe(BleUuids.BRIGHTNESS))
+            enqueue(GattOp.Subscribe(BleUuids.DISPLAY_FRAME))
             if (hasButton) enqueue(GattOp.Subscribe(BleUuids.BUTTON))
             readDeviceId()
             readMode()
             readPomodoroStatus()
             readTimerStatus()
             readBrightness()
-            readDisplayCommittedFrame()
+            readDisplayFrame()
         }
 
         override fun onDescriptorWrite(g: BluetoothGatt, desc: BluetoothGattDescriptor, status: Int) {
@@ -683,8 +676,8 @@ class DeviceConnection(
             if (g !== gatt) return
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 // The device may not notify on app-initiated changes; re-read to stay in sync.
-                // Android fires this for write-without-response too, so a DISPLAY entry here
-                // would cost a read per streamed preview and visualizer frame.
+                // DISPLAY_FRAME confirms itself over notify, and the two streams are
+                // write-without-response and never confirmed, so none of them belong here.
                 when (char.uuid) {
                     BleUuids.MODE -> readMode()
                     BleUuids.POMODORO -> readPomodoroStatus()
@@ -717,7 +710,7 @@ class DeviceConnection(
                 _timerStatus.value = it
                 _observations.tryEmit(DeviceObservation.Timer(it))
             }
-            BleUuids.DISPLAY -> FaceBits.fromRowBytes(value).let {
+            BleUuids.DISPLAY_FRAME -> FaceBits.fromRowBytes(value).let {
                 _displayCommittedFrame.value = it
                 _observations.tryEmit(DeviceObservation.DisplayCommittedFrame(it))
             }

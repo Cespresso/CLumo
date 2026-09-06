@@ -9,7 +9,7 @@ data class PendingCommand<T>(
 data class PendingCommands(
     val mode: PendingCommand<Int>? = null,
     val brightnessLevel: PendingCommand<Int>? = null,
-    /** A committed Display frame, as face bits, still awaiting the device's read-back. */
+    /** A committed Display frame, as face bits, still awaiting the device's confirmation. */
     val committedFrame: PendingCommand<Long>? = null,
 ) {
     fun expire(nowRealtime: Long, ttlMs: Long = DEFAULT_TTL_MS): PendingCommands =

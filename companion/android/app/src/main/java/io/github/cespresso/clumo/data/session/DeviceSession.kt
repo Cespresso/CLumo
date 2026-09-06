@@ -51,6 +51,7 @@ class DeviceSession internal constructor(
     private var wasReady = false
     private var modeExpiryJob: Job? = null
     private var brightnessExpiryJob: Job? = null
+    private var frameExpiryJob: Job? = null
     private var brightnessWriteJob: Job? = null
     private var previewWriteJob: Job? = null
     private var latestPreview: ByteArray? = null
@@ -92,12 +93,6 @@ class DeviceSession internal constructor(
                 )
             }
             wasReady = true
-            // Gate on MODE alone: the snapshot is null unless all five characteristics
-            // were read, and a dropped announce leaves every preview frame persisted.
-            if (transport.currentMode.value == DeviceMode.DISPLAY) {
-                // Announce v2 preview support before the UI can enqueue a frame.
-                transport.writeMode(DeviceMode.DISPLAY)
-            }
             resend(pending)
             return
         }
@@ -154,23 +149,10 @@ class DeviceSession internal constructor(
     }
 
     private fun resend(pending: PendingCommands) {
-        pending.mode?.let { writeModeWithDisplayHandshake(it.value) }
+        pending.mode?.let { transport.writeMode(it.value) }
         pending.brightnessLevel?.let { transport.writeBrightness(it.value) }
         pending.committedFrame?.let {
-            transport.writeDisplay(
-                Pattern.bitsToRowBytes(FaceBits.toBitsString(it.value)),
-                stream = false,
-            )
-            transport.writeMode(DeviceMode.DISPLAY)
-            transport.readDisplayCommittedFrame()
-        }
-    }
-
-    private fun writeModeWithDisplayHandshake(mode: Int) {
-        transport.writeMode(mode)
-        if (mode == DeviceMode.DISPLAY) {
-            // The first write enters Display; the same-value write enables explicit commits.
-            transport.writeMode(mode)
+            transport.commitFrame(Pattern.bitsToRowBytes(FaceBits.toBitsString(it.value)))
         }
     }
 
@@ -180,7 +162,7 @@ class DeviceSession internal constructor(
         }
         val command = PendingCommand(mode, nowRealtime())
         _state.update { it.copy(pending = it.pending.copy(mode = command)) }
-        writeModeWithDisplayHandshake(mode)
+        transport.writeMode(mode)
         modeExpiryJob?.cancel()
         modeExpiryJob = expirePendingAfterTtl()
     }
@@ -219,12 +201,10 @@ class DeviceSession internal constructor(
     fun timerPause() = transport.timerPause()
     fun timerCancel() = transport.timerCancel()
 
-    /** Ordered v2 commit: data is previewed, then same-mode MODE write commits it. */
+    /** One durable write; DISPLAY_FRAME's notify clears the pending frame. */
     fun commitPattern(pattern: Pattern) {
         cancelPreview()
-        transport.writeDisplay(pattern.toRowBytes(), stream = false)
-        transport.writeMode(DeviceMode.DISPLAY)
-        transport.readDisplayCommittedFrame()
+        transport.commitFrame(pattern.toRowBytes())
         _state.update {
             it.copy(
                 pending = it.pending.copy(
@@ -235,10 +215,12 @@ class DeviceSession internal constructor(
                 ),
             )
         }
+        frameExpiryJob?.cancel()
+        frameExpiryJob = expirePendingAfterTtl()
     }
 
     /**
-     * Streams [bits] to DISPLAY as a live preview, re-sending the latest frame at least
+     * Streams [bits] to DISPLAY_PREVIEW, re-sending the latest frame at least
      * every [PREVIEW_KEEP_ALIVE_MS] so the device's preview TTL cannot expire mid-edit.
      * Stops on [cancelPreview], [commitPattern], or the link leaving Ready.
      */
@@ -255,7 +237,7 @@ class DeviceSession internal constructor(
                 if (due != null) {
                     lastSent = due
                     msSinceSend = 0L
-                    transport.writeDisplay(due, stream = true)
+                    transport.previewFrame(due)
                 }
                 delay(PREVIEW_INTERVAL_MS)
                 msSinceSend += PREVIEW_INTERVAL_MS
@@ -285,10 +267,7 @@ class DeviceSession internal constructor(
                     _state.value.effectiveMode == DeviceMode.VISUALIZER
                 ) {
                     val columns = audioVisualizer.columns.value
-                    transport.writeDisplay(
-                        ByteArray(8) { columns.getOrElse(it) { 0 }.toByte() },
-                        stream = true,
-                    )
+                    transport.writeVisualizerColumns(ByteArray(8) { columns.getOrElse(it) { 0 }.toByte() })
                 }
             }
         }
@@ -301,10 +280,11 @@ class DeviceSession internal constructor(
         visualizerWriteJob?.cancel()
         visualizerWriteJob = null
         audioVisualizer.stop()
+        // The firmware drops columns outside Visualizer, so this guard only saves a write.
         if (clearDisplay && _state.value.link == ConnectionState.Ready &&
             _state.value.effectiveMode == DeviceMode.VISUALIZER
         ) {
-            transport.writeDisplay(ByteArray(8), stream = true)
+            transport.writeVisualizerColumns(ByteArray(8))
         }
     }
 
@@ -330,7 +310,7 @@ class DeviceSession internal constructor(
         const val BRIGHTNESS_DEBOUNCE_MS = 100L
         const val PREVIEW_INTERVAL_MS = 100L
 
-        // Must stay under the firmware's DISPLAY preview TTL, or the device reverts to
+        // Must stay under the firmware's preview TTL, or the device reverts to
         // the committed frame mid-edit.
         const val PREVIEW_KEEP_ALIVE_MS = 2_000L
         const val VISUALIZER_INTERVAL_MS = 80L

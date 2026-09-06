@@ -43,10 +43,16 @@ interface DeviceTransport {
     fun dispose()
     fun reconnectWithCacheRefresh()
     fun writeMode(mode: Int)
-    fun writeDisplay(data: ByteArray, stream: Boolean = false)
 
-    /** Re-read DISPLAY after a commit, to confirm the frame the device actually kept. */
-    fun readDisplayCommittedFrame()
+    /** Durable: CLumo persists the frame and confirms it over DISPLAY_FRAME's notify. */
+    fun commitFrame(rowBytes: ByteArray)
+
+    /** Volatile, write-without-response; CLumo drops it after its preview TTL. */
+    fun previewFrame(rowBytes: ByteArray)
+
+    /** Volatile, write-without-response; ignored unless CLumo is in Visualizer mode. */
+    fun writeVisualizerColumns(heights: ByteArray)
+
     fun pomodoroSetDurations(workMin: Int, breakMin: Int)
     fun pomodoroStart()
     fun pomodoroPause()

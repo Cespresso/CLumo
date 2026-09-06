@@ -36,9 +36,6 @@ object BleUuids {
 
     val SERVICE: UUID = UUID.fromString("455aa9f0-2999-43de-81b4-54e0de255927")
 
-    /** WRITE | WRITE_NR: 8 bytes. Display mode: row bitmap. Visualizer mode: 8 column heights 0..8. */
-    val DISPLAY: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18585")
-
     /** READ | WRITE | NOTIFY: u8 mode. */
     val MODE: UUID = UUID.fromString("681285a6-247f-48c6-80ad-68c3dce18586")
 

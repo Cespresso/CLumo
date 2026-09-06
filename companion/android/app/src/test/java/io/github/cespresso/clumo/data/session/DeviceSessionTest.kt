@@ -32,10 +32,7 @@ class DeviceSessionTest {
 
         fixture.session.setMode(DeviceMode.DISPLAY)
         assertEquals(DeviceMode.DISPLAY, fixture.session.state.value.effectiveMode)
-        assertEquals(
-            listOf(DeviceMode.DISPLAY, DeviceMode.DISPLAY),
-            fixture.transport.modeWrites,
-        )
+        assertEquals(listOf(DeviceMode.DISPLAY), fixture.transport.modeWrites)
 
         fixture.transport.reportMode(DeviceMode.TIMER)
         fixture.scope.runCurrent()
@@ -45,12 +42,13 @@ class DeviceSessionTest {
     }
 
     @Test
-    fun readyInDisplayAnnouncesExplicitCommitCapability() {
+    fun readyWritesNothingToTheDevice() {
         val fixture = fixture()
 
         fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
 
-        assertEquals(listOf(DeviceMode.DISPLAY), fixture.transport.modeWrites)
+        assertTrue(fixture.transport.modeWrites.isEmpty())
+        assertTrue(fixture.transport.commits.isEmpty())
     }
 
     @Test
@@ -89,15 +87,7 @@ class DeviceSessionTest {
 
         assertEquals(DeviceMode.TIMER, fixture.session.state.value.observed?.mode)
         assertEquals(8, fixture.session.state.value.observed?.brightnessLevel)
-        assertEquals(
-            listOf(
-                DeviceMode.DISPLAY,
-                DeviceMode.DISPLAY,
-                DeviceMode.DISPLAY,
-                DeviceMode.DISPLAY,
-            ),
-            fixture.transport.modeWrites,
-        )
+        assertEquals(listOf(DeviceMode.DISPLAY, DeviceMode.DISPLAY), fixture.transport.modeWrites)
         assertEquals(DeviceMode.DISPLAY, fixture.session.state.value.pending.mode?.value)
     }
 
@@ -118,18 +108,17 @@ class DeviceSessionTest {
     }
 
     @Test
-    fun explicitPatternCommitUsesOrderedDisplayWriteAndSameModeSignal() {
+    fun explicitPatternCommitIsOneDurableWriteAndNothingElse() {
         val fixture = fixture()
         fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
         val pattern = Pattern("p1", "One", "1" + "0".repeat(63))
-        fixture.transport.modeWrites.clear()
 
         fixture.session.commitPattern(pattern)
 
-        assertEquals(1, fixture.transport.displayWrites.size)
-        assertEquals(false, fixture.transport.displayWrites.single().second)
-        assertEquals(0x80.toByte(), fixture.transport.displayWrites.single().first[0])
-        assertEquals(listOf(DeviceMode.DISPLAY), fixture.transport.modeWrites)
+        assertEquals(1, fixture.transport.commits.size)
+        assertEquals(0x80.toByte(), fixture.transport.commits.single()[0])
+        assertTrue(fixture.transport.modeWrites.isEmpty())
+        assertTrue(fixture.transport.previews.isEmpty())
     }
 
     @Test
@@ -138,17 +127,16 @@ class DeviceSessionTest {
         fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
         fixture.session.previewFrame("1" + "0".repeat(63))
         fixture.scope.runCurrent()
-        fixture.transport.modeWrites.clear()
         fixture.session.previewFrame("01" + "0".repeat(62))
 
         fixture.session.commitPattern(Pattern("saved", "Saved", "001" + "0".repeat(61)))
         fixture.scope.advanceTimeBy(100)
         fixture.scope.runCurrent()
 
-        assertEquals(2, fixture.transport.displayWrites.size)
-        assertEquals(true, fixture.transport.displayWrites[0].second)
-        assertEquals(false, fixture.transport.displayWrites[1].second)
-        assertEquals(0x20.toByte(), fixture.transport.displayWrites[1].first[0])
+        // The first preview went out before the commit; the queued edit never did.
+        assertEquals(1, fixture.transport.previews.size)
+        assertEquals(1, fixture.transport.commits.size)
+        assertEquals(0x20.toByte(), fixture.transport.commits.single()[0])
     }
 
     @Test
@@ -158,16 +146,15 @@ class DeviceSessionTest {
 
         fixture.session.previewFrame("1" + "0".repeat(63))
         fixture.scope.runCurrent()
-        assertEquals(1, fixture.transport.displayWrites.size)
+        assertEquals(1, fixture.transport.previews.size)
 
         fixture.scope.advanceTimeBy(2_000)
         fixture.scope.runCurrent()
 
-        assertEquals(true, fixture.transport.displayWrites.size >= 2)
-        assertEquals(true, fixture.transport.displayWrites.last().second)
+        assertTrue(fixture.transport.previews.size >= 2)
         assertEquals(
-            fixture.transport.displayWrites.first().first.toList(),
-            fixture.transport.displayWrites.last().first.toList(),
+            fixture.transport.previews.first().toList(),
+            fixture.transport.previews.last().toList(),
         )
     }
 
@@ -178,13 +165,13 @@ class DeviceSessionTest {
 
         fixture.session.previewFrame("1" + "0".repeat(63))
         fixture.scope.runCurrent()
-        assertEquals(1, fixture.transport.displayWrites.size)
+        assertEquals(1, fixture.transport.previews.size)
 
         fixture.session.cancelPreview()
         fixture.scope.advanceTimeBy(10_000)
         fixture.scope.runCurrent()
 
-        assertEquals(1, fixture.transport.displayWrites.size)
+        assertEquals(1, fixture.transport.previews.size)
     }
 
     @Test
@@ -197,13 +184,13 @@ class DeviceSessionTest {
         // Land mid keep-alive gap, where a plain long sleep would swallow the edit.
         fixture.scope.advanceTimeBy(500)
         fixture.scope.runCurrent()
-        val before = fixture.transport.displayWrites.size
+        val before = fixture.transport.previews.size
         fixture.session.previewFrame("01" + "0".repeat(62))
         fixture.scope.advanceTimeBy(100)
         fixture.scope.runCurrent()
 
-        assertEquals(before + 1, fixture.transport.displayWrites.size)
-        assertEquals(0x40.toByte(), fixture.transport.displayWrites.last().first[0])
+        assertEquals(before + 1, fixture.transport.previews.size)
+        assertEquals(0x40.toByte(), fixture.transport.previews.last()[0])
     }
 
     @Test
@@ -215,15 +202,15 @@ class DeviceSessionTest {
 
         fixture.transport.connectionState.value = ConnectionState.Reconnecting
         fixture.scope.runCurrent()
-        val afterDrop = fixture.transport.displayWrites.size
+        val afterDrop = fixture.transport.previews.size
         fixture.scope.advanceTimeBy(10_000)
         fixture.scope.runCurrent()
 
-        assertEquals(afterDrop, fixture.transport.displayWrites.size)
+        assertEquals(afterDrop, fixture.transport.previews.size)
     }
 
     @Test
-    fun committedFrameIsPendingUntilTheDeviceReadsItBackAndIsResentAfterAReconnect() {
+    fun committedFrameIsPendingUntilTheDeviceNotifiesItAndIsResentAfterAReconnect() {
         val fixture = fixture()
         fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
         val pattern = Pattern("p1", "One", "1" + "0".repeat(63))
@@ -232,7 +219,6 @@ class DeviceSessionTest {
         fixture.session.commitPattern(pattern)
         fixture.scope.runCurrent()
         assertEquals(bits, fixture.session.state.value.effectiveCommittedFrame)
-        assertEquals(1, fixture.transport.displayReads)
 
         // A commit that raced the link down must not be silently dropped.
         fixture.transport.connectionState.value = ConnectionState.Reconnecting
@@ -240,12 +226,44 @@ class DeviceSessionTest {
         fixture.transport.displayCommittedFrame.value = FaceBits.EMPTY
         fixture.transport.connectionState.value = ConnectionState.Ready
         fixture.scope.runCurrent()
-        assertEquals(false, fixture.transport.displayWrites.last().second)
+        assertEquals(2, fixture.transport.commits.size)
 
         fixture.transport.reportCommittedFrame(bits)
         fixture.scope.runCurrent()
         assertNull(fixture.session.state.value.pending.committedFrame)
         assertEquals(bits, fixture.session.state.value.observed?.committedFrame)
+    }
+
+    @Test
+    fun aCommitTheDeviceNeverConfirmsStopsBeingShownAfterTheTtl() {
+        val fixture = fixture()
+        fixture.ready(mode = DeviceMode.DISPLAY, brightness = 5)
+        val pattern = Pattern("p1", "One", "1" + "0".repeat(63))
+
+        fixture.session.commitPattern(pattern)
+        fixture.scope.runCurrent()
+        assertEquals(FaceBits.fromBitsString(pattern.bits), fixture.session.state.value.effectiveCommittedFrame)
+
+        // No notify ever arrives: a failed write, or a dropped notification.
+        fixture.scope.advanceTimeBy(3_000)
+        fixture.scope.runCurrent()
+
+        assertNull(fixture.session.state.value.pending.committedFrame)
+        assertEquals(FaceBits.EMPTY, fixture.session.state.value.effectiveCommittedFrame)
+    }
+
+    @Test
+    fun stoppingTheVisualizerClearsThroughItsOwnStreamOnly() {
+        val fixture = fixture()
+        fixture.ready(mode = DeviceMode.VISUALIZER, brightness = 5)
+
+        // AudioVisualizerManager was never started, so stop() is JVM-safe here.
+        fixture.session.stopVisualizer()
+
+        assertEquals(1, fixture.transport.visualizerWrites.size)
+        assertEquals(List(8) { 0.toByte() }, fixture.transport.visualizerWrites.single().toList())
+        assertTrue(fixture.transport.previews.isEmpty())
+        assertTrue(fixture.transport.commits.isEmpty())
     }
 
     private fun fixture(): Fixture {
@@ -295,8 +313,9 @@ private class FakeDeviceTransport : DeviceTransport {
 
     val modeWrites = mutableListOf<Int>()
     val brightnessWrites = mutableListOf<Int>()
-    val displayWrites = mutableListOf<Pair<ByteArray, Boolean>>()
-    var displayReads = 0
+    val commits = mutableListOf<ByteArray>()
+    val previews = mutableListOf<ByteArray>()
+    val visualizerWrites = mutableListOf<ByteArray>()
 
     override fun connect() = Unit
     override fun disconnect() = Unit
@@ -305,11 +324,14 @@ private class FakeDeviceTransport : DeviceTransport {
     override fun writeMode(mode: Int) {
         modeWrites += mode
     }
-    override fun writeDisplay(data: ByteArray, stream: Boolean) {
-        displayWrites += data.copyOf() to stream
+    override fun commitFrame(rowBytes: ByteArray) {
+        commits += rowBytes.copyOf()
     }
-    override fun readDisplayCommittedFrame() {
-        displayReads++
+    override fun previewFrame(rowBytes: ByteArray) {
+        previews += rowBytes.copyOf()
+    }
+    override fun writeVisualizerColumns(heights: ByteArray) {
+        visualizerWrites += heights.copyOf()
     }
     override fun pomodoroSetDurations(workMin: Int, breakMin: Int) = Unit
     override fun pomodoroStart() = Unit

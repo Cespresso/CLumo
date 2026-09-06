@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.moveDeviceKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -132,6 +133,30 @@ class AppPreferences(context: Context) : AppearancePreferences {
             } else {
                 prefs[KEY_PRIMARY_DEVICE_ID] = deviceId
             }
+        }
+    }
+
+    /**
+     * A CLumo that was reset comes back with a new firmware id. Its alias, colours and
+     * main-device role were keyed by the old one, so they move to the new id together.
+     */
+    suspend fun moveDeviceSettings(fromId: String, toId: String) {
+        store.edit { prefs ->
+            val aliases = moveDeviceKey(decodeAliases(prefs[KEY_ALIASES]), fromId, toId)
+            prefs[KEY_ALIASES] = JSONObject(aliases as Map<*, *>).toString()
+            val appearances = moveDeviceKey(decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES]), fromId, toId)
+            prefs[KEY_DEVICE_APPEARANCES] = encodeDeviceAppearances(appearances)
+            if (prefs[KEY_PRIMARY_DEVICE_ID] == fromId) prefs[KEY_PRIMARY_DEVICE_ID] = toId
+        }
+    }
+
+    /** Everything the app remembers about one device, for when the user removes it. */
+    suspend fun clearDeviceSettings(deviceId: String) {
+        store.edit { prefs ->
+            prefs[KEY_ALIASES] = JSONObject((decodeAliases(prefs[KEY_ALIASES]) - deviceId) as Map<*, *>).toString()
+            prefs[KEY_DEVICE_APPEARANCES] =
+                encodeDeviceAppearances(decodeDeviceAppearances(prefs[KEY_DEVICE_APPEARANCES]) - deviceId)
+            if (prefs[KEY_PRIMARY_DEVICE_ID] == deviceId) prefs.remove(KEY_PRIMARY_DEVICE_ID)
         }
     }
 

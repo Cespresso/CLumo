@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import io.github.cespresso.clumo.domain.Device
+import io.github.cespresso.clumo.domain.mergeKnownDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
@@ -27,8 +28,7 @@ class DeviceRepository(context: Context) {
     val devices = _devices.asStateFlow()
 
     fun upsert(device: Device) {
-        val current = _devices.value.filter { it.id != device.id }
-        val updated = (current + device).sortedByDescending { it.lastSeenAt }
+        val updated = mergeKnownDevice(_devices.value, device)
         _devices.value = updated
         persist(updated)
     }

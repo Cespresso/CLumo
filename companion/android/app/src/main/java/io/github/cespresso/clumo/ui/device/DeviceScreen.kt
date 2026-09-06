@@ -116,6 +116,7 @@ fun DeviceScreen(
 
     var menuOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
+    var forgetOpen by remember { mutableStateOf(false) }
     var modeHelpOpen by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -323,8 +324,23 @@ fun DeviceScreen(
                     viewModel.onDisconnect()
                     onBack()
                 },
+                onForget = { forgetOpen = true },
             )
         }
+    }
+
+    if (forgetOpen) {
+        ClumoActionDialog(
+            title = stringResource(R.string.device_forget_confirm_title),
+            body = stringResource(R.string.device_forget_confirm_body),
+            confirmText = stringResource(R.string.device_forget_confirm),
+            onConfirm = {
+                forgetOpen = false
+                viewModel.onForgetDevice()
+                onBack()
+            },
+            onDismiss = { forgetOpen = false },
+        )
     }
 
     if (modeHelpOpen) {

@@ -43,7 +43,11 @@ class AppContainer(context: Context) {
 
     val repository: DeviceRepository by lazy { DeviceRepository(appContext) }
     val registry: DeviceSessionRegistry by lazy {
-        DeviceSessionRegistry(appContext, repository).also { registry ->
+        DeviceSessionRegistry(
+            appContext,
+            repository,
+            onIdentitySuperseded = { oldId, newId -> preferences.moveDeviceSettings(oldId, newId) },
+        ).also { registry ->
             scope.launch { keepHubRunning(registry) }
         }
     }

@@ -50,6 +50,10 @@
     <string name="device_menu_settings">設定</string>
     <string name="device_menu_refresh_gatt">デバイス情報を再取得</string>
     <string name="device_menu_disconnect">切断</string>
+    <string name="device_menu_forget">このデバイスを削除</string>
+    <string name="device_forget_confirm_title">このデバイスを削除しますか？</string>
+    <string name="device_forget_confirm_body">この CLumo の記録（名前・色・メイン設定）をアプリから消します。Android の Bluetooth 設定にあるペアリングはそのまま残ります。</string>
+    <string name="device_forget_confirm">削除する</string>
     <string name="device_error_banner">接続が切れました</string>
     <string name="device_error_retry">再接続</string>
     <string name="connection_pairing_hint">画面に表示されたら、パスキー 123456 を入力してください。</string>

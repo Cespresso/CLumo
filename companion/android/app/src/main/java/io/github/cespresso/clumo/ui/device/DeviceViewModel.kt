@@ -16,6 +16,7 @@ import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceSessionState
 import io.github.cespresso.clumo.domain.Pattern
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -199,6 +200,19 @@ class DeviceViewModel(
     }
 
     fun onDisconnect() = registry.disconnect(address)
+
+    /**
+     * Removes this CLumo from the app: the session, the known-device record, and every
+     * setting keyed by its id. The Android bond is the system's and stays. The settings
+     * write outlives the screen, which pops right after.
+     */
+    fun onForgetDevice() {
+        val id = uiState.value.stableId ?: repository.getByAddress(address)?.id
+        registry.disconnect(address)
+        if (id == null) return
+        repository.remove(id)
+        viewModelScope.launch(NonCancellable) { preferences.clearDeviceSettings(id) }
+    }
     fun onFailureDialogDismissed(failure: ConnectionFailure) {
         dismissedDialogFailure.value = failure
     }

@@ -49,6 +49,10 @@
     <string name="device_menu_settings">Settings</string>
     <string name="device_menu_refresh_gatt">Refresh device info</string>
     <string name="device_menu_disconnect">Disconnect</string>
+    <string name="device_menu_forget">Remove this device</string>
+    <string name="device_forget_confirm_title">Remove this device?</string>
+    <string name="device_forget_confirm_body">Removes this CLumo from the app, along with its name, colors, and main-device setting. The pairing in Android’s Bluetooth settings stays.</string>
+    <string name="device_forget_confirm">Remove</string>
     <string name="device_error_banner">Connection lost</string>
     <string name="device_error_retry">Reconnect</string>
     <string name="connection_pairing_hint">When prompted, enter passkey 123456.</string>

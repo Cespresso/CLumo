@@ -52,6 +52,7 @@ internal fun BoxScope.DeviceMenu(
     onSettings: () -> Unit,
     onRefreshGatt: () -> Unit,
     onDisconnect: () -> Unit,
+    onForget: () -> Unit,
 ) {
     // A full-bleed catcher so a tap anywhere else dismisses the sheet.
     Box(
@@ -110,6 +111,7 @@ internal fun BoxScope.DeviceMenu(
             action = onRefreshGatt,
         )
         Entry(stringResource(R.string.device_menu_disconnect), ClumoColors.Coral, action = onDisconnect)
+        Entry(stringResource(R.string.device_menu_forget), ClumoColors.Coral, action = onForget)
     }
 }
 

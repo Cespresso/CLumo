@@ -75,7 +75,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut ble_bonded = ble.has_bonded_peer();
     display.show(disconnected_icon(ble_bonded));
 
-    // Initialize buttons (red=GPIO3, white=GPIO4)
+    // Initialize buttons (main = red = GPIO3, sub = white = GPIO4)
     let mut buttons = Buttons::new(peripherals.pins.gpio3.into(), peripherals.pins.gpio4.into())?;
     log::info!("Buttons initialized (red=GPIO3, white=GPIO4)");
 
@@ -88,8 +88,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Main loop
     loop {
-        let red_pressed = buttons.red.poll();
-        let white_pressed = buttons.white.poll();
+        let main_pressed = buttons.red.poll();
+        let sub_pressed = buttons.white.poll();
 
         // Drain BLE commands
         while let Some(cmd) = ble.take_command() {
@@ -168,11 +168,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Mode-specific button handling
-        if red_pressed {
+        if main_pressed {
             log::info!("[{}] Main button", mode_manager.current().name());
             handler.on_main_button();
         }
-        if white_pressed {
+        if sub_pressed {
             log::info!("[{}] Sub button", mode_manager.current().name());
             handler.on_sub_button();
         }

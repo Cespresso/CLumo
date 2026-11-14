@@ -61,8 +61,9 @@ android {
         warningsAsErrors = true
         // Fires on the targetSdk above, which is held back on purpose.
         disable += "OldTargetApi"
-        // Reaches for the network on every run.
-        disable += "NewerVersionAvailable"
+        // Update notices depend on published versions, not code correctness.
+        // Keep dependency upgrades separate from the reproducible CI quality gate.
+        disable += setOf("NewerVersionAvailable", "AndroidGradlePluginVersion", "GradleDependency")
     }
 
     buildTypes {

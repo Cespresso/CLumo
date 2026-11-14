@@ -243,12 +243,6 @@
     <string name="widget_action_cancel">Cancel</string>
     <string name="widget_action_retry">Retry</string>
 
-    <string name="stand_controls_hint">Buttons: previous / next. Turn the knob for volume; short press to play / pause. Hold for 3 seconds to pair a new phone. Controls work without the app. Visualization continues while the service runs.</string>
-    <string name="stand_standby_title">Display when streaming stops</string>
-    <string name="stand_fixed">Pattern</string>
-    <string name="stand_animation">Animation</string>
-    <string name="stand_off">Off</string>
-    <string name="stand_standby_hint">Saved on the device. This display returns about two seconds after visualization stops.</string>
     <string name="stand_app_connection">App connection: %1$s</string>
     <string name="stand_name">Headphone stand</string>
     <string name="stand_connected">App connected</string>
@@ -260,15 +254,12 @@
     <string name="stand_media_hint">Turn the knob for volume. Press to play or pause. Use the two buttons for previous and next tracks. These controls work without the app.</string>
     <string name="stand_volume_hint">The stand shows actual volume while this app is connected and its service is running. Leaving this screen does not stop the service.</string>
     <string name="stand_visualizer_title">Audio visualizer</string>
-    <string name="stand_visualizer_hint">Send your phone’s audio activity to the matrix. Adjust sensitivity for quiet or loud tracks.</string>
     <string name="stand_visualizer_background">Streaming can continue in the background. Stop pauses visualization, not media controls or volume reporting.</string>
     <string name="stand_wifi_title">Wi-Fi &amp; pairing</string>
     <string name="stand_wifi_steps">1. Hold Previous + Next together for 3 seconds.\n2. Connect to CLumo-Setup-XXXX in Wi-Fi settings.\n3. Open the sign-in page to choose a preset or edit up to 8 frames. If it does not open, visit http://192.168.71.1/ in your browser.</string>
-    <string name="stand_open_wifi">Open Wi-Fi settings</string>
     <string name="stand_wifi_return">Bluetooth controls pause during setup. Save to device, then hold Previous + Next for 3 seconds again to return. Saving alone keeps the stand in setup mode.</string>
     <string name="stand_pairing_hint">Pairing a new phone? Hold the knob for 3 seconds. For a registered phone, reconnect without holding the knob.</string>
     <string name="stand_editor_title">Edit standby display</string>
-    <string name="stand_editor_hint">Create a still image or an animation of up to 8 frames. The app and Wi-Fi browser editor use the same saved display.</string>
     <string name="stand_editor_discard">Discard unsaved changes?</string>
     <string name="stand_editor_leave">Discard and close</string>
     <string name="appearance_stand_panel">Control panel</string>

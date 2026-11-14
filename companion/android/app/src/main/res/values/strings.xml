@@ -246,12 +246,6 @@
     <string name="widget_action_cancel">キャンセル</string>
     <string name="widget_action_retry">再試行</string>
 
-    <string name="stand_controls_hint">ボタンで前／次、ノブで音量、短押しで再生／一時停止。3秒長押しで新しいスマホとのペアリングを受け付けます。アプリ終了後も操作できます。ビジュアライザはサービス動作中に継続します。</string>
-    <string name="stand_standby_title">配信がないときの表示</string>
-    <string name="stand_fixed">固定</string>
-    <string name="stand_animation">アニメ</string>
-    <string name="stand_off">消灯</string>
-    <string name="stand_standby_hint">本体に保存します。ビジュアライザの配信が止まると、約2秒でこの表示に戻ります。</string>
     <string name="stand_app_connection">アプリ通信：%1$s</string>
     <string name="stand_name">ヘッドホンスタンド</string>
     <string name="stand_connected">アプリ通信 接続済み</string>
@@ -263,15 +257,12 @@
     <string name="stand_media_hint">ノブを回して音量、短押しで再生／一時停止、2つのボタンで前曲／次曲。これらはアプリなしでも操作できます。</string>
     <string name="stand_volume_hint">アプリが接続しサービスが動作している間、本体の3連LEDに実音量を表示します。この画面を離れてもサービスは継続します。</string>
     <string name="stand_visualizer_title">オーディオビジュアライザ</string>
-    <string name="stand_visualizer_hint">スマホの音に合わせてマトリクスを動かします。曲の音量に合わせて感度を調整できます。</string>
     <string name="stand_visualizer_background">バックグラウンドでも配信できます。停止するのはビジュアライザだけで、メディア操作と音量配信は継続します。</string>
     <string name="stand_wifi_title">Wi-Fi・ペアリング</string>
     <string name="stand_wifi_steps">1. 前曲＋次曲を同時に3秒長押し。\n2. Wi-Fi設定でCLumo-Setup-XXXXへ接続。\n3. ログイン画面からプリセット選択や最大8コマの編集。画面が開かない場合はブラウザで http://192.168.71.1/ を開いてください。</string>
-    <string name="stand_open_wifi">Wi-Fi設定を開く</string>
     <string name="stand_wifi_return">設定中はBluetooth操作が停止します。本体に保存した後、前曲＋次曲を再び3秒長押しして戻ります。保存だけでは設定モードを終了しません。</string>
     <string name="stand_pairing_hint">新しいスマホの登録はノブを3秒長押し。登録済みスマホへの再接続では長押し不要です。</string>
     <string name="stand_editor_title">待機表示を編集</string>
-    <string name="stand_editor_hint">静止画や最大8コマのアニメーションを作れます。アプリとWi-Fiのブラウザ編集は同じ保存データを使います。</string>
     <string name="stand_editor_discard">未保存の変更を破棄しますか？</string>
     <string name="stand_editor_leave">破棄して閉じる</string>
     <string name="appearance_stand_panel">操作パネル</string>

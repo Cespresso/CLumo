@@ -5,6 +5,7 @@ target/
 # Android / Gradle
 build/
 .gradle/
+.kotlin/
 local.properties
 *.keystore
 captures/
@@ -16,3 +17,7 @@ captures/
 
 # macOS
 .DS_Store
+
+# Python tooling
+__pycache__/
+*.py[cod]

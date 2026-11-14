@@ -1,0 +1,22 @@
+{
+  "source_repository": "maker-projects",
+  "import_date": "2026-11-14",
+  "source_editor": "nothing-headphone-accessory/publishing/makerworld/src/build_assembly_guide.py",
+  "files": [
+    {
+      "source": "nothing-headphone-accessory/publishing/makerworld/guides/clumo-assembly-ja.pdf",
+      "file": "clumo-assembly-ja.pdf",
+      "sha256": "50e052b6709e6cbc6edb6ab411abc54edcff7709579e37102591cf629283ab38"
+    },
+    {
+      "source": "nothing-headphone-accessory/publishing/makerworld/guides/clumo-assembly-en.pdf",
+      "file": "clumo-assembly-en.pdf",
+      "sha256": "13b5e68ee1e00af08a6c65cfb44113524f5a91c354fe6861f3727226bdcf0643"
+    },
+    {
+      "source": "nothing-headphone-accessory/publishing/makerworld/guides/assembly-content.json",
+      "file": "assembly-content.json",
+      "sha256": "9336d82fbe8b29085a227edc47aa5935d8b7cd0a85a9a44450bdee72649ed011"
+    }
+  ]
+}

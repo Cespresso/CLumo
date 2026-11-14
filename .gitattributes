@@ -1,0 +1,2 @@
+# Preserve PDF assets byte-for-byte and avoid treating their streams as text.
+*.pdf binary

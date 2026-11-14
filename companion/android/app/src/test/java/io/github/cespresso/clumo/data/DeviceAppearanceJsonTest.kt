@@ -7,6 +7,19 @@ import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class DeviceAppearanceJsonTest {
+    @Test fun standPartsRoundTripIndependently() {
+        val original = DeviceAppearance.DEFAULT.copy(
+            panelColor = color("#112233"),
+            matrixSurfaceColor = color("#445566"),
+            windowColor = color("#778899"),
+        )
+        assertEquals(original, decodeDeviceAppearances(encodeDeviceAppearances(mapOf("stand" to original)))["stand"])
+        val legacy = requireNotNull(decodeDeviceAppearances("""{"stand":{"buttonA":"#123456"}}""")["stand"])
+        assertEquals(color("#123456"), legacy.buttonAColor)
+        assertEquals(DeviceAppearance.DEFAULT.panelColor, legacy.panelColor)
+        assertEquals(DeviceAppearance.DEFAULT.matrixSurfaceColor, legacy.matrixSurfaceColor)
+        assertEquals(DeviceAppearance.DEFAULT.windowColor, legacy.windowColor)
+    }
 
     @Test
     fun roundTripKeepsDifferentProfilesSeparate() {

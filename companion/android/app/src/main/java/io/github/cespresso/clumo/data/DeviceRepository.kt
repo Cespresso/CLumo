@@ -4,12 +4,9 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import io.github.cespresso.clumo.domain.Device
-import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.mergeKnownDevice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.json.JSONArray
-import org.json.JSONObject
 
 /**
  * Persistent store for known CLumo devices.
@@ -46,32 +43,10 @@ class DeviceRepository(context: Context) {
 
     private fun load(): List<Device> {
         val raw = prefs.getString(KEY_DEVICES, null) ?: return emptyList()
-        return runCatching {
-            val array = JSONArray(raw)
-            List(array.length()) { i ->
-                val obj = array.getJSONObject(i)
-                Device(
-                    id = obj.getString("id"),
-                    address = obj.getString("address"),
-                    name = DeviceNaming.ownName(obj.optString("name")),
-                    lastSeenAt = obj.optLong("lastSeenAt"),
-                )
-            }
-        }.getOrElse { emptyList() }
+        return decodeDevices(raw)
     }
 
     private fun persist(devices: List<Device>) {
-        val array = JSONArray()
-        devices.forEach { d ->
-            array.put(
-                JSONObject().apply {
-                    put("id", d.id)
-                    put("address", d.address)
-                    put("name", d.name ?: "")
-                    put("lastSeenAt", d.lastSeenAt)
-                },
-            )
-        }
-        prefs.edit { putString(KEY_DEVICES, array.toString()) }
+        prefs.edit { putString(KEY_DEVICES, encodeDevices(devices)) }
     }
 }

@@ -1,6 +1,7 @@
 package io.github.cespresso.clumo.data.ble
 
 import io.github.cespresso.clumo.domain.ConnectionState
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.DeviceMode
 
 internal fun canRunAudioVisualizer(
@@ -20,4 +21,10 @@ internal fun shouldStopVisualizerForModeChange(
 internal fun shouldStopVisualizerForLinkChange(
     visualizerActive: Boolean,
     connectionState: ConnectionState,
-): Boolean = visualizerActive && connectionState != ConnectionState.Ready
+    kind: DeviceKind = DeviceKind.CLUMO,
+): Boolean =
+    visualizerActive && when (connectionState) {
+        ConnectionState.Ready -> false
+        ConnectionState.Disconnected, ConnectionState.Error -> true
+        else -> kind != DeviceKind.HEADPHONE_STAND
+    }

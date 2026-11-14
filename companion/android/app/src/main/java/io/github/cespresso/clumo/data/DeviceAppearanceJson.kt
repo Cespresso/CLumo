@@ -18,6 +18,9 @@ internal fun decodeDeviceAppearances(raw: String?): Map<String, DeviceAppearance
                         enclosureColor = value.rgbOrDefault("enclosure", defaults.enclosureColor),
                         buttonAColor = value.rgbOrDefault("buttonA", defaults.buttonAColor),
                         buttonBColor = value.rgbOrDefault("buttonB", defaults.buttonBColor),
+                        panelColor = value.rgbOrDefault("panel", defaults.panelColor),
+                        matrixSurfaceColor = value.rgbOrDefault("matrixSurface", defaults.matrixSurfaceColor),
+                        windowColor = value.rgbOrDefault("window", defaults.windowColor),
                         ledColor = value.rgbOrDefault("led", defaults.ledColor),
                     ),
                 )
@@ -35,6 +38,9 @@ internal fun encodeDeviceAppearances(appearances: Map<String, DeviceAppearance>)
                 put("enclosure", appearance.enclosureColor.toHex())
                 put("buttonA", appearance.buttonAColor.toHex())
                 put("buttonB", appearance.buttonBColor.toHex())
+                put("panel", appearance.panelColor.toHex())
+                put("matrixSurface", appearance.matrixSurfaceColor.toHex())
+                put("window", appearance.windowColor.toHex())
                 put("led", appearance.ledColor.toHex())
             },
         )

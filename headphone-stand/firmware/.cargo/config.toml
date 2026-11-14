@@ -1,0 +1,7 @@
+[target.riscv32imc-esp-espidf]
+linker = "ldproxy"
+rustflags = ["--cfg", "espidf_time64"]
+[env]
+MCU = "esp32c3"
+ESP_IDF_VERSION = "v5.2.2"
+CRATE_CC_NO_DEFAULTS = "1"

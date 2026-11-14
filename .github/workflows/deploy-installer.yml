@@ -1,0 +1,42 @@
+name: Deploy Installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Build Release]
+    types: [completed]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: installer-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Never run code or consume artifacts from the triggering tag/branch.
+      # Pages is deployed from main, which is allowed by the environment policy.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Fetch published firmware and update manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_REPO: ${{ github.repository }}
+        run: python3 scripts/prepare_installer.py --repo "$RELEASE_REPO"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: installer
+      - uses: actions/deploy-pages@v4
+        id: deployment

@@ -107,6 +107,7 @@ fun DeviceAppearanceScreen(
             ) {
                 ClumoDevice(
                     bits = FaceBits.fromBitsString(PREVIEW_BITS),
+                    kind = ui.kind,
                     size = 160.dp,
                     appearance = appearance,
                     shadowElevation = 10.dp,
@@ -136,34 +137,20 @@ fun DeviceAppearanceScreen(
                 )
             }
 
-            AppearanceColorSection(
-                part = AppearancePart.Enclosure,
-                current = appearance.enclosureColor,
-                presets = PHYSICAL_PART_PRESETS,
-                onSelect = { viewModel.onColorSelected(AppearancePart.Enclosure, it) },
-                onCustom = { editingPart = AppearancePart.Enclosure },
-            )
-            AppearanceColorSection(
-                part = AppearancePart.ButtonA,
-                current = appearance.buttonAColor,
-                presets = PHYSICAL_PART_PRESETS,
-                onSelect = { viewModel.onColorSelected(AppearancePart.ButtonA, it) },
-                onCustom = { editingPart = AppearancePart.ButtonA },
-            )
-            AppearanceColorSection(
-                part = AppearancePart.ButtonB,
-                current = appearance.buttonBColor,
-                presets = PHYSICAL_PART_PRESETS,
-                onSelect = { viewModel.onColorSelected(AppearancePart.ButtonB, it) },
-                onCustom = { editingPart = AppearancePart.ButtonB },
-            )
-            AppearanceColorSection(
-                part = AppearancePart.Led,
-                current = appearance.ledColor,
-                presets = LED_PRESETS,
-                onSelect = { viewModel.onColorSelected(AppearancePart.Led, it) },
-                onCustom = { editingPart = AppearancePart.Led },
-            )
+            val parts = if (ui.kind == io.github.cespresso.clumo.domain.DeviceKind.HEADPHONE_STAND) {
+                listOf(AppearancePart.Enclosure, AppearancePart.Panel, AppearancePart.MatrixSurface, AppearancePart.StandButtons, AppearancePart.Windows, AppearancePart.Accent, AppearancePart.Preview)
+            } else {
+                listOf(AppearancePart.Enclosure, AppearancePart.ButtonA, AppearancePart.ButtonB, AppearancePart.Led)
+            }
+            for (part in parts) {
+                AppearanceColorSection(
+                    part = part,
+                    current = appearance.colorFor(part),
+                    presets = if (part == AppearancePart.Led || part == AppearancePart.Preview) LED_PRESETS else PHYSICAL_PART_PRESETS,
+                    onSelect = { viewModel.onColorSelected(part, it) },
+                    onCustom = { editingPart = part },
+                )
+            }
             OutlinePillButton(
                 text = stringResource(R.string.appearance_reset),
                 onClick = viewModel::reset,
@@ -493,6 +480,12 @@ private fun DeviceAppearance.colorFor(part: AppearancePart): RgbColor =
         AppearancePart.ButtonA -> buttonAColor
         AppearancePart.ButtonB -> buttonBColor
         AppearancePart.Led -> ledColor
+        AppearancePart.Panel -> panelColor
+        AppearancePart.MatrixSurface -> matrixSurfaceColor
+        AppearancePart.Windows -> windowColor
+        AppearancePart.StandButtons -> buttonAColor
+        AppearancePart.Accent -> buttonBColor
+        AppearancePart.Preview -> ledColor
     }
 
 internal fun DeviceAppearance.withColor(part: AppearancePart, color: RgbColor): DeviceAppearance =
@@ -501,6 +494,12 @@ internal fun DeviceAppearance.withColor(part: AppearancePart, color: RgbColor): 
         AppearancePart.ButtonA -> copy(buttonAColor = color)
         AppearancePart.ButtonB -> copy(buttonBColor = color)
         AppearancePart.Led -> copy(ledColor = color)
+        AppearancePart.Panel -> copy(panelColor = color)
+        AppearancePart.MatrixSurface -> copy(matrixSurfaceColor = color)
+        AppearancePart.Windows -> copy(windowColor = color)
+        AppearancePart.StandButtons -> copy(buttonAColor = color)
+        AppearancePart.Accent -> copy(buttonBColor = color)
+        AppearancePart.Preview -> copy(ledColor = color)
     }
 
 @StringRes
@@ -510,6 +509,12 @@ private fun AppearancePart.stringRes(): Int =
         AppearancePart.ButtonA -> R.string.appearance_button_a
         AppearancePart.ButtonB -> R.string.appearance_button_b
         AppearancePart.Led -> R.string.appearance_led
+        AppearancePart.Panel -> R.string.appearance_stand_panel
+        AppearancePart.MatrixSurface -> R.string.appearance_stand_matrixsurface
+        AppearancePart.Windows -> R.string.appearance_stand_windows
+        AppearancePart.StandButtons -> R.string.appearance_stand_standbuttons
+        AppearancePart.Accent -> R.string.appearance_stand_accent
+        AppearancePart.Preview -> R.string.appearance_stand_preview
     }
 
 @StringRes

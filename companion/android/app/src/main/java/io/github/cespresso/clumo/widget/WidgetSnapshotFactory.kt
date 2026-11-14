@@ -8,6 +8,7 @@ import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
@@ -40,7 +41,7 @@ object WidgetSnapshotFactory {
         commandFailed: Boolean,
         nowRealtime: Long,
     ): WidgetSnapshot {
-        val base = identity(alias, appearance, nowRealtime)
+        val base = identity(alias, appearance, nowRealtime).copy(deviceKind = target?.kind ?: DeviceKind.CLUMO)
 
         // Neither block can be cleared from a widget, so both outrank the connection state.
         if (block != null) {
@@ -62,6 +63,24 @@ object WidgetSnapshotFactory {
                 // Nothing is resolved, so there is no device to name.
                 alias = "",
                 facePlaceholder = true,
+            )
+        }
+
+        if (target.kind == DeviceKind.HEADPHONE_STAND) {
+            if (connectionState == ConnectionState.Disconnected) return base.asDisconnected()
+            return base.copy(
+                link = when {
+                    connectionState == ConnectionState.Ready -> WidgetLink.Ready
+                    connectionState == ConnectionState.Error || commandFailed -> WidgetLink.Failed
+                    else -> WidgetLink.Connecting
+                },
+                headline = when {
+                    connectionState == ConnectionState.Ready -> WidgetHeadline.Visualizer
+                    connectionState == ConnectionState.Error || commandFailed -> WidgetHeadline.CantConnect
+                    else -> WidgetHeadline.Connecting
+                },
+                subtitle = WidgetSubtitle.TapToOpenApp,
+                faceBits = VISUALIZER_GLYPH,
             )
         }
 

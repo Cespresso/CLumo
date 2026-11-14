@@ -8,6 +8,16 @@ import org.junit.Test
 
 class VisualizerStreamPolicyTest {
     @Test
+    fun standKeepsCaptureOnlyDuringRecoverableConnectionPhases() {
+        val stand = io.github.cespresso.clumo.domain.DeviceKind.HEADPHONE_STAND
+        assertFalse(shouldStopVisualizerForLinkChange(true, ConnectionState.Reconnecting, stand))
+        assertFalse(shouldStopVisualizerForLinkChange(true, ConnectionState.Synchronizing, stand))
+        assertTrue(shouldStopVisualizerForLinkChange(true, ConnectionState.Error, stand))
+        assertTrue(shouldStopVisualizerForLinkChange(true, ConnectionState.Disconnected, stand))
+        assertFalse(shouldStopVisualizerForLinkChange(false, ConnectionState.Error, stand))
+    }
+
+    @Test
     fun allowsVisualizerOnlyWhileReadyInConfirmedVisualizerMode() {
         assertTrue(canRunAudioVisualizer(ConnectionState.Ready, DeviceMode.VISUALIZER))
         assertFalse(canRunAudioVisualizer(ConnectionState.Ready, DeviceMode.DISPLAY))

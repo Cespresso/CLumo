@@ -8,6 +8,7 @@ import io.github.cespresso.clumo.data.ble.shouldStopVisualizerForLinkChange
 import io.github.cespresso.clumo.data.ble.shouldStopVisualizerForModeChange
 import io.github.cespresso.clumo.domain.Brightness
 import io.github.cespresso.clumo.domain.ConnectionState
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceSessionState
 import io.github.cespresso.clumo.domain.DeviceSnapshot
@@ -34,6 +35,8 @@ class DeviceSession internal constructor(
     private val nowRealtime: () -> Long,
     private val audioVisualizer: AudioVisualizerManager = AudioVisualizerManager(),
 ) {
+    val kind: StateFlow<DeviceKind> get() = transport.kind
+    val standbyMode: StateFlow<Int?> get() = transport.standbyMode
     val address: String get() = transport.address
     val deviceId: StateFlow<String?> get() = transport.deviceId
     val deviceName: StateFlow<String?> get() = transport.deviceName
@@ -77,7 +80,7 @@ class DeviceSession internal constructor(
     }
 
     private fun onLinkChanged(link: ConnectionState) {
-        if (shouldStopVisualizerForLinkChange(audioVisualizer.isActive.value, link)) {
+        if (shouldStopVisualizerForLinkChange(audioVisualizer.isActive.value, link, kind.value)) {
             stopVisualizer(clearDisplay = false)
         }
         if (link == ConnectionState.Ready && !wasReady) {
@@ -157,6 +160,7 @@ class DeviceSession internal constructor(
     }
 
     fun setMode(mode: Int) {
+        if (kind.value == DeviceKind.HEADPHONE_STAND) return
         if (shouldStopVisualizerForModeChange(audioVisualizer.isActive.value, mode)) {
             stopVisualizer()
         }
@@ -285,6 +289,21 @@ class DeviceSession internal constructor(
             _state.value.effectiveMode == DeviceMode.VISUALIZER
         ) {
             transport.writeVisualizerColumns(ByteArray(8))
+        }
+    }
+
+    suspend fun readControlBindings() = transport.readControlBindings()
+    suspend fun saveControlBindings(settings: io.github.cespresso.clumo.data.ble.ControlBindings) = transport.saveControlBindings(settings)
+    suspend fun readStandDisplay() = transport.readStandDisplay()
+    suspend fun saveStandDisplay(settings: io.github.cespresso.clumo.data.ble.StandDisplaySettings) = transport.saveStandDisplay(settings)
+
+    fun setStandbyMode(mode: Int) {
+        if (kind.value == DeviceKind.HEADPHONE_STAND && mode in 0..2) transport.writeStandbyMode(mode)
+    }
+
+    fun sendMediaVolume(percent: Int?) {
+        if (kind.value == DeviceKind.HEADPHONE_STAND && state.value.link == ConnectionState.Ready) {
+            transport.writeMediaVolume(percent)
         }
     }
 

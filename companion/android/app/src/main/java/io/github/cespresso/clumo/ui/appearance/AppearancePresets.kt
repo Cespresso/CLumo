@@ -2,7 +2,7 @@ package io.github.cespresso.clumo.ui.appearance
 
 import io.github.cespresso.clumo.domain.RgbColor
 
-enum class AppearancePart { Enclosure, ButtonA, ButtonB, Led }
+enum class AppearancePart { Enclosure, ButtonA, ButtonB, Led, Panel, MatrixSurface, Windows, StandButtons, Accent, Preview }
 
 enum class AppearancePresetName {
     Sage,

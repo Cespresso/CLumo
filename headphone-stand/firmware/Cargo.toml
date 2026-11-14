@@ -1,0 +1,20 @@
+[package]
+name = "headphone-stand"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+[[bin]]
+name = "headphone-stand"
+required-features = ["device"]
+test = false
+[features]
+default = []
+device = ["dep:esp-idf-svc", "dep:esp32-nimble", "dep:log"]
+[target.'cfg(target_os = "espidf")'.dependencies]
+esp-idf-svc = { version = "0.51", optional = true }
+esp32-nimble = { version = "0.11", optional = true }
+log = { version = "0.4", optional = true }
+[build-dependencies]
+embuild = { version = "0.33", features = ["espidf"] }
+[profile.release]
+opt-level = "s"

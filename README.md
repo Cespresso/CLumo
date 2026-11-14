@@ -1,75 +1,70 @@
 # CLumo
 
-[English] | [日本語 (README.ja.md)](README.ja.md)
+English | [日本語](README.ja.md)
 
-CLumo is a palm-sized desk gadget built around an ESP32-C3, an 8x8 LED matrix (MAX7219), and two buttons. It sits on your desk as a tiny companion: a digital pet, a pomodoro timer, a dice roller, or a display you can draw on from your phone.
+CLumo is a family of ESP32-C3 desk gadgets with an 8×8 LED matrix. The original palm-sized CLumo is a digital pet, timer and phone-controlled display. The headphone stand adds a place for your headphones, a volume knob and media controls.
 
-![Three CLumo units on a desk in yellow, green, and grey; the green one shows a heart](assets/clumo-cover.jpg)
+## Choose your CLumo
 
-## Two ways to use it
+| Hardware | Firmware | What it does | Phone support |
+| --- | --- | --- | --- |
+| Original CLumo | [Standalone](standalone/) | Digital pet, 25/5 pomodoro, dice | No phone needed |
+| Original CLumo | [Companion](companion/) | Configurable pomodoro, timer, custom patterns, audio visualizer | Android app |
+| Headphone stand | [Stand firmware](headphone-stand/) | Media controls, actual-volume LEDs, custom standby animations | Android app or iPhone AMS for volume; Android app for visualization |
 
-CLumo ships with two independent firmware variants. Pick one and flash it. You can always switch later.
+Standalone and companion share the original hardware. The stand has different wiring and needs its own firmware.
 
-### 1. Standalone firmware: no app required
+## Original CLumo
 
-Works with just the two buttons; no Bluetooth or phone setup.
+![Three original CLumo units in yellow, green and grey](assets/clumo-cover.jpg)
 
-- Digital pet: feed it, watch its mood and idle animations
-- Pomodoro timer: 25/5 work-break cycles on the LED matrix
-- Dice: roll a die with one press
+Two buttons control a small display in a 3D-printed enclosure. Use it on its own for the pet, pomodoro and dice, or pair the companion firmware with the Android app for timers, custom displays and audio visualization.
 
-Hold the white button for a second to cycle between modes. The [standalone README](standalone/) lists what each button does in each mode. A running pomodoro and the pet's mood carry across a mode switch, and the mode itself survives a power cycle.
+- [Standalone features and controls](standalone/)
+- [Companion features and Android setup](companion/)
+- [Parts, wiring and photo assembly guide](hardware/assembly/)
+- [Printable enclosure](hardware/models/clumo.3mf)
 
-### 2. Companion firmware + Android app
+## Headphone stand
 
-Connects to the CLumo Android app over BLE for richer features.
+![CLumo headphone stands with illuminated controls and headphones on the desk](assets/clumo-headphone-stand-cover.jpg)
 
-- Pomodoro: app-configurable work/break cycles shown as a 64-pixel countdown
-- Timer: a one-shot countdown from `00:01` to `59:59`, with start, pause, resume, and cancel controls
-- My Displays: draw custom 8x8 patterns in the app and send them to the device
-- Audio visualizer: the matrix dances to audio streamed from your phone
+By default, turn the knob for volume, press once to play or pause, twice for next, and three times for previous. The left and right buttons also select previous and next. Customize these assignments in the Android app or Wi-Fi setup page. Three LEDs show the phone's actual media volume. The matrix shows control feedback and a customizable standby display.
 
-The [companion README](companion/) covers what the matrix shows before the app connects and what keeps working while the phone is away.
+- **Android:** media controls work over BLE HID; the shared CLumo app supplies volume and the audio visualizer.
+- **iPhone:** media controls and actual-volume LEDs work without an app, using BLE HID and Apple Media Service (AMS). The Android audio visualizer is not available on iPhone.
+- **Display editing:** use the Android app over Bluetooth, or hold both side buttons for 3 seconds to enter Wi-Fi setup. Both editors support presets, still images and animations of up to eight frames. Hold the buttons again to return to Bluetooth mode; saving alone does not exit setup.
+- **Pairing:** hold the knob for 3 seconds to pair a new phone. Reconnecting a registered phone does not require a long press.
 
-## Quick start
+![Default controls and display](headphone-stand/publishing/diagrams/controls.en.png)
 
-1. Flash the firmware from your browser, no tools to install:
-   **https://cespresso.github.io/CLumo/**
-   Choose standalone or companion, plug in the device over USB, and click install. Powered by ESP Web Tools; works in Chrome and Edge on desktop, and in Android Chrome via USB-OTG.
-2. For the companion firmware, download `clumo.apk` from the [latest GitHub Release](https://github.com/Cespresso/CLumo/releases/latest), install it, and pair with the device using passkey `123456`.
+[Android / iPhone feature comparison](headphone-stand/publishing/features.md) · [App and setup screenshots](headphone-stand/publishing/README.md)
+
+[Hardware, wiring and printing](hardware/headphone-stand/) · [Wiring diagram (SVG)](hardware/headphone-stand/img/clumo-headphone-stand-wiring.svg) · [P1S print project (3MF)](hardware/headphone-stand/models/clumo-headphone-stand-p1s.3mf)
+
+The 3MF contains four plates and 33 parts, with the user's saved P1S settings. See the hardware guide for the plate contents and printing notes. See the [photo assembly guide (English)](hardware/headphone-stand/assembly/clumo-assembly-en.pdf) or [Japanese edition](hardware/headphone-stand/assembly/clumo-assembly-ja.pdf).
+
+## Get started
+
+**Original CLumo:** use the [browser installer](https://cespresso.github.io/CLumo/) to choose standalone or companion and flash over USB. For companion, install `clumo.apk` from the [latest release](https://github.com/Cespresso/CLumo/releases/latest) and pair using passkey `123456`.
+
+**Headphone stand:** follow the [stand firmware build and flashing instructions](headphone-stand/firmware/README.md#ビルド検査既存実機への書き込み) (currently in Japanese). The [browser installer](https://cespresso.github.io/CLumo/?fw=headphone-stand) supports the stand once a release containing `clumo-headphone-stand.bin` and `clumo.apk` is published. Until then, build from source. Use the Android app from the same release: the stand uses protocol v4. Stand pairing does not use the original CLumo's `123456` passkey.
 
 ## Repository layout
 
 | Path | Contents |
-|---|---|
-| [`standalone/`](standalone/) | Standalone firmware (Rust, no BLE): pet / pomodoro / dice |
-| [`companion/firmware/`](companion/firmware/) | Companion firmware (Rust + BLE): pomodoro / timer / my displays / visualizer |
-| [`companion/android/`](companion/android/) | CLumo Android app (Kotlin, Gradle) |
-| [`installer/`](installer/) | Browser-based installer page (ESP Web Tools, served via GitHub Pages) |
-| [`hardware/`](hardware/) | Assembly guide, wiring diagram, and 3D-printable enclosure |
+| --- | --- |
+| [`standalone/`](standalone/) | Original CLumo standalone firmware |
+| [`companion/firmware/`](companion/firmware/) | Original CLumo companion firmware |
+| [`companion/android/`](companion/android/) | Shared Android app |
+| [`headphone-stand/`](headphone-stand/) | Stand firmware, protocol and verification notes |
+| [`hardware/assembly/`](hardware/assembly/) | Original CLumo assembly guide and wiring |
+| [`hardware/headphone-stand/`](hardware/headphone-stand/) | Stand wiring, printable 3MF and source provenance |
+| [`installer/`](installer/) | Browser installer for all three firmware variants |
 
 ## Building from source
 
-Each subproject is self-contained and has its own README with full instructions:
-
-- Firmware ([`standalone/`](standalone/), [`companion/firmware/`](companion/firmware/)): Rust nightly, ESP-IDF v5.2.2, target `riscv32imc-esp-espidf`. Build with `cargo build --release`, flash with `espflash`.
-- Android app ([`companion/android/`](companion/android/)): a standard Gradle project. Run `./gradlew assembleDebug` or open it in Android Studio.
-
-## Hardware
-
-- MCU: Seeed XIAO ESP32-C3
-- Display: 8x8 LED matrix driven by a MAX7219 (SPI)
-- Input: two tactile buttons
-
-The enclosure is five 3D-printed parts. There are no screws or glue: the XIAO snaps into a printed frame, every wire ends in a JST XH connector, and the only soldering is three pin headers. The [assembly guide](hardware/assembly/) walks through the build with photos and includes the parts list and wiring diagram. The 3D model is in [`hardware/models/`](hardware/models/).
-
-## About the AI in this project
-
-CLumo is a one-person project, made with the help of AI tools. The firmware, the Android
-app, these READMEs, the installer page, the commit messages and the like were written with
-that help: I set the design and the direction, the assistant wrote, and I read it back and
-ran it on real CLumo units before every release. The hardware, on the other hand, is
-essentially my own hands: designed in a CAD tool, printed, assembled and photographed by me.
+Firmware uses Rust and ESP-IDF v5.2.2, targeting `riscv32imc-esp-espidf`. Follow the instructions for [standalone](standalone/), [companion](companion/firmware/) or the [stand](headphone-stand/firmware/); the stand requires explicit device build flags. Build the [Android app](companion/android/) with Gradle or Android Studio.
 
 ## License
 

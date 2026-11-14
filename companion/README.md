@@ -116,3 +116,18 @@ For anything else, follow the app's dialogs.
 
 - BLE protocol specification and firmware build: [`firmware/README.md`](firmware/README.md)
 - App build: [`android/README.md`](android/README.md)
+
+## Headphone stand support (in development)
+
+The Android app also recognizes the stand's dedicated v4 GATT service. Existing CLumo devices retain all four modes;
+the stand exposes visualization, brightness, persistent standby images/animations, and configurable control assignments. Standard BLE HID handles physical
+media controls without this app. App disconnect/forget does not remove the OS bond.
+Pair in Android Bluetooth settings, then add the stand in the app. Bonded `CLumo-Stand-` devices are listed even when
+an existing HID connection stops advertising; service INFO `[4, 1]` still validates compatibility.
+After audio permission is granted, opening the stand screen starts visualization. Capture survives Home/screen-off
+while the service runs, and transient reconnection; terminal connection failure stops capture. An explicit Stop is
+respected on screen resume. Media volume is sent every 500 ms; firmware expires streams after two seconds.
+Both widgets retain the shared primary-device model; stand widgets show app-connection state and open the app.
+Physical CMF Phone HID/GATT coexistence, volume, screen-off, and app-termination behavior remain hardware acceptance checks.
+
+Production firmware: [`headphone-stand/`](../headphone-stand/README.md). Hold the encoder for 3 seconds, then pair from Android Bluetooth settings within 60 seconds.

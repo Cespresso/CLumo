@@ -48,7 +48,7 @@ The 3MF contains four plates and 33 parts, with the user's saved P1S settings. S
 
 **Original CLumo:** use the [browser installer](https://cespresso.github.io/CLumo/) to choose standalone or companion and flash over USB. For companion, install `clumo.apk` from the [latest release](https://github.com/Cespresso/CLumo/releases/latest) and pair using passkey `123456`.
 
-**Headphone stand:** follow the [stand firmware build and flashing instructions](headphone-stand/firmware/README.md#ビルド検査既存実機への書き込み) (currently in Japanese). The stand is not yet in the web installer or release firmware builds. Build the Android app from this branch when using the stand: its v4 protocol requires a matching app and firmware. Stand pairing does not use the original CLumo's `123456` passkey.
+**Headphone stand:** follow the [stand firmware build and flashing instructions](headphone-stand/firmware/README.md#ビルド検査既存実機への書き込み) (currently in Japanese). The [browser installer](https://cespresso.github.io/CLumo/?fw=headphone-stand) supports the stand once a release containing `clumo-headphone-stand.bin` and `clumo.apk` is published. Until then, build from source. Use the Android app from the same release: the stand uses protocol v4. Stand pairing does not use the original CLumo's `123456` passkey.
 
 ## Repository layout
 
@@ -60,7 +60,7 @@ The 3MF contains four plates and 33 parts, with the user's saved P1S settings. S
 | [`headphone-stand/`](headphone-stand/) | Stand firmware, protocol and verification notes |
 | [`hardware/assembly/`](hardware/assembly/) | Original CLumo assembly guide and wiring |
 | [`hardware/headphone-stand/`](hardware/headphone-stand/) | Stand wiring, printable 3MF and source provenance |
-| [`installer/`](installer/) | Browser installer for the original CLumo variants |
+| [`installer/`](installer/) | Browser installer for all three firmware variants |
 
 ## Building from source
 

@@ -1,20 +1,14 @@
-name: Release & Deploy Installer
+name: Build Release
 
-# A v* tag builds the three artifacts and attaches them to a Release. A push to main
-# deploys installer/ to Pages: the github-pages environment refuses a deployment that
-# comes from a tag.
+# A v* tag builds three firmware images and the shared Android APK.
 on:
   push:
     tags:
       - "v*"
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
   contents: write   # create the Release and attach its assets
-  pages: write
-  id-token: write   # OIDC for the Pages deployment
 
 concurrency:
   group: release-${{ github.ref }}
@@ -119,8 +113,53 @@ jobs:
           name: clumo-companion
           path: clumo-companion.bin
 
+  build-headphone-stand:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust ESP toolchain
+        uses: esp-rs/xtensa-toolchain@v1.5
+        with:
+          default: true
+          buildtargets: esp32c3
+          ldproxy: true
+
+      - name: Cache build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: headphone-stand/firmware
+          cache-directories: |
+            headphone-stand/firmware/.embuild
+            ~/.espressif
+
+      - name: Build (release)
+        working-directory: headphone-stand/firmware
+        run: cargo build --locked --release --features device --bin headphone-stand --target riscv32imc-esp-espidf -Z build-std=std,panic_abort
+
+      - name: Install espflash
+        run: cargo install espflash --locked
+
+      - name: Generate merged firmware
+        run: |
+          espflash save-image \
+            --chip esp32c3 \
+            --merge \
+            --flash-size 4mb \
+            headphone-stand/firmware/target/riscv32imc-esp-espidf/release/headphone-stand \
+            clumo-headphone-stand.bin
+          ls -lh clumo-headphone-stand.bin
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clumo-headphone-stand
+          path: clumo-headphone-stand.bin
+
   # ------------------------------------------------------------
-  # 3. Android app (clumo.apk)
+  # 4. Android app (clumo.apk)
   # ------------------------------------------------------------
   build-apk:
     if: startsWith(github.ref, 'refs/tags/')
@@ -193,11 +232,11 @@ jobs:
           path: clumo.apk
 
   # ------------------------------------------------------------
-  # 4. Attach all three artifacts to the GitHub Release
+  # 5. Attach all four artifacts to the GitHub Release
   # ------------------------------------------------------------
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build-standalone, build-companion, build-apk]
+    needs: [build-standalone, build-companion, build-headphone-stand, build-apk]
     runs-on: ubuntu-latest
     steps:
       - name: Download artifacts
@@ -212,43 +251,7 @@ jobs:
           files: |
             dist/clumo-standalone.bin
             dist/clumo-companion.bin
+            dist/clumo-headphone-stand.bin
             dist/clumo.apk
+          fail_on_unmatched_files: true
           generate_release_notes: true
-
-  # ------------------------------------------------------------
-  # 5. Deploy installer/ to GitHub Pages
-  # ------------------------------------------------------------
-  deploy-pages:
-    # No needs: the page deploys even when no firmware was built.
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # Release asset URLs carry no CORS headers, so ESP Web Tools cannot fetch them.
-      # Serving the binaries from Pages puts them on the manifest's own origin.
-      # The first run, before any Release exists, deploys the page alone.
-      - name: Fetch latest firmware into installer/
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          for bin in clumo-standalone.bin clumo-companion.bin; do
-            if ! gh release download --repo "${{ github.repository }}" \
-                --pattern "$bin" --dir installer --clobber; then
-              echo "::warning::could not download $bin; deploying the page only"
-            fi
-          done
-          ls -lh installer/
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: installer
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4

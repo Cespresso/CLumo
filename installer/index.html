@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet" />
 
   <!-- State lives in the URL so a choice can be linked to and reloaded.
-         ?fw=standalone | companion   which firmware to flash
+         ?fw=standalone | companion | headphone-stand   which firmware to flash
          ?v=pc | mobile               how to flash
            pc      official esp-web-tools (Web Serial, desktop only)
            mobile  tasmota-esp-web-tools (WebUSB, desktop + Android)
@@ -25,7 +25,7 @@
       var v = q.get("v");
       var lang = q.get("lang");
       var root = document.documentElement;
-      root.dataset.fw = fw === "standalone" || fw === "companion" ? fw : "none";
+      root.dataset.fw = fw === "standalone" || fw === "companion" || fw === "headphone-stand" ? fw : "none";
       root.dataset.v = v === "pc" || v === "mobile" ? v : "none";
       if (lang !== "ja" && lang !== "en") {
         try { lang = localStorage.getItem("clumo-lang"); } catch (e) { lang = null; }
@@ -219,6 +219,10 @@
 
     html:not([data-fw="standalone"]) .standalone-only { display: none; }
     html:not([data-fw="companion"]) .companion-only { display: none; }
+    html:not([data-fw="headphone-stand"]) .stand-only { display: none; }
+    esp-web-install-button:not(:defined) [slot="unsupported"],
+    esp-web-install-button:not(:defined) [slot="not-allowed"] { display: none; }
+    button.install:disabled { opacity: .5; cursor: not-allowed; }
     html:not([data-v="pc"]) .pc-only { display: none; }
     html:not([data-v="mobile"]) .mobile-only { display: none; }
 
@@ -275,8 +279,17 @@
         </div>
       </div>
 
-      <div class="note" lang="ja">どちらを選んでも、あとからこのページで何度でも書き換えられます。迷ったら<strong>単独版</strong>から。</div>
-      <div class="note" lang="en">Whichever you pick, you can come back here and switch as often as you like. If in doubt, start with <strong>standalone</strong>.</div>
+      <div class="card choice">
+        <img src="img/visualizer.svg" alt="" />
+        <div class="body">
+          <h2 lang="ja">ヘッドホンスタンド版</h2><h2 lang="en">Headphone stand</h2>
+          <p lang="ja">音量ノブ、メディア操作、実音量LED、待機表示の編集。AndroidアプリとiPhoneに対応します。スタンド専用の配線が必要です。</p>
+          <p lang="en">Volume knob, media controls, volume LEDs and an editable standby display. Supports the Android app and iPhone. Requires the stand hardware and wiring.</p>
+          <a class="pill primary" data-fw-link="headphone-stand" href="?fw=headphone-stand"><span lang="ja">スタンド版を書き込む</span><span lang="en">Flash headphone stand</span></a>
+        </div>
+      </div>
+      <div class="note" lang="ja">従来CLumoでは単独版／協調版を選べます。ヘッドホンスタンドには専用版を選んでください。</div>
+      <div class="note" lang="en">Choose standalone or companion for the original CLumo. Choose the dedicated stand firmware for the headphone stand.</div>
     </div>
 
     <!-- ===== 2. How to flash (shown once fw is chosen and ?v= is unset) ===== -->
@@ -284,8 +297,8 @@
       <span class="step-label" lang="ja">STEP 2 / 2 · 書き込み方法を選ぶ</span>
       <span class="step-label" lang="en">STEP 2 / 2 · CHOOSE HOW TO FLASH</span>
       <p class="banner">
-        <span lang="ja">選択中: <b><span class="standalone-only">単独版</span><span class="companion-only">アプリ協調版</span></b> · <a data-reset-link href="./">選び直す</a></span>
-        <span lang="en">Selected: <b><span class="standalone-only">standalone</span><span class="companion-only">companion</span></b> · <a data-reset-link href="./">change</a></span>
+        <span lang="ja">選択中: <b><span class="standalone-only">単独版</span><span class="companion-only">アプリ協調版</span><span class="stand-only">ヘッドホンスタンド版</span></b> · <a data-reset-link href="./">選び直す</a></span>
+        <span lang="en">Selected: <b><span class="standalone-only">standalone</span><span class="companion-only">companion</span><span class="stand-only">headphone stand</span></b> · <a data-reset-link href="./">change</a></span>
       </p>
 
       <div class="card choice">
@@ -317,13 +330,13 @@
     <!-- ===== Installer (shown once both are chosen) ===== -->
     <div id="installer">
       <p class="banner">
-        <span lang="ja"><b><span class="standalone-only">単独版</span><span class="companion-only">アプリ協調版</span></b>を<span class="pc-only">PC から</span><span class="mobile-only">PC または Android から</span>書き込みます。 <a data-reset-link href="./">選び直す</a></span>
-        <span lang="en">Flashing the <b><span class="standalone-only">standalone</span><span class="companion-only">companion</span></b> firmware <span class="pc-only">from a PC</span><span class="mobile-only">from a PC or Android</span>. <a data-reset-link href="./">Change</a></span>
+        <span lang="ja"><b><span class="standalone-only">単独版</span><span class="companion-only">アプリ協調版</span><span class="stand-only">ヘッドホンスタンド版</span></b>を<span class="pc-only">PC から</span><span class="mobile-only">PC または Android から</span>書き込みます。 <a data-reset-link href="./">選び直す</a></span>
+        <span lang="en">Flashing the <b><span class="standalone-only">standalone</span><span class="companion-only">companion</span><span class="stand-only">headphone stand</span></b> firmware <span class="pc-only">from a PC</span><span class="mobile-only">from a PC or Android</span>. <a data-reset-link href="./">Change</a></span>
       </p>
 
       <div class="card install-wrap">
         <esp-web-install-button id="install-btn">
-          <button slot="activate" class="install"><span lang="ja">インストール</span><span lang="en">Install</span></button>
+          <button slot="activate" class="install" disabled><span lang="ja">インストール</span><span lang="en">Install</span></button>
           <span slot="unsupported">
             <span lang="ja">このブラウザは未対応です。PC は Chrome / Edge / Opera<span class="mobile-only">、スマホは Android の Chrome</span> をご利用ください。iOS、Safari、Firefox では使えません。</span>
             <span lang="en">This browser is not supported. Use Chrome, Edge, or Opera on a desktop<span class="mobile-only">, or Chrome on Android</span>. iOS, Safari, and Firefox cannot flash.</span>
@@ -333,6 +346,7 @@
             <span lang="en">Only available over HTTPS.</span>
           </span>
         </esp-web-install-button>
+        <p id="firmware-status" role="status" aria-live="polite"></p>
       </div>
 
       <div class="card">
@@ -367,6 +381,20 @@
       <div class="card">
         <h2 lang="ja">書き込んだあと</h2>
         <h2 lang="en">After flashing</h2>
+        <ol class="stand-only" lang="ja">
+          <li>ノブを3秒長押しして離し、60秒以内にスマホのBluetooth設定で「CLumo-Stand-XXXX」を選択します。</li>
+          <li>回転で音量、1回押しで再生／一時停止、2回で次へ、3回で前へ。左右ボタンは前へ／次へです。</li>
+          <li>Androidは同じリリースのCLumoアプリで音量配信・ビジュアライザ・表示編集を利用できます。iPhoneはアプリなしで実音量LEDが動作します。</li>
+          <li>左右ボタンを同時に3秒長押ししてWi-Fi設定へ。設定用Wi-Fiに接続すると編集ページへ案内されます。同じ長押しで通常モードへ戻ります。</li>
+          <li><a id="stand-apk-ja" href="https://github.com/Cespresso/CLumo/releases/latest">対応アプリとリリース</a> · <a href="https://github.com/Cespresso/CLumo/tree/main/headphone-stand">スタンドのガイド</a></li>
+        </ol>
+        <ol class="stand-only" lang="en">
+          <li>Hold the knob for 3 seconds, release it, then select CLumo-Stand-XXXX in your phone Bluetooth settings within 60 seconds.</li>
+          <li>Turn for volume; press once to play/pause, twice for Next, three times for Previous. The left/right buttons select Previous/Next.</li>
+          <li>Use the Android app from the same release for volume reporting, visualization and display editing. iPhone volume LEDs work without an app.</li>
+          <li>Hold both side buttons for 3 seconds to enter Wi-Fi setup, then join the setup network to open the editor. Repeat the hold to return to Bluetooth.</li>
+          <li><a id="stand-apk-en" href="https://github.com/Cespresso/CLumo/releases/latest">Matching app and release</a> · <a href="https://github.com/Cespresso/CLumo/tree/main/headphone-stand">Stand guide</a></li>
+        </ol>
         <ol class="standalone-only" lang="ja">
           <li>「インストール完了」のあとに空のダイアログが出たら閉じて構いません。本体はもう動いています</li>
           <li>マトリクスが点灯し、最初のモードが表示されます</li>
@@ -401,9 +429,10 @@
         <ul class="specs">
           <li><span class="k">MCU</span><span class="v">ESP32-C3</span></li>
           <li><span class="k">LED</span><span class="v"><span lang="ja">8x8 マトリクス（MAX7219）</span><span lang="en">8x8 matrix (MAX7219)</span></span></li>
-          <li><span class="k"><span lang="ja">ボタン</span><span lang="en">Buttons</span></span><span class="v"><span lang="ja">2 つ</span><span lang="en">Two</span></span></li>
+          <li><span class="k"><span lang="ja">ボタン</span><span lang="en">Buttons</span></span><span class="v"><span lang="ja">2 つ<span class="stand-only"> ＋ 押し込み式ノブ</span></span><span lang="en">Two<span class="stand-only"> + push knob</span></span></span></li>
           <li class="standalone-only"><span class="k">Bluetooth</span><span class="v"><span lang="ja">使いません</span><span lang="en">Not used</span></span></li>
           <li class="companion-only"><span class="k"><span lang="ja">BLE 名</span><span lang="en">BLE name</span></span><span class="v"><span lang="ja">CLumo-XXXX（末尾は個体ごと）</span><span lang="en">CLumo-XXXX (suffix per unit)</span></span></li>
+          <li class="stand-only"><span class="k">BLE</span><span class="v">CLumo-Stand-XXXX</span></li>
           <li class="companion-only"><span class="k"><span lang="ja">パスキー</span><span lang="en">Passkey</span></span><span class="v">123456</span></li>
         </ul>
       </div>
@@ -460,19 +489,36 @@
       });
 
       var btn = document.getElementById("install-btn");
-      if (btn && (fw === "standalone" || fw === "companion")) {
-        btn.setAttribute("manifest", "./manifest-" + fw + ".json");
-      }
-
       var ENGINES = {
         pc: "https://unpkg.com/esp-web-tools@10/dist/web/install-button.js",
         mobile: "https://unpkg.com/tasmota-esp-web-tools@12.2.4/dist/web/install-button.js?module",
       };
-      if ((fw === "standalone" || fw === "companion") && ENGINES[v]) {
-        var s = document.createElement("script");
-        s.type = "module";
-        s.src = ENGINES[v];
-        document.head.appendChild(s);
+      if (btn && fw !== "none" && ENGINES[v]) {
+        var status = document.getElementById("firmware-status");
+        var activate = btn.querySelector('[slot="activate"]');
+        status.textContent = lang === "ja" ? "公開ファームウェアを確認中…" : "Checking published firmware…";
+        fetch("./availability.json", { cache: "no-store" }).then(function (response) {
+          if (!response.ok) throw new Error("availability");
+          return response.json();
+        }).then(function (release) {
+          if (!release.firmware || release.firmware[fw] !== true || !release.version) {
+            status.textContent = lang === "ja" ? "この機種のファームウェアはまだ公開されていません。" : "Firmware for this device is not published yet.";
+            return;
+          }
+          btn.setAttribute("manifest", "./manifest-" + fw + ".json");
+          var script = document.createElement("script");
+          script.type = "module";
+          script.src = ENGINES[v];
+          script.onload = function () { activate.disabled = false; };
+          script.onerror = function () { status.textContent = lang === "ja" ? "書き込みツールを読み込めません。再読み込みしてください。" : "Could not load the installer. Reload to retry."; };
+          document.head.appendChild(script);
+          status.textContent = release.version;
+          ["stand-apk-ja", "stand-apk-en"].forEach(function (id) {
+            document.getElementById(id).href = "https://github.com/Cespresso/CLumo/releases/tag/" + encodeURIComponent(release.version);
+          });
+        }).catch(function () {
+          status.textContent = lang === "ja" ? "公開情報を取得できません。再読み込みしてください。" : "Could not check the release. Reload to retry.";
+        });
       }
 
       var engine = document.getElementById("engine-link");

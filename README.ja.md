@@ -48,7 +48,7 @@ CLumoは、ESP32-C3と8×8 LEDマトリクスを使った卓上ガジェット�
 
 **従来CLumo：** [ブラウザインストーラー](https://cespresso.github.io/CLumo/)で単独版／アプリ協調版を選び、USB経由で書き込みます。協調版では[最新リリース](https://github.com/Cespresso/CLumo/releases/latest)の`clumo.apk`を導入し、パスキー`123456`でペアリングします。
 
-**ヘッドホンスタンド：** [専用ファームウェアのビルド・書き込み手順](headphone-stand/firmware/README.md#ビルド検査既存実機への書き込み)に従ってください。Webインストーラーとリリース用ファームウェア生成にはまだ含まれません。Androidを使う場合は、このブランチのアプリをビルドしてください。v4プロトコルのため対応するアプリとファームウェアが必要です。スタンドのペアリングに従来CLumoのパスキー`123456`は使いません。
+**ヘッドホンスタンド：** [専用ファームウェアのビルド・書き込み手順](headphone-stand/firmware/README.md#ビルド検査既存実機への書き込み)に従ってください。[ブラウザインストーラー](https://cespresso.github.io/CLumo/?fw=headphone-stand)は、`clumo-headphone-stand.bin`と`clumo.apk`を含むリリースの公開後に利用できます。それまではソースからビルドしてください。v4プロトコルを使うため、Androidアプリはファームウェアと同じリリースのものを使用します。スタンドのペアリングに従来CLumoのパスキー`123456`は使いません。
 
 ## リポジトリ構成
 
@@ -60,7 +60,7 @@ CLumoは、ESP32-C3と8×8 LEDマトリクスを使った卓上ガジェット�
 | [`headphone-stand/`](headphone-stand/) | スタンド用ファームウェア・プロトコル・検証記録 |
 | [`hardware/assembly/`](hardware/assembly/) | 従来CLumoの組み立てガイド・配線 |
 | [`hardware/headphone-stand/`](hardware/headphone-stand/) | スタンドの配線図・印刷用3MF・出典 |
-| [`installer/`](installer/) | 従来CLumoの各版に対応するブラザインストーラー |
+| [`installer/`](installer/) | 3種類のファームウェアに対応するブラウザインストーラー |
 
 ## ソースからのビルド
 

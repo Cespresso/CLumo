@@ -20,12 +20,18 @@ jobs:
   # ------------------------------------------------------------
   build-standalone:
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       # ESP-IDF itself is not installed here: esp-idf-sys fetches it during the build.
+      # ESP-IDF 5.2.2 uses older host tools; do not follow ubuntu-latest.
+      - name: Set up Python for ESP-IDF
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
       - name: Install Rust ESP toolchain
         uses: esp-rs/xtensa-toolchain@v1.5
         with:
@@ -70,10 +76,16 @@ jobs:
   # ------------------------------------------------------------
   build-companion:
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # ESP-IDF 5.2.2 uses older host tools; do not follow ubuntu-latest.
+      - name: Set up Python for ESP-IDF
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Install Rust ESP toolchain
         uses: esp-rs/xtensa-toolchain@v1.5
@@ -115,10 +127,16 @@ jobs:
 
   build-headphone-stand:
     if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # ESP-IDF 5.2.2 uses older host tools; do not follow ubuntu-latest.
+      - name: Set up Python for ESP-IDF
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Install Rust ESP toolchain
         uses: esp-rs/xtensa-toolchain@v1.5

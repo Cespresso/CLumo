@@ -20,6 +20,8 @@ import androidx.core.content.ContextCompat
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.DeviceKind
+import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.PomodoroStatus
@@ -33,7 +35,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 /**
@@ -56,6 +60,7 @@ class DeviceConnection(
     private val context: Context,
     override val address: String,
     initialName: String?,
+    initialKind: DeviceKind = DeviceKind.CLUMO,
 ) : DeviceTransport {
 
     companion object {
@@ -70,6 +75,15 @@ class DeviceConnection(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     // --- Public state ---
+
+    private val _kind = MutableStateFlow(initialKind)
+    override val kind = _kind.asStateFlow()
+    private val _standbyMode = MutableStateFlow<Int?>(null)
+    override val standbyMode = _standbyMode.asStateFlow()
+    private var standInfoValidated = false
+    private var awaitingMtu = false
+    private var discoveringStand = false
+    private val isStand: Boolean get() = _kind.value == DeviceKind.HEADPHONE_STAND
 
     private val _connectionState = MutableStateFlow(ConnectionState.Disconnected)
     override val connectionState = _connectionState.asStateFlow()
@@ -109,7 +123,13 @@ class DeviceConnection(
 
     // --- GATT operation queue ---
 
+    private val bindingReads = MutableStateFlow<Pair<Long, ControlBindings?>>(0L to null)
+    private val bindingEditMutex = kotlinx.coroutines.sync.Mutex()
+    private val displayReads = MutableStateFlow<Pair<Long, StandDisplaySettings?>>(0L to null)
+    private val displayEditMutex = kotlinx.coroutines.sync.Mutex()
+
     private sealed class GattOp {
+        class Mtu : GattOp()
         class Subscribe(val uuid: UUID) : GattOp()
         class Read(val uuid: UUID) : GattOp()
         class Write(val uuid: UUID, val value: ByteArray, val noResponse: Boolean) : GattOp()
@@ -268,6 +288,10 @@ class DeviceConnection(
 
     private fun clearGattState() {
         initialSync = false
+        standInfoValidated = false
+        awaitingMtu = false
+        discoveringStand = false
+        _standbyMode.value = null
         characteristics.clear()
         _currentMode.value = null
         _pomodoroStatus.value = null
@@ -366,6 +390,11 @@ class DeviceConnection(
     // --- Queue machinery ---
 
     private fun enqueue(op: GattOp) {
+        if (op is GattOp.Write && (isStand || discoveringStand) &&
+            !HeadphoneStandProtocol.allowsWrite(op.uuid, op.value)
+        ) {
+            return
+        }
         synchronized(queueLock) { opQueue.add(op) }
         processQueue()
     }
@@ -388,6 +417,10 @@ class DeviceConnection(
             false
         } else {
             when (op) {
+                is GattOp.Mtu -> {
+                    awaitingMtu = true
+                    g.requestMtu(128)
+                }
                 is GattOp.Subscribe -> {
                     val char = characteristics[op.uuid]
                     val desc = char?.getDescriptor(BleUuids.CCCD)
@@ -449,7 +482,8 @@ class DeviceConnection(
         if (!idle) return
         // All six reads must land: the session builds its first snapshot from them, so a
         // Ready with a hole in it would sit inert, dropping every observation.
-        if (_deviceId.value == null || _currentMode.value == null ||
+        if ((isStand && (!standInfoValidated || _standbyMode.value == null)) ||
+            _deviceId.value == null || _currentMode.value == null ||
             _pomodoroStatus.value == null || _timerStatus.value == null ||
             _brightness.value == null || _displayCommittedFrame.value == null
         ) {
@@ -471,14 +505,81 @@ class DeviceConnection(
         enqueue(GattOp.Write(BleUuids.MODE, byteArrayOf(mode.toByte()), noResponse = false))
     }
 
-    override fun commitFrame(rowBytes: ByteArray) = enqueue(GattOp.Write(BleUuids.DISPLAY_FRAME, rowBytes.copyOf(8), noResponse = false))
+    override fun commitFrame(rowBytes: ByteArray) {
+        if (isStand && rowBytes.size != 8) return
+        enqueue(GattOp.Write(if (isStand) HeadphoneStandProtocol.DISPLAY_FRAME else BleUuids.DISPLAY_FRAME, rowBytes.copyOf(8), noResponse = false))
+    }
 
-    override fun previewFrame(rowBytes: ByteArray) = writeStream(BleUuids.DISPLAY_PREVIEW, rowBytes)
+    override fun previewFrame(rowBytes: ByteArray) {
+        if (!isStand) writeStream(BleUuids.DISPLAY_PREVIEW, rowBytes.copyOf(8))
+    }
 
-    override fun writeVisualizerColumns(heights: ByteArray) = writeStream(BleUuids.VISUALIZER, heights)
+    override fun writeVisualizerColumns(heights: ByteArray) {
+        if (isStand) {
+            if (HeadphoneStandProtocol.allowsWrite(HeadphoneStandProtocol.VISUALIZER, heights)) {
+                writeStream(HeadphoneStandProtocol.VISUALIZER, heights)
+            }
+        } else {
+            writeStream(BleUuids.VISUALIZER, heights.copyOf(8))
+        }
+    }
+
+    override suspend fun readControlBindings(): ControlBindings = bindingEditMutex.withLock { readBindingsNow() }
+    private suspend fun readBindingsNow(): ControlBindings {
+        check(isStand && _connectionState.value == ConnectionState.Ready)
+        val connection = gatt
+        val previous = bindingReads.value.first
+        enqueue(GattOp.Read(HeadphoneStandProtocol.CONTROL_BINDINGS))
+        val result = kotlinx.coroutines.withTimeout(7000) { bindingReads.first { it.first > previous } }
+        check(gatt === connection && _connectionState.value == ConnectionState.Ready)
+        return requireNotNull(result.second)
+    }
+    override suspend fun saveControlBindings(settings: ControlBindings): ControlBindings =
+        bindingEditMutex.withLock {
+            check(isStand && _connectionState.value == ConnectionState.Ready)
+            enqueue(GattOp.Write(HeadphoneStandProtocol.CONTROL_BINDINGS, settings.encode(), noResponse = false))
+            val saved = readBindingsNow()
+            check(saved.encode().contentEquals(settings.encode())) { "Save was not confirmed" }
+            saved
+        }
+
+    override suspend fun readStandDisplay(): StandDisplaySettings =
+        displayEditMutex.withLock {
+            readStandDisplayNow()
+        }
+
+    private suspend fun readStandDisplayNow(): StandDisplaySettings {
+        check(isStand && _connectionState.value == ConnectionState.Ready)
+        val connection = gatt
+        val previous = displayReads.value.first
+        enqueue(GattOp.Read(HeadphoneStandProtocol.DISPLAY_SETTINGS))
+        val result = kotlinx.coroutines.withTimeout(7000) { displayReads.first { it.first > previous } }
+        check(gatt === connection && _connectionState.value == ConnectionState.Ready)
+        return requireNotNull(result.second) { "Invalid display settings" }
+    }
+
+    override suspend fun saveStandDisplay(settings: StandDisplaySettings): StandDisplaySettings =
+        displayEditMutex.withLock {
+            check(isStand && _connectionState.value == ConnectionState.Ready)
+            enqueue(GattOp.Write(HeadphoneStandProtocol.DISPLAY_SETTINGS, settings.encode(), noResponse = false))
+            val saved = readStandDisplayNow()
+            check(saved.encode().contentEquals(settings.encode())) { "Display save was not confirmed" }
+            saved
+        }
+
+    override fun writeStandbyMode(mode: Int) {
+        if (!isStand || mode !in 0..2) return
+        enqueue(GattOp.Write(HeadphoneStandProtocol.STANDBY, byteArrayOf(mode.toByte()), noResponse = false))
+    }
+
+    override fun writeMediaVolume(percent: Int?) {
+        if (!isStand) return
+        val packet = HeadphoneStandProtocol.encodeVolume(percent) ?: return
+        writeStream(HeadphoneStandProtocol.VOLUME, packet)
+    }
 
     private fun writeStream(uuid: UUID, data: ByteArray) {
-        val payload = data.copyOf(8)
+        val payload = data.copyOf()
         synchronized(queueLock) {
             opQueue.removeAll {
                 it is GattOp.Write && streamWriteMayBeCoalesced(it.uuid, it.noResponse, uuid)
@@ -512,8 +613,9 @@ class DeviceConnection(
     }
 
     override fun writeBrightness(level: Int) {
+        if (isStand && level !in 0..15) return
         val clamped = level.coerceIn(0, 0x0F)
-        enqueue(GattOp.Write(BleUuids.BRIGHTNESS, byteArrayOf(clamped.toByte()), noResponse = false))
+        enqueue(GattOp.Write(if (isStand) HeadphoneStandProtocol.BRIGHTNESS else BleUuids.BRIGHTNESS, byteArrayOf(clamped.toByte()), noResponse = false))
     }
 
     fun readMode() = enqueue(GattOp.Read(BleUuids.MODE))
@@ -579,7 +681,10 @@ class DeviceConnection(
                 fail(ConnectionFailure.ServiceDiscoveryFailed, retry = true)
                 return
             }
-            val service = g.getService(BleUuids.SERVICE)
+            val standService = g.getService(HeadphoneStandProtocol.SERVICE)
+            val service = standService ?: g.getService(BleUuids.SERVICE)
+            val required = if (standService != null) HeadphoneStandProtocol.REQUIRED else BleUuids.REQUIRED
+            val optional = if (standService != null) emptySet() else BleUuids.OPTIONAL
             val discovered = service?.characteristics
                 ?.mapTo(mutableSetOf()) { it.uuid }
                 .orEmpty()
@@ -598,7 +703,7 @@ class DeviceConnection(
                 Log.w(TAG, "$address: requested GATT cache refresh is unavailable on this device")
             }
 
-            when (gattCompatibilityAction(discovered, BleUuids.REQUIRED, BleUuids.OPTIONAL, gattCacheRefreshAttempted)) {
+            when (gattCompatibilityAction(discovered, required, optional, gattCacheRefreshAttempted)) {
                 GattCompatibilityAction.ACCEPT -> Unit
                 GattCompatibilityAction.REFRESH_CACHE -> {
                     gattCacheRefreshAttempted = true
@@ -606,7 +711,7 @@ class DeviceConnection(
                         Log.i(TAG, "$address: stale GATT cache cleared; rediscovering services")
                         return
                     }
-                    if (!discovered.containsAll(BleUuids.REQUIRED)) {
+                    if (!discovered.containsAll(required)) {
                         Log.w(TAG, "$address: required CLumo characteristics are missing")
                         fail(ConnectionFailure.IncompatibleDevice, retry = false)
                         return
@@ -629,7 +734,7 @@ class DeviceConnection(
 
             val compatibleService = service ?: return
             characteristics.clear()
-            BleUuids.REQUIRED.forEach { uuid ->
+            required.forEach { uuid ->
                 compatibleService.getCharacteristic(uuid)?.let { characteristics[uuid] = it }
             }
             val hasButton = compatibleService.getCharacteristic(BleUuids.BUTTON)
@@ -643,6 +748,14 @@ class DeviceConnection(
             _displayCommittedFrame.value = null
             initialSync = true
             startPhaseTimeout(SYNC_TIMEOUT_MS, ConnectionFailure.SynchronizationFailed, retry = true)
+
+            if (standService != null) {
+                discoveringStand = true
+                enqueue(GattOp.Mtu())
+                enqueue(GattOp.Read(HeadphoneStandProtocol.INFO))
+                return
+            }
+            _kind.value = DeviceKind.CLUMO
 
             // Subscribe to server notifications, then load initial state.
             enqueue(GattOp.Subscribe(BleUuids.MODE))
@@ -659,6 +772,12 @@ class DeviceConnection(
             readDisplayFrame()
         }
 
+        override fun onMtuChanged(g: BluetoothGatt, mtu: Int, status: Int) {
+            if (g !== gatt || !awaitingMtu) return
+            awaitingMtu = false
+            onOpComplete(status == BluetoothGatt.GATT_SUCCESS && mtu >= StandDisplaySettings.SIZE + 3)
+        }
+
         override fun onDescriptorWrite(g: BluetoothGatt, desc: BluetoothGattDescriptor, status: Int) {
             if (g !== gatt) return
             onOpComplete(status == BluetoothGatt.GATT_SUCCESS)
@@ -670,6 +789,7 @@ class DeviceConnection(
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 char.value?.let { handleValue(char.uuid, it) }
             }
+            if (g !== gatt) return
             onOpComplete(status == BluetoothGatt.GATT_SUCCESS)
         }
 
@@ -680,6 +800,7 @@ class DeviceConnection(
                 // DISPLAY_FRAME confirms itself over notify, and the two streams are
                 // write-without-response and never confirmed, so none of them belong here.
                 when (char.uuid) {
+                    HeadphoneStandProtocol.STANDBY, HeadphoneStandProtocol.BRIGHTNESS, HeadphoneStandProtocol.DISPLAY_FRAME -> enqueue(GattOp.Read(char.uuid))
                     BleUuids.MODE -> readMode()
                     BleUuids.POMODORO -> readPomodoroStatus()
                     BleUuids.TIMER -> readTimerStatus()
@@ -697,8 +818,50 @@ class DeviceConnection(
     }
 
     private fun handleValue(uuid: UUID, value: ByteArray) {
+        if (uuid == HeadphoneStandProtocol.INFO && discoveringStand) {
+            if (!HeadphoneStandProtocol.acceptsInfo(value)) {
+                fail(ConnectionFailure.IncompatibleDevice, retry = false)
+                return
+            }
+            standInfoValidated = true
+            _kind.value = DeviceKind.HEADPHONE_STAND
+            // Compatibility snapshot values only: this device has no timer commands.
+            _currentMode.value = DeviceMode.VISUALIZER
+            _pomodoroStatus.value = PomodoroStatus.DEFAULT
+            _timerStatus.value = CountdownTimerStatus.DEFAULT
+            HeadphoneStandProtocol.NOTIFICATIONS.forEach { enqueue(GattOp.Subscribe(it)) }
+            HeadphoneStandProtocol.INITIAL_READS.forEach { enqueue(GattOp.Read(it)) }
+            return
+        }
         if (value.isEmpty()) return
         when (uuid) {
+            HeadphoneStandProtocol.CONTROL_BINDINGS -> {
+                bindingReads.value = (bindingReads.value.first + 1) to ControlBindings.decode(value)
+            }
+            HeadphoneStandProtocol.DISPLAY_SETTINGS -> {
+                val decoded = StandDisplaySettings.decode(value)
+                displayReads.value = (displayReads.value.first + 1) to decoded
+                if (decoded != null) {
+                    handleValue(HeadphoneStandProtocol.BRIGHTNESS, value.copyOfRange(0, 1))
+                    handleValue(HeadphoneStandProtocol.STANDBY, value.copyOfRange(1, 2))
+                    handleValue(HeadphoneStandProtocol.DISPLAY_FRAME, value.copyOfRange(2, 10))
+                }
+            }
+            HeadphoneStandProtocol.STANDBY -> if (HeadphoneStandProtocol.singleInRange(value, 0..2)) {
+                _standbyMode.value = value[0].toInt()
+            }
+            HeadphoneStandProtocol.BRIGHTNESS -> if (HeadphoneStandProtocol.singleInRange(value, 0..15)) {
+                _brightness.value = value[0].toInt()
+                _observations.tryEmit(DeviceObservation.Brightness(value[0].toInt()))
+            }
+            HeadphoneStandProtocol.DISPLAY_FRAME -> if (value.size == 8) {
+                val frame = FaceBits.fromRowBytes(value)
+                _displayCommittedFrame.value = frame
+                _observations.tryEmit(DeviceObservation.DisplayCommittedFrame(frame))
+            }
+            HeadphoneStandProtocol.DEVICE_ID -> if (value.size == 16) {
+                _deviceId.value = formatDeviceId(value)
+            }
             BleUuids.MODE -> (value[0].toInt() and 0xFF).let {
                 _currentMode.value = it
                 _observations.tryEmit(DeviceObservation.Mode(it))

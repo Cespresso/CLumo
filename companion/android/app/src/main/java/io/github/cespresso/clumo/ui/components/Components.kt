@@ -247,7 +247,12 @@ fun ClumoDevice(
     litAlpha: Float = 1f,
     glow: Boolean = true,
     shadowElevation: Dp = 0.dp,
+    kind: io.github.cespresso.clumo.domain.DeviceKind = io.github.cespresso.clumo.domain.DeviceKind.CLUMO,
 ) {
+    if (kind == io.github.cespresso.clumo.domain.DeviceKind.HEADPHONE_STAND) {
+        HeadphoneStandDevice(bits, size, appearance, modifier, litAlpha)
+        return
+    }
     Box(modifier = modifier) {
         ConnectionRingCanvas(
             state = connectionState,

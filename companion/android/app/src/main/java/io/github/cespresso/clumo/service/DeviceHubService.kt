@@ -9,6 +9,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
@@ -25,6 +26,7 @@ import io.github.cespresso.clumo.data.session.DeviceSessionRegistry
 import io.github.cespresso.clumo.data.steppedVisualizerSensitivity
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.patternFor
 import io.github.cespresso.clumo.domain.resolvePrimaryTarget
@@ -124,6 +126,7 @@ class DeviceHubService : Service() {
         observeVisualizerPreferences()
         observeAudioCapture()
         observeButtonEvents()
+        streamMediaVolume()
         stopWhenIdle()
         // A widget tap can start this process straight into the service, and the tap's
         // outcome has to be drawn: the publisher is what draws it.
@@ -152,6 +155,7 @@ class DeviceHubService : Service() {
 
     /** The sessions belong to the container and outlive this service; a screen may be holding one. */
     override fun onDestroy() {
+        registry.sessions.value.values.forEach { it.stopVisualizer() }
         scope.cancel()
         _running.value = false
         super.onDestroy()
@@ -175,6 +179,8 @@ class DeviceHubService : Service() {
 
     private suspend fun handleWidgetCommand(command: WidgetCommand) {
         val target = currentTarget()
+        // A stale widget can still contain timer commands after changing the primary device.
+        if (target?.kind == DeviceKind.HEADPHONE_STAND) return
         val existing = target?.let { registry.get(it.address) }
         val state = existing?.state?.value?.link ?: ConnectionState.Disconnected
         when (
@@ -231,6 +237,7 @@ class DeviceHubService : Service() {
     }
 
     private fun execute(command: WidgetCommand, connection: DeviceSession) {
+        if (connection.kind.value == DeviceKind.HEADPHONE_STAND) return
         val observed = connection.state.value.observed
         when (command) {
             WidgetCommand.TogglePomodoro ->
@@ -405,6 +412,19 @@ class DeviceHubService : Service() {
             .launchIn(scope)
     }
 
+    private fun streamMediaVolume() {
+        val audio = getSystemService(AudioManager::class.java)
+        val source = MediaVolumeSource {
+            mediaVolumePercent(
+                audio.getStreamVolume(AudioManager.STREAM_MUSIC),
+                audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC),
+            )
+        }
+        source.snapshots()
+            .onEach { percent -> registry.sessions.value.values.forEach { it.sendMediaVolume(percent) } }
+            .launchIn(scope)
+    }
+
     private fun observeVisualizerPreferences() {
         combine(
             registry.sessions,
@@ -442,6 +462,7 @@ class DeviceHubService : Service() {
      * exception escaping here would cancel the observer for the service's lifetime.
      */
     private suspend fun applyButtonEvent(connection: DeviceSession, event: ButtonEvent) {
+        if (connection.kind.value == DeviceKind.HEADPHONE_STAND) return
         try {
             when (event.mode) {
                 DeviceMode.DISPLAY -> cycleDisplayPattern(connection, event.isMain)

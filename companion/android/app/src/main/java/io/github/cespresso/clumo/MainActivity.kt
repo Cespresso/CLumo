@@ -93,6 +93,7 @@ private fun AppContainer.deviceAppearanceViewModelFactory(
             DeviceAppearanceViewModel(
                 deviceId = deviceId,
                 fallbackName = repository.get(deviceId)?.fallbackName,
+                kind = repository.get(deviceId)?.kind ?: io.github.cespresso.clumo.domain.DeviceKind.CLUMO,
                 preferences = preferences,
             )
         }
@@ -110,7 +111,7 @@ class MainActivity : ComponentActivity() {
         // Whatever this activity changes about a device has to reach the home screen too.
         container.widgetPublisher
         setContent {
-            ClumoTheme(appearance = primaryDeviceAppearance(container.preferences)) {
+            ClumoTheme(appearance = primaryDeviceAppearance(container)) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -125,9 +126,12 @@ class MainActivity : ComponentActivity() {
 
 /** DEFAULT until preferences load. */
 @Composable
-private fun primaryDeviceAppearance(preferences: AppPreferences): DeviceAppearance {
+private fun primaryDeviceAppearance(container: AppContainer): DeviceAppearance {
+    val preferences = container.preferences
+    val devices by container.repository.devices.collectAsStateWithLifecycle()
     val appearances by preferences.deviceAppearances.collectAsStateWithLifecycle(emptyMap())
     val primaryId by preferences.primaryDeviceId.collectAsStateWithLifecycle(null)
+    if (devices.firstOrNull { it.id == primaryId }?.kind == io.github.cespresso.clumo.domain.DeviceKind.HEADPHONE_STAND) return DeviceAppearance.DEFAULT
     return resolveAppearance(primaryId, appearances)
 }
 

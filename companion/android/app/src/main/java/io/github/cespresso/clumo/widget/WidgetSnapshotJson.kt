@@ -5,6 +5,7 @@ import org.json.JSONObject
 
 internal fun encodeWidgetSnapshot(snapshot: WidgetSnapshot): String =
     JSONObject().apply {
+        put("deviceKind", snapshot.deviceKind.name)
         put("link", snapshot.link.name)
         put("headline", snapshot.headline.name)
         put("subtitle", snapshot.subtitle.name)
@@ -34,6 +35,7 @@ internal fun decodeWidgetSnapshot(raw: String?): WidgetSnapshot? {
         val root = JSONObject(raw)
         val actionsArray = root.optJSONArray("actions") ?: JSONArray()
         WidgetSnapshot(
+            deviceKind = runCatching { enumValueOf<io.github.cespresso.clumo.domain.DeviceKind>(root.optString("deviceKind")) }.getOrDefault(io.github.cespresso.clumo.domain.DeviceKind.CLUMO),
             link = enumValueOf<WidgetLink>(root.getString("link")),
             headline = enumValueOf<WidgetHeadline>(root.getString("headline")),
             subtitle = enumValueOf<WidgetSubtitle>(root.getString("subtitle")),

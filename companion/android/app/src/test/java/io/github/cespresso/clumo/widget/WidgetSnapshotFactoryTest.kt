@@ -53,6 +53,28 @@ class WidgetSnapshotFactoryTest {
     )
 
     @Test
+    fun standNeverShowsTimerActionsEvenWithUnknownMode() {
+        val stand = target.copy(kind = io.github.cespresso.clumo.domain.DeviceKind.HEADPHONE_STAND)
+        val snapshot = create(target = stand, mode = null)
+        assertEquals(WidgetFamily.Neither, snapshot.family)
+        assertTrue(snapshot.actions.isEmpty())
+        assertFalse(snapshot.backgroundTimerActive)
+        assertEquals(stand.kind, snapshot.deviceKind)
+        val restored = decodeWidgetSnapshot(encodeWidgetSnapshot(snapshot))!!
+        assertEquals(stand.kind, restored.deviceKind)
+        assertTrue(restored.asDisconnected().actions.isEmpty())
+        assertEquals(WidgetSubtitle.TapToOpenApp, restored.asDisconnected().subtitle)
+    }
+
+    @Test
+    fun disconnectedStandOpensAppInsteadOfReconnectingFromWidget() {
+        val stand = target.copy(kind = io.github.cespresso.clumo.domain.DeviceKind.HEADPHONE_STAND)
+        val snapshot = create(target = stand, connectionState = ConnectionState.Disconnected)
+        assertTrue(snapshot.actions.isEmpty())
+        assertEquals(WidgetSubtitle.TapToOpenApp, snapshot.subtitle)
+    }
+
+    @Test
     fun state1_pomodoroRunning() {
         val s = create(pomodoro = running)
         assertEquals(WidgetLink.Ready, s.link)

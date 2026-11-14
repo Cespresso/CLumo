@@ -2,24 +2,34 @@ package io.github.cespresso.clumo.widget
 
 import android.content.Context
 import io.github.cespresso.clumo.R
+import io.github.cespresso.clumo.domain.DeviceKind
 
 fun headlineText(context: Context, snapshot: WidgetSnapshot): String =
     context.getString(
-        when (snapshot.headline) {
-            WidgetHeadline.PomodoroWorking -> R.string.widget_working
-            WidgetHeadline.PomodoroBreak -> R.string.widget_break
-            WidgetHeadline.PomodoroIdle -> R.string.widget_pomodoro
-            WidgetHeadline.Timer -> R.string.widget_timer
-            WidgetHeadline.TimerIdle -> R.string.widget_timer
-            WidgetHeadline.Paused -> R.string.widget_paused
-            WidgetHeadline.MyDisplay -> R.string.widget_my_display
-            WidgetHeadline.Visualizer -> R.string.widget_visualizer
-            WidgetHeadline.Connecting -> R.string.widget_connecting
-            WidgetHeadline.CantConnect -> R.string.widget_cant_connect
-            WidgetHeadline.NotConnected -> R.string.widget_not_connected
-            WidgetHeadline.ChooseDevice -> R.string.widget_choose_device
-            WidgetHeadline.BluetoothOff -> R.string.widget_bluetooth_off
-            WidgetHeadline.PermissionNeeded -> R.string.widget_permission_needed
+        if (snapshot.deviceKind == DeviceKind.HEADPHONE_STAND && snapshot.link != WidgetLink.Blocked) {
+            when (snapshot.headline) {
+                WidgetHeadline.Visualizer -> R.string.stand_connected
+                WidgetHeadline.NotConnected -> R.string.stand_disconnected
+                WidgetHeadline.CantConnect -> R.string.stand_failed
+                else -> R.string.stand_connecting
+            }
+        } else {
+            when (snapshot.headline) {
+                WidgetHeadline.PomodoroWorking -> R.string.widget_working
+                WidgetHeadline.PomodoroBreak -> R.string.widget_break
+                WidgetHeadline.PomodoroIdle -> R.string.widget_pomodoro
+                WidgetHeadline.Timer -> R.string.widget_timer
+                WidgetHeadline.TimerIdle -> R.string.widget_timer
+                WidgetHeadline.Paused -> R.string.widget_paused
+                WidgetHeadline.MyDisplay -> R.string.widget_my_display
+                WidgetHeadline.Visualizer -> R.string.widget_visualizer
+                WidgetHeadline.Connecting -> R.string.widget_connecting
+                WidgetHeadline.CantConnect -> R.string.widget_cant_connect
+                WidgetHeadline.NotConnected -> R.string.widget_not_connected
+                WidgetHeadline.ChooseDevice -> R.string.widget_choose_device
+                WidgetHeadline.BluetoothOff -> R.string.widget_bluetooth_off
+                WidgetHeadline.PermissionNeeded -> R.string.widget_permission_needed
+            }
         },
     )
 
@@ -41,7 +51,7 @@ fun subtitleText(context: Context, snapshot: WidgetSnapshot): String =
         WidgetSubtitle.CheckPowerAndBluetooth -> context.getString(R.string.widget_sub_check_power)
         WidgetSubtitle.TapToReconnect -> context.getString(R.string.widget_sub_tap_reconnect)
         WidgetSubtitle.TapToOpenSettings -> context.getString(R.string.widget_sub_tap_settings)
-        WidgetSubtitle.TapToOpenApp -> context.getString(R.string.widget_sub_tap_app)
+        WidgetSubtitle.TapToOpenApp -> if (snapshot.deviceKind == DeviceKind.HEADPHONE_STAND) context.getString(R.string.stand_name) + " · " + context.getString(R.string.widget_sub_tap_app) else context.getString(R.string.widget_sub_tap_app)
     }
 
 fun actionLabel(context: Context, action: WidgetAction): String =

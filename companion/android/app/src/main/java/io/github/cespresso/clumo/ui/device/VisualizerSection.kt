@@ -15,9 +15,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +34,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.ui.components.ClumoSlider
@@ -37,6 +44,7 @@ import io.github.cespresso.clumo.ui.components.ClumoToggleSwitch
 import io.github.cespresso.clumo.ui.components.CtaPillButton
 import io.github.cespresso.clumo.ui.components.OutlinePillButton
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
+import kotlinx.coroutines.awaitCancellation
 
 // onVisualizerSensitivityChangeFinished carries the name of the Material3 Slider
 // callback it is handed to, so the correspondence survives a reader jumping between them.
@@ -51,8 +59,11 @@ internal fun VisualizerSection(
     onVisualizerSensitivityChange: (Float) -> Unit,
     onVisualizerSensitivityChangeFinished: (Float) -> Unit,
     onAutomaticLowVolumeBoostChange: (Boolean) -> Unit,
+    hardwareMediaControls: Boolean = false,
+    ready: Boolean = true,
 ) {
     val context = LocalContext.current
+    var autoStartAllowed by rememberSaveable { mutableStateOf(true) }
     var sensitivity by remember(visualizerSensitivity) {
         mutableFloatStateOf(visualizerSensitivity * 100f)
     }
@@ -67,9 +78,11 @@ internal fun VisualizerSection(
 
     fun toggle() {
         if (visualizerActive) {
+            autoStartAllowed = false
             onStop()
             return
         }
+        autoStartAllowed = true
         val needed = buildList {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED
@@ -90,6 +103,21 @@ internal fun VisualizerSection(
         }
     }
 
+    val currentOnStart by rememberUpdatedState(onStart)
+    val currentActive by rememberUpdatedState(visualizerActive)
+    val currentAutoStartAllowed by rememberUpdatedState(autoStartAllowed)
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(hardwareMediaControls, ready, lifecycle) {
+        if (hardwareMediaControls && ready) {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                if (currentAutoStartAllowed && !currentActive && ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    currentOnStart()
+                }
+                awaitCancellation()
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -100,6 +128,9 @@ internal fun VisualizerSection(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
+        if (hardwareMediaControls) {
+            StandHelp(title = stringResource(R.string.stand_visualizer_title), help = stringResource(R.string.stand_visualizer_background))
+        }
         if (visualizerActive) {
             OutlinePillButton(
                 text = stringResource(R.string.viz_stop),
@@ -162,14 +193,16 @@ internal fun VisualizerSection(
             )
         }
 
-        Text(
-            text = stringResource(R.string.viz_caption),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Caption,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        if (!hardwareMediaControls) {
+            Text(
+                text = stringResource(R.string.viz_caption),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                fontFamily = RoundedFontFamily,
+                color = ClumoColors.Caption,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }

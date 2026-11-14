@@ -31,8 +31,8 @@ android {
         applicationId = "io.github.cespresso.clumo"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -102,4 +102,28 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
     ktlintRuleset(libs.ktlint.compose.rules)
+}
+
+// Package the exact same editor used by the ESP32 HTTP server.
+abstract class PrepareStandEditor : DefaultTask() {
+    @get:InputFile
+    abstract val sourceFile: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun copyEditor() {
+        val target = outputDirectory.file("editor.html").get().asFile
+        target.parentFile.mkdirs()
+        sourceFile.get().asFile.copyTo(target, overwrite = true)
+    }
+}
+
+val prepareStandEditor = tasks.register<PrepareStandEditor>("prepareStandEditor") {
+    sourceFile.set(rootProject.file("../../headphone-stand/firmware/src/editor.html"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/standEditorAssets"))
+}
+androidComponents.onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(prepareStandEditor, PrepareStandEditor::outputDirectory)
 }

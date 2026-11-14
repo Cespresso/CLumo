@@ -40,16 +40,19 @@ data class DeviceAppearanceUiState(
     val appearance: DeviceAppearance = DeviceAppearance.DEFAULT,
     val saveFailed: Boolean = false,
     val saving: Boolean = false,
+    val kind: io.github.cespresso.clumo.domain.DeviceKind = io.github.cespresso.clumo.domain.DeviceKind.CLUMO,
 )
 
 class DeviceAppearanceViewModel(
     private val deviceId: String,
     private val fallbackName: String?,
     private val preferences: AppearancePreferences,
+    kind: io.github.cespresso.clumo.domain.DeviceKind = io.github.cespresso.clumo.domain.DeviceKind.CLUMO,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(
         DeviceAppearanceUiState(
             deviceName = fallbackName ?: deviceId,
+            kind = kind,
         ),
     )
     val uiState: StateFlow<DeviceAppearanceUiState> = _uiState.asStateFlow()

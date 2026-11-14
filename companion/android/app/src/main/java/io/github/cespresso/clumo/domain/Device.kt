@@ -14,7 +14,9 @@ data class Device(
     val address: String,
     val name: String?,
     val lastSeenAt: Long,
+    val kind: DeviceKind = DeviceKind.CLUMO,
 ) {
     val fallbackName: String
-        get() = name?.takeIf { it.isNotBlank() } ?: "CLumo-${id.take(4).uppercase()}"
+        get() = name?.takeIf { it.isNotBlank() }
+            ?: if (kind == DeviceKind.HEADPHONE_STAND) "Headphone Stand-${id.take(4).uppercase()}" else "CLumo-${id.take(4).uppercase()}"
 }

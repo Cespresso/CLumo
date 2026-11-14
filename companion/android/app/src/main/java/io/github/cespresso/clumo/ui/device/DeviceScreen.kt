@@ -40,6 +40,7 @@ import io.github.cespresso.clumo.R
 import io.github.cespresso.clumo.design.ClumoColors
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.backgroundCountdownsFor
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
@@ -114,6 +115,17 @@ fun DeviceScreen(
         }
     }
 
+    var bindingsOpen by remember { mutableStateOf(false) }
+    if (bindingsOpen) StandBindingsEditor(appearance = ui.appearance, readSettings = viewModel::readControlBindings, saveSettings = viewModel::saveControlBindings, onClose = { bindingsOpen = false })
+    var standEditorOpen by remember { mutableStateOf(false) }
+    if (standEditorOpen) {
+        StandDisplayEditor(
+            readSettings = viewModel::readStandDisplay,
+            saveSettings = viewModel::saveStandDisplay,
+            onClose = { standEditorOpen = false },
+        )
+    }
+
     var menuOpen by remember { mutableStateOf(false) }
     var renameOpen by remember { mutableStateOf(false) }
     var forgetOpen by remember { mutableStateOf(false) }
@@ -152,7 +164,7 @@ fun DeviceScreen(
                     )
                 }
 
-                if (ready) {
+                if (ready && ui.kind == DeviceKind.CLUMO) {
                     backgroundCountdownsFor(effectiveMode, pomodoroStatus, timerStatus)
                         .forEach { countdown ->
                             BackgroundCountdownBanner(
@@ -175,6 +187,7 @@ fun DeviceScreen(
                 ) {
                     ClumoDevice(
                         bits = mirrorBits,
+                        kind = ui.kind,
                         size = 188.dp,
                         appearance = appearance,
                         connectionState = state,
@@ -182,11 +195,19 @@ fun DeviceScreen(
                         shadowElevation = 14.dp,
                     )
                     Text(
-                        text = stateLabel,
+                        text = if (ui.kind == DeviceKind.HEADPHONE_STAND) stringResource(R.string.stand_app_connection, stateLabel) else stateLabel,
                         fontSize = 12.5.sp,
                         fontWeight = FontWeight.ExtraBold,
                         fontFamily = RoundedFontFamily,
                         color = stateLabelColor,
+                    )
+                }
+
+                if (ui.kind == DeviceKind.HEADPHONE_STAND) {
+                    StandHelp(
+                        title = stringResource(R.string.stand_media_title),
+                        help = stringResource(R.string.stand_media_hint) + "\n\n" + stringResource(R.string.stand_volume_hint),
+                        modifier = Modifier.padding(horizontal = 22.dp),
                     )
                 }
 
@@ -226,29 +247,33 @@ fun DeviceScreen(
                             }
 
                             // Mode selector
-                            SegmentedControl(
-                                items = listOf(
-                                    stringResource(R.string.seg_pomodoro),
-                                    stringResource(R.string.seg_timer),
-                                    stringResource(R.string.seg_patterns),
-                                    stringResource(R.string.seg_viz),
-                                ),
-                                selectedIndex = effectiveMode.coerceIn(0, 3),
-                                onSelect = { index ->
-                                    viewModel.onModeSelected(index)
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 22.dp, vertical = 8.dp),
-                            )
+                            if (ui.kind == DeviceKind.CLUMO) {
+                                SegmentedControl(
+                                    items = listOf(
+                                        stringResource(R.string.seg_pomodoro),
+                                        stringResource(R.string.seg_timer),
+                                        stringResource(R.string.seg_patterns),
+                                        stringResource(R.string.seg_viz),
+                                    ),
+                                    selectedIndex = effectiveMode.coerceIn(0, 3),
+                                    onSelect = { index ->
+                                        viewModel.onModeSelected(index)
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 22.dp, vertical = 8.dp),
+                                )
+                            }
                         }
                     }
 
-                    ModeHelpHeader(
-                        mode = effectiveMode,
-                        onHelpClick = { modeHelpOpen = true },
-                        modifier = Modifier.padding(horizontal = 22.dp, vertical = 2.dp),
-                    )
+                    if (ui.kind == DeviceKind.CLUMO) {
+                        ModeHelpHeader(
+                            mode = effectiveMode,
+                            onHelpClick = { modeHelpOpen = true },
+                            modifier = Modifier.padding(horizontal = 22.dp, vertical = 2.dp),
+                        )
+                    }
 
                     // The mode-specific controls
                     ReadyGate(
@@ -282,6 +307,8 @@ fun DeviceScreen(
                                     viewModel::onVisualizerSensitivityChangeFinished,
                                     onAutomaticLowVolumeBoostChange =
                                     viewModel::onAutomaticLowVolumeBoostChanged,
+                                    hardwareMediaControls = ui.kind == DeviceKind.HEADPHONE_STAND,
+                                    ready = ready,
                                 )
 
                                 DeviceMode.POMODORO -> PomodoroSection(
@@ -305,6 +332,21 @@ fun DeviceScreen(
                             }
                         }
                     }
+                    if (ui.kind == DeviceKind.HEADPHONE_STAND) {
+                        ReadyGate(ready) {
+                            Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                io.github.cespresso.clumo.ui.components.OutlinePillButton(
+                                    text = stringResource(R.string.stand_editor_title),
+                                    onClick = { standEditorOpen = true },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+                    }
+                }
+                if (ui.kind == DeviceKind.HEADPHONE_STAND) {
+                    io.github.cespresso.clumo.ui.components.OutlinePillButton(text = stringResource(R.string.bindings_title), onClick = { bindingsOpen = true }, modifier = Modifier.padding(horizontal = 22.dp).fillMaxWidth())
+                    StandSetupGuide()
                 }
             }
         }

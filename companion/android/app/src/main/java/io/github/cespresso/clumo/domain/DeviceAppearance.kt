@@ -66,6 +66,10 @@ data class DeviceAppearance(
     val buttonAColor: RgbColor,
     val buttonBColor: RgbColor,
     val ledColor: RgbColor,
+    val panelColor: RgbColor = RgbColor.of(0x90928A),
+    val matrixSurfaceColor: RgbColor = RgbColor.of(0xF4F2EE),
+    val windowColor: RgbColor = RgbColor.of(0xD5D6CC),
+
 ) {
     companion object {
         val DEFAULT = DeviceAppearance(

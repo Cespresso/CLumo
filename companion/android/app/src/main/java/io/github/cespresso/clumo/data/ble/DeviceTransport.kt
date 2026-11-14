@@ -3,9 +3,12 @@ package io.github.cespresso.clumo.data.ble
 import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.CountdownTimerStatus
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.PomodoroStatus
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /** A decoded value received from a successful GATT read or notification. */
 sealed interface DeviceObservation {
@@ -24,6 +27,8 @@ sealed interface DeviceObservation {
  * value that rejects optimistic user intent.
  */
 interface DeviceTransport {
+    val kind: StateFlow<DeviceKind> get() = defaultDeviceKind
+    val standbyMode: StateFlow<Int?> get() = defaultStandbyMode
     val address: String
     val connectionState: StateFlow<ConnectionState>
     val connectionFailure: StateFlow<ConnectionFailure?>
@@ -61,5 +66,14 @@ interface DeviceTransport {
     fun timerStart()
     fun timerPause()
     fun timerCancel()
+    suspend fun readControlBindings(): ControlBindings = error("Control editing unsupported")
+    suspend fun saveControlBindings(settings: ControlBindings): ControlBindings = error("Control editing unsupported")
+    suspend fun readStandDisplay(): StandDisplaySettings = error("Display editing unsupported")
+    suspend fun saveStandDisplay(settings: StandDisplaySettings): StandDisplaySettings = error("Display editing unsupported")
+    fun writeStandbyMode(mode: Int) {}
+    fun writeMediaVolume(percent: Int?) {}
     fun writeBrightness(level: Int)
 }
+
+private val defaultDeviceKind = MutableStateFlow(DeviceKind.CLUMO).asStateFlow()
+private val defaultStandbyMode = MutableStateFlow<Int?>(null).asStateFlow()

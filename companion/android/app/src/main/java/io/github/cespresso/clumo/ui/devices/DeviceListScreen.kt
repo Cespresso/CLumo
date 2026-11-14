@@ -398,6 +398,7 @@ private fun KnownDeviceCard(
             bits = if (state == ConnectionState.Ready) item.mirrorBits else FaceBits.EMPTY,
             size = 94.dp,
             appearance = item.appearance,
+            kind = item.device.kind,
             connectionState = state,
             litAlpha = item.litAlpha,
             glow = false,

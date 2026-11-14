@@ -97,6 +97,8 @@ data class DeviceUiState(
     val visualizerSensitivity: Float = 0.6f,
     val automaticLowVolumeBoost: Boolean = false,
     val timerBlinkOn: Boolean = true,
+    val kind: io.github.cespresso.clumo.domain.DeviceKind = io.github.cespresso.clumo.domain.DeviceKind.CLUMO,
+    val standbyMode: Int = 0,
 )
 
 /**

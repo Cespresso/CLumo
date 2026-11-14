@@ -12,6 +12,7 @@ import io.github.cespresso.clumo.domain.ConnectionFailure
 import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.DeviceSessionState
 import io.github.cespresso.clumo.domain.Pattern
@@ -51,6 +52,11 @@ class DeviceViewModel(
     private val dismissedDialogFailure = MutableStateFlow<ConnectionFailure?>(null)
     private val blinkOn = MutableStateFlow(true)
 
+    suspend fun readControlBindings() = requireNotNull(session).readControlBindings()
+    suspend fun saveControlBindings(settings: io.github.cespresso.clumo.data.ble.ControlBindings) = requireNotNull(session).saveControlBindings(settings)
+    suspend fun readStandDisplay() = requireNotNull(session).readStandDisplay()
+    suspend fun saveStandDisplay(settings: io.github.cespresso.clumo.data.ble.StandDisplaySettings) = requireNotNull(session).saveStandDisplay(settings)
+
     private val session: DeviceSession? get() = registry.get(address)
 
     private val sessionPresentation: Flow<SessionPresentation> = registry.sessions
@@ -75,7 +81,8 @@ class DeviceViewModel(
                         columns = columns,
                         visualizerActive = visualizerActive,
                     )
-                }
+                }.combine(active.kind) { presentation, kind -> presentation.copy(kind = kind) }
+                    .combine(active.standbyMode) { presentation, mode -> presentation.copy(standbyMode = mode ?: 0) }
             }
         }
 
@@ -93,7 +100,9 @@ class DeviceViewModel(
     private val visualizerPreferences = combine(
         preferences.visualizerSensitivity,
         preferences.automaticLowVolumeBoost,
-    ) { sensitivity, automaticBoost -> VisualizerPreferences(sensitivity, automaticBoost) }
+    ) { sensitivity, automaticBoost ->
+        VisualizerPreferences(sensitivity, automaticBoost)
+    }
 
     private val transient = combine(blinkOn, dismissedDialogFailure) { blink, dismissed ->
         Transient(blink, dismissed)
@@ -142,6 +151,9 @@ class DeviceViewModel(
             visualizerSensitivity = visualizerPreferences.sensitivity,
             automaticLowVolumeBoost = visualizerPreferences.automaticBoost,
             timerBlinkOn = transient.blinkOn,
+            kind = if (live.connected) live.kind else identity.knownDevice?.kind ?: DeviceKind.CLUMO,
+            effectiveMode = if (live.kind == DeviceKind.HEADPHONE_STAND || identity.knownDevice?.kind == DeviceKind.HEADPHONE_STAND) DeviceMode.VISUALIZER else live.state.effectiveMode,
+            standbyMode = live.standbyMode,
         )
     }.stateIn(
         viewModelScope,
@@ -170,6 +182,8 @@ class DeviceViewModel(
                 }
         }
     }
+
+    fun onStandbyModeSelected(mode: Int) = session?.setStandbyMode(mode)
 
     fun onModeSelected(mode: Int) {
         if (mode != uiState.value.effectiveMode) session?.setMode(mode)
@@ -260,6 +274,8 @@ class DeviceViewModel(
         val deviceName: String?,
         val columns: IntArray,
         val visualizerActive: Boolean,
+        val kind: DeviceKind = DeviceKind.CLUMO,
+        val standbyMode: Int = 0,
     ) {
         companion object {
             fun disconnected() =

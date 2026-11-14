@@ -65,6 +65,34 @@ class BleScanner(private val context: Context) : DeviceScanner {
                 return@callbackFlow
             }
 
+            // A bonded stand may already be connected as an OS HID peripheral and
+            // stop advertising. Include it as a candidate; GATT INFO still decides
+            // compatibility and product kind when the user adds it.
+            try {
+                adapter.bondedDevices.orEmpty().forEach { device ->
+                    val name = device.name
+                    val advertisesStandService = device.uuids.orEmpty().any {
+                        it.uuid == HeadphoneStandProtocol.SERVICE
+                    }
+                    if (advertisesStandService || name?.startsWith("CLumo-Stand-") == true) {
+                        trySend(
+                            ScanEvent.DeviceFound(
+                                DeviceAdvertisement(
+                                    address = device.address,
+                                    name = name,
+                                    rssi = -127,
+                                ),
+                            ),
+                        )
+                    }
+                }
+            } catch (e: SecurityException) {
+                Log.w(TAG, "Bonded device permission denied", e)
+                trySend(ScanEvent.Failed(ScanFailure.PermissionDenied))
+                close()
+                return@callbackFlow
+            }
+
             val callback = object : ScanCallback() {
                 override fun onScanResult(callbackType: Int, result: ScanResult) {
                     trySend(
@@ -87,6 +115,7 @@ class BleScanner(private val context: Context) : DeviceScanner {
 
             val filters = listOf(
                 ScanFilter.Builder().setServiceUuid(ParcelUuid(BleUuids.SERVICE)).build(),
+                ScanFilter.Builder().setServiceUuid(ParcelUuid(HeadphoneStandProtocol.SERVICE)).build(),
             )
             val settings = ScanSettings.Builder()
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)

@@ -40,7 +40,7 @@ class DeviceSessionRegistry(
     private val repository: DeviceRepository,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main),
     private val transportFactory: (String, String?) -> DeviceTransport = { address, name ->
-        DeviceConnection(context.applicationContext, address, name)
+        DeviceConnection(context.applicationContext, address, name, initialKind = repository.getByAddress(address)?.kind ?: io.github.cespresso.clumo.domain.DeviceKind.CLUMO)
     },
     private val nowRealtime: () -> Long = SystemClock::elapsedRealtime,
     /** Called when a known address comes back carrying a different firmware id. */
@@ -88,21 +88,23 @@ class DeviceSessionRegistry(
 
     private fun wireRepositoryUpsert(session: DeviceSession) =
         scope.launch {
-            session.deviceId.filterNotNull().collect { id ->
-                // The settings move before the record is replaced; the other order leaves
-                // them filed against an id nothing points at any more.
-                repository.getByAddress(session.address)
-                    ?.takeIf { it.id != id }
-                    ?.let { onIdentitySuperseded(it.id, id) }
-                repository.upsert(
-                    Device(
-                        id = id,
-                        address = session.address,
-                        name = session.deviceName.value ?: repository.get(id)?.name,
-                        lastSeenAt = System.currentTimeMillis(),
-                    ),
-                )
-            }
+            combine(session.deviceId, session.kind) { id, kind -> id?.let { it to kind } }
+                .filterNotNull().collect { (id, kind) ->
+                    // The settings move before the record is replaced; the other order leaves
+                    // them filed against an id nothing points at any more.
+                    repository.getByAddress(session.address)
+                        ?.takeIf { it.id != id }
+                        ?.let { onIdentitySuperseded(it.id, id) }
+                    repository.upsert(
+                        Device(
+                            id = id,
+                            address = session.address,
+                            name = session.deviceName.value ?: repository.get(id)?.name,
+                            lastSeenAt = System.currentTimeMillis(),
+                            kind = kind,
+                        ),
+                    )
+                }
         }
 
     fun connectionStateOf(device: Device): ConnectionState = states.value[device.address]?.link ?: ConnectionState.Disconnected

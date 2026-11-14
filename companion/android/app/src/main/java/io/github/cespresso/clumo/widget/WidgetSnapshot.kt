@@ -1,6 +1,7 @@
 package io.github.cespresso.clumo.widget
 
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.FaceBits
 
 /** How usable the link to the primary device is right now. */
@@ -111,6 +112,7 @@ data class WidgetSnapshot(
     val knobArgb: Int,
     val ledArgb: Int,
     val updatedAtRealtime: Long,
+    val deviceKind: DeviceKind = DeviceKind.CLUMO,
 )
 
 /** Whether anything visible differs. [WidgetSnapshot.updatedAtRealtime] alone is not visible. */
@@ -134,7 +136,7 @@ fun WidgetSnapshot.asDisconnected(): WidgetSnapshot =
     copy(
         link = WidgetLink.Connecting,
         headline = WidgetHeadline.NotConnected,
-        subtitle = WidgetSubtitle.TapToReconnect,
+        subtitle = if (deviceKind == DeviceKind.HEADPHONE_STAND) WidgetSubtitle.TapToOpenApp else WidgetSubtitle.TapToReconnect,
         subtitleText = "",
         subtitleArgA = 0,
         subtitleArgB = 0,
@@ -143,7 +145,7 @@ fun WidgetSnapshot.asDisconnected(): WidgetSnapshot =
         facePlaceholder = false,
         backgroundTimerActive = false,
         family = WidgetFamily.Neither,
-        actions = listOf(WidgetAction.Retry),
+        actions = if (deviceKind == DeviceKind.HEADPHONE_STAND) emptyList() else listOf(WidgetAction.Retry),
     )
 
 /** Whether going stale would change what a widget draws. False once the link is already shown gone. */

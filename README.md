@@ -66,14 +66,6 @@ The 3MF contains four plates and 33 parts, with the user's saved P1S settings. S
 
 Firmware uses Rust and ESP-IDF v5.2.2, targeting `riscv32imc-esp-espidf`. Follow the instructions for [standalone](standalone/), [companion](companion/firmware/) or the [stand](headphone-stand/firmware/); the stand requires explicit device build flags. Build the [Android app](companion/android/) with Gradle or Android Studio.
 
-## About the AI in this project
-
-CLumo is a one-person project, made with the help of AI tools. The firmware, the Android
-app, these READMEs, the installer page, the commit messages and the like were written with
-that help: I set the design and the direction, the assistant wrote, and I read it back and
-ran it on real CLumo units before every release. The hardware, on the other hand, is
-essentially my own hands: designed in a CAD tool, printed, assembled and photographed by me.
-
 ## License
 
 [MIT](LICENSE)

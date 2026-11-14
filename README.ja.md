@@ -66,12 +66,6 @@ CLumoは、ESP32-C3と8×8 LEDマトリクスを使った卓上ガジェット�
 
 ファームウェアはRustとESP-IDF v5.2.2を使用し、ターゲットは`riscv32imc-esp-espidf`です。[単独版](standalone/README.ja.md)、[協調版](companion/firmware/)、[スタンド版](headphone-stand/firmware/)それぞれの手順を参照してください。スタンド版は実機用ビルドオプションの指定が必要です。[Androidアプリ](companion/android/README.ja.md)はGradleまたはAndroid Studioでビルドします。
 
-## AI の利用について
-
-CLumo は一人で作っていて、AI ツールと一緒に作業しています。
-ファームウェア、Android アプリ、この README、インストーラページ、コミットメッセージなどは、その支援を受けて書いたものです。設計と方針は私が決め、支援ツールが書き、私が読み直して、リリース前に実機で動かしています。
-対して、ハードウェア側は基本私の手だけです。CAD ツールで設計し、印刷、組み立て、写真撮影等を行っています。
-
 ## ライセンス
 
 [MIT](LICENSE)

@@ -1,0 +1,172 @@
+[
+  [
+    "準備と部品",
+    "Preparation and parts",
+    [],
+    [
+      [
+        "同梱の3MFは4プレート・33部品です。保存されている印刷設定はBambu Lab P1S、ノズル径0.4 mm、積層ピッチ0.12 mmです。スライス前に、使用するプリンターとフィラメントに合わせて調整してください。",
+        "The supplied 3MF contains 33 parts on four plates. Its saved print settings use a Bambu Lab P1S, a 0.4 mm nozzle and a 0.12 mm layer height. Adjust these settings for your printer and filament before slicing."
+      ],
+      [
+        "電子部品の目安：XIAO ESP32-C3 ×1、MAX7219 8×8モジュール ×1、押し込み式ロータリーエンコーダー ×1、タクトスイッチ ×2、LED ×4と各LED用の電流制限抵抗、10 kΩプルアップ抵抗 ×2、配線材、JSTコネクタ、USB-Cケーブル。",
+        "Example electronics: one XIAO ESP32-C3, one MAX7219 8×8 module, one push-button rotary encoder, two tactile switches, four LEDs with individual current-limiting resistors, two 10 kΩ pull-up resistors, wire, JST connectors and a USB-C cable."
+      ],
+      [
+        "作例のエンコーダーはuxcell（ASIN B07RR985GM）。外形寸法、軸と端子配置、コネクタのシリーズ・ピッチ・極数が合う部品を使用します。LED抵抗は使用LEDに合わせて選びます。図の指定は220 Ω〜1 kΩです。",
+        "The example encoder is uxcell, ASIN B07RR985GM. Use parts with matching dimensions, shaft and pin layout, and connector series, pitch and pin count. Select the LED resistors for your LEDs; the diagram specifies 220 Ω to 1 kΩ."
+      ],
+      [
+        "配線材とJSTコネクタを用意します。操作部はコネクタを前後から差し込んで接続します。マトリクス表面パネルとLED窓には光を透過する材料を使用します。",
+        "Prepare the wires and JST connectors. The controls connect by inserting connectors from the front and rear. Use light-transmitting material for the matrix panel and LED windows."
+      ]
+    ]
+  ],
+  [
+    "01  マトリクスを配置する",
+    "01  Position the matrix",
+    [
+      "080844365",
+      "080851759",
+      "080908312"
+    ],
+    [
+      [
+        "写真の表裏と向きに合わせてマトリクスと表面パネルを組み合わせ、前面の開口に配置します。写真は基板裏面と、筐体内側から見た配置です。",
+        "Assemble the matrix and front panel in the orientation shown, then position them in the front opening. The photos show the PCB rear and the placement inside the shell."
+      ],
+      [
+        "MAX7219の接続にはIN側を使います。",
+        "Use the MAX7219 IN connector for the wiring."
+      ]
+    ]
+  ],
+  [
+    "02  操作部と前面パネル",
+    "02  Controls and front panel",
+    [
+      "082040709",
+      "082047502",
+      "082106928",
+      "082127019"
+    ],
+    [
+      [
+        "ベースのCLumoと同じように、受け部品の前後からJSTコネクタを差し込んで接続します。この操作部の接続には、はんだ付けは不要です。",
+        "As with the base CLumo, insert the JST connectors from the front and rear of the carrier to make the connections. No soldering is needed for these control connections."
+      ],
+      [
+        "2つのスイッチとエンコーダーを受け部品に配置し、写真のように前後のコネクタを組み合わせます。前面パネルにはボタンとLED窓を配置し、ノブを取り付けます。",
+        "Place the two switches and encoder in the carrier and fit the front and rear connectors as shown. Position the buttons and LED windows in the front panel, then attach the knob."
+      ]
+    ]
+  ],
+  [
+    "03  前面部品の固定と配線",
+    "03  Secure the front assemblies and wire",
+    [
+      "082156661",
+      "082232568"
+    ],
+    [
+      [
+        "マトリクス関連の部品と操作パネルを筐体の前面に嵌め込んでから、前足2本を底面からねじ込んで固定します。前足は脚と前面部品を固定するネジを兼ねています。",
+        "Fit the matrix assembly and control panel into the front of the enclosure, then screw in the two front feet from below. The front feet also serve as screws that secure the front assemblies."
+      ],
+      [
+        "配線先はMakerWorldのDescriptionに掲載した回路図を参照してください。このPDFは部品の向きと組み合わせを示し、回路図は重複掲載しません。",
+        "Use the wiring diagram in the MakerWorld listing Description for electrical connections. This guide shows part orientation and assembly; the circuit diagram is kept in the listing."
+      ],
+      [
+        "写真は配線前の配置例です。各LEDに抵抗を1本ずつ入れ、GNDはXIAOへ戻します。電気的な接続先は回路図に従います。",
+        "The photo shows placement before wiring. Use one resistor for each LED and return GND to the XIAO. Follow the circuit diagram for the electrical connections."
+      ]
+    ]
+  ],
+  [
+    "04  内骨格と後ろ足",
+    "04  Inner frame and rear feet",
+    [
+      "082253273",
+      "082328128"
+    ],
+    [
+      [
+        "内骨格を筐体に合わせ、下部の重り収納スペースと背面の配線スペースを残して取り付けます。",
+        "Fit the inner frame into the shell, leaving the lower weight compartment and rear wiring space clear."
+      ],
+      [
+        "このタイミングで、配線済みのXIAO ESP32-C3を所定の位置にセットします。",
+        "At this stage, place the pre-wired XIAO ESP32-C3 in its designated position."
+      ],
+      [
+        "内骨格を取り付けた後、残りの後ろ足2本を底面からねじ込みます。部品を正しく合わせ、配線を挟まず、無理な力を加えずに固定してください。",
+        "After fitting the inner frame, screw in the two remaining rear feet from below. Align the parts correctly, keep wires clear and avoid forcing the printed fasteners."
+      ]
+    ]
+  ],
+  [
+    "05  側面ホルダー",
+    "05  Side holders",
+    [
+      "082343611",
+      "082357404",
+      "082409062"
+    ],
+    [
+      [
+        "ホルダーの軸を側面の取り付け穴に合わせ、内側のナットで固定します。左右どちらにも取り付けできます。",
+        "Align the holder stem with the side mounting hole and secure it with the nut from inside. Either side can be used."
+      ],
+      [
+        "通常タイプのホルダーとケーブルクリップは共通の取り付け部に対応し、どちらも左右いずれにも取り付けできます。",
+        "The regular holder and cable clip share the same mounting interface. Either type fits either side."
+      ]
+    ]
+  ],
+  [
+    "06  重りケースと滑り止め",
+    "06  Weight box and grip",
+    [
+      "082443847",
+      "082503746",
+      "082521262"
+    ],
+    [
+      [
+        "下部には引き出し式の重りケースがあります。重りを入れて蓋を閉じ、収納部へ戻します。写真のボルトは使用例で、重量や本数の指定ではありません。",
+        "The lower compartment holds a pull-out weight box. Add ballast, close its lid and return it to the compartment. The bolts shown are an example, not a prescribed quantity or weight."
+      ],
+      [
+        "筐体はヘッドホンに対して軽いため、重りで安定性を補います。操作時の後方への滑りを抑えるため、4つの脚に粘着式パッドを貼ります。作例は3M SJ5302（直径7.9 mm、厚さ2.2 mm）です。",
+        "The printed enclosure is light compared with the headphones, so ballast improves stability. Add adhesive grip pads to all four feet to reduce sliding when pressing the controls. The example uses 3M SJ5302, 7.9 mm diameter and 2.2 mm thick."
+      ]
+    ]
+  ],
+  [
+    "07  裏蓋とセットアップ",
+    "07  Rear cover and setup",
+    [
+      "082544133",
+      "082552637"
+    ],
+    [
+      [
+        "USB開口に合わせて裏蓋を取り付けます。ヘッドバンドストッパー2個を上面に差し込みます。",
+        "Fit the rear cover with its USB opening aligned. Insert the two headband stoppers into the top."
+      ],
+      [
+        "CLumo GitHubのヘッドホンスタンド用手順に従い、対応するファームウェアとアプリを組み合わせて使用します。現時点では公開Webインストーラーやリリース用ビルドにスタンド対応は含まれず、ソースからのビルドが必要です。従来CLumo用ファームウェアは使わないでください。",
+        "Follow the headphone-stand instructions in the CLumo GitHub repository and use matching firmware and app versions. Stand support is not yet in the public web installer or release builds; building from source is currently required. Do not use the original CLumo firmware."
+      ],
+      [
+        "USBで給電し、ノブを3秒長押しして離します。60秒間の受付中にスマホのBluetooth設定からスタンドを選択してペアリングします。",
+        "Connect USB power, hold the knob for 3 seconds and release it. Select the stand in your phone’s Bluetooth settings during the 60-second pairing window."
+      ],
+      [
+        "左右ボタンを同時に3秒長押しするとWi-Fi設定へ移ります。同じ操作で通常のBluetoothモードへ戻ります。",
+        "Hold both side buttons for 3 seconds to enter Wi-Fi setup. Repeat to return to normal Bluetooth mode."
+      ]
+    ]
+  ]
+]

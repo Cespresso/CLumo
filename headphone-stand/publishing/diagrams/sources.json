@@ -1,0 +1,46 @@
+{
+  "source_repository": "maker-projects",
+  "source_project": "nothing-headphone-accessory",
+  "source_thread": "01a1d7a3-657a-7543-acfd-0d169aa82d4a",
+  "import_date": "2026-11-14",
+  "assets": [
+    {
+      "source": "publishing/makerworld/features/handoff/controls.ja.svg",
+      "destination": "headphone-stand/publishing/diagrams/controls.ja.svg",
+      "sha256": "f5cfa0da2ab7a1a5a01d0f2f33875899739e24c822bec859dcf9e1af401d7f31"
+    },
+    {
+      "source": "publishing/makerworld/features/handoff/controls.ja.svg.png",
+      "destination": "headphone-stand/publishing/diagrams/controls.ja.png",
+      "sha256": "8a924dc0d3feb414f3d3aa690525e86fb3d178910b6d7410d274f9c9dccdc863"
+    },
+    {
+      "source": "publishing/makerworld/features/handoff/controls.en.svg",
+      "destination": "headphone-stand/publishing/diagrams/controls.en.svg",
+      "sha256": "950f8e8882d29c0e563c6eeccce67b1f4dbae0533da6147e05b6e5fc49fe1ae2"
+    },
+    {
+      "source": "publishing/makerworld/features/handoff/controls.en.svg.png",
+      "destination": "headphone-stand/publishing/diagrams/controls.en.png",
+      "sha256": "c93575df97e49c9eaf0caae2062f17a57d89f626137fb492116e9b5d8fcdf320"
+    },
+    {
+      "source": "publishing/makerworld/features/handoff/features.md",
+      "destination": "headphone-stand/publishing/features.md",
+      "sha256": "d628b5b691544e2f9750489da0809f328d0ed928f09b3dc5e2be7a5fdd86a585"
+    },
+    {
+      "source": "publishing/makerworld/features/handoff/features.ja.md",
+      "destination": "headphone-stand/publishing/features.ja.md",
+      "sha256": "799afb7c4ce435e46dde654805f5de0ed56f08de66ae07a19a66f9bcfae9b1a0"
+    },
+    {
+      "source": "publishing/makerworld/features/clumo-front-controls-matrix-red.png",
+      "destination": "headphone-stand/publishing/diagrams/control-panel-render.png",
+      "sha256": "19a77a546b115b3d53baeb4a695090e5d7f0b3be1ec2da63527e7e4af82a93d0"
+    }
+  ],
+  "source_script": "publishing/makerworld/src/build_feature_handoff.py",
+  "source_script_sha256": "f27eaf57384bc29d7aa15954d955167052bd756896459e228956a0854e7dd0fa",
+  "script_adaptation": "Paths made repository-relative; existing comparison tables and screenshots reused. No source images or labels changed."
+}

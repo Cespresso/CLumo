@@ -1,0 +1,32 @@
+{
+  "source_repository": "maker-projects",
+  "source_project": "nothing-headphone-accessory",
+  "import_date": "2026-11-14",
+  "wiring_source_commit": "64567b6",
+  "model_source_commits": [
+    "c69dae2",
+    "6d5742f"
+  ],
+  "assets": [
+    {
+      "source": "publishing/makerworld/cover/real-photo/pixel9-1558-web/clumo-pixel9-1558-web.jpg",
+      "destination": "assets/clumo-headphone-stand-cover.jpg",
+      "sha256": "16414ed57b46d47c4449c97c6161d143a3ac11b5e1f3a7f5f2ca3a903fd7e8b7"
+    },
+    {
+      "source": "wiring/img/clumo-stand-wiring-clean.svg",
+      "destination": "hardware/headphone-stand/img/clumo-headphone-stand-wiring.svg",
+      "sha256": "313b756f21d3accc04d15aad50bc81daee38ff6a547a658c52233e8a96f724a3"
+    },
+    {
+      "source": "wiring/img/clumo-stand-wiring-clean.svg.png",
+      "destination": "hardware/headphone-stand/img/clumo-headphone-stand-wiring.png",
+      "sha256": "4e7be9c330e7a771f83be56784ccceb3c59b2a27f340b02130af1b7030f7b050"
+    },
+    {
+      "source": "3MF/clumo_p1s.3mf",
+      "destination": "hardware/headphone-stand/models/clumo-headphone-stand-p1s.3mf",
+      "sha256": "660226ad23e865d732544963f467df98c7d1619e7d387c7024abf48ecf212389"
+    }
+  ]
+}

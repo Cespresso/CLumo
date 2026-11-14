@@ -1,0 +1,32 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>CLumo features</title><style>body{max-width:1100px;margin:40px auto;padding:0 24px;font:16px/1.7 system-ui;color:#303435;background:#fafaf8}.diagram{width:100%}table{border-collapse:collapse;width:100%;font-size:14px}td{border:1px solid #ddd;padding:10px}tr:first-child{background:#e8eae7;font-weight:bold}.screens{display:flex;flex-wrap:wrap;gap:24px}figure{margin:0;width:300px}figure img{width:100%}figcaption{margin:8px 0}h2{margin-top:40px}</style><h1>CLumo — 操作と表示</h1><p>図解 → 対応環境の比較 → Android接続 → 表示編集 → 操作割り当て、の順で掲載。</p><p><a href="index.en.html">日本語 / English</a></p><img class="diagram" src="diagrams/controls.ja.svg"><h1>ヘッドホンスタンドの機能比較</h1>
+<p>[English](features.md) | 日本語</p>
+<p>現行実装に基づく比較。通常Bluetoothモードで、スマホとスタンドが接続済みの場合。Androidの「アプリあり」は対応するCLumoアプリが接続し、必要なバックグラウンドサービスが稼働している状態を指す。インストールしただけでは音量配信やビジュアライザは動かない。</p>
+<table>
+<tr><td>機能</td><td>Android：CLumoアプリあり</td><td>Android：アプリなし</td><td>iOS（iPhone）</td></tr>
+<tr><td>ノブで音量操作</td><td>対応（BLE HID）</td><td>対応（BLE HID）</td><td>対応（BLE HID）</td></tr>
+<tr><td>再生／一時停止</td><td>対応（ノブ短押し）</td><td>対応</td><td>対応</td></tr>
+<tr><td>前へ／次へ</td><td>対応。初期値は左右ボタンとノブ3回／2回押し</td><td>対応</td><td>対応</td></tr>
+<tr><td>ミュート</td><td>割り当て可能。Android実動作は未確認</td><td>同左</td><td>実機確認済み</td></tr>
+<tr><td>音声アシスタント</td><td>割り当て可能。Gemini等の実動作は未確認</td><td>同左</td><td>Siri起動を実機確認済み</td></tr>
+<tr><td>早送り／巻き戻し</td><td>試験的な割り当て。固定秒数指定ではない・実動作未確認</td><td>同左</td><td>同左</td></tr>
+<tr><td>操作割り当て・初期値復元</td><td>アプリまたはWi-Fi編集画面</td><td>Wi-Fi編集画面</td><td>Wi-Fi編集画面（iPhoneブラウザ未検証）</td></tr>
+<tr><td>実音量の3連LED表示</td><td>対応。アプリが500ms周期で報告</td><td>非対応。実音量は不明</td><td>対応。AMSから取得、アプリ不要</td></tr>
+<tr><td>音声ビジュアライザ</td><td>対応。アプリの開始操作・音声取得権限・配信が必要</td><td>非対応</td><td>非対応</td></tr>
+<tr><td>マトリクスの操作アニメーション</td><td>対応</td><td>対応</td><td>対応</td></tr>
+<tr><td>音量操作時の3灯シーケンス</td><td>実音量取得中は出さない。不明時のみ表示</td><td>操作時に表示</td><td>AMS音量取得中は出さない。不明時のみ表示</td></tr>
+<tr><td>保存した待機画像／アニメーションの再生</td><td>対応</td><td>対応</td><td>対応</td></tr>
+<tr><td>Androidアプリで静止画・最大8コマ編集</td><td>Android実機で読み書き確認済み</td><td>アプリが必要</td><td>非対応</td></tr>
+<tr><td>ブラウザでプリセット選択・最大8コマ編集</td><td>対応（Wi-Fi設定モード）</td><td>対応（Wi-Fi設定モード）</td><td>実装上対応（Wi-Fi設定モード）。iPhoneブラウザの実機確認は未実施</td></tr>
+<tr><td>Androidアプリで輝度・待機表示設定</td><td>対応</td><td>アプリが必要</td><td>Androidアプリは利用不可。ブラウザ編集を使用</td></tr>
+</table>
+<h2>利用上の補足</h2>
+<p>- 音楽操作はOSへのHIDコマンド。曲送りなどへの応答は再生アプリの対応にも依存する。</p>
+<p>- Androidアプリの画面を閉じることと、サービス／配信を停止することは別。サービスと接続が続けば音量を報告できる。ビジュアライザのStopだけでは音量配信は停止しない。サービス終了などで音量報告が2秒途絶えると実音量は不明になる。</p>
+<p>- 待機表示は本体に保存したデータを再生する機能で、スマホ接続は不要。操作表示や受信中のビジュアライザが優先される。画像・アニメーションの編集にはAndroidアプリの対応機能、またはWi-Fi設定ページを使う。Androidとブラウザで同じエディターを使用し、静止画（1コマ）と最大8コマのアニメーションを編集できる。Android実機の読み書き・復元を確認。ブラウザとの往復編集は未確認。</p>
+<p>- Wi-Fi設定中は通常Bluetooth動作を停止するため、HID操作・音量取得・音声ビジュアライザは使えない。ブラウザプレビューは画面内だけ。本体はWi-Fiマークを表示し、保存後も設定モードを継続する。</p>
+<p>- 左右ボタンを同時に3秒長押しすると設定モードへ移り、同じ操作で通常モードへ戻る。保存した待機表示は通常モードへ戻ると反映される。</p>
+<p>- 新規ペアリングはノブ3秒長押しで60秒受付。登録済み端末は長押しせず再接続する。新規受付中は登録済み／未登録の双方を受け付けるため、切り替え元の端末は切断する。接続は同時に1台まで。</p>
+<h2>確認範囲</h2>
+<p>AndroidとiPhoneでノブの音量操作・実音量受信・3連LED追従を確認済み。Androidでは音量停止／復帰／アプリGATT再接続も検証済み。英語のブラウザ設定ページはAndroid Chromeで実機表示・設定読込を確認した。</p>
+<p>表の「対応」は実装の機能範囲であり、全OS・全音楽アプリ・全操作の組み合わせを実機検証した意味ではない。iPhoneブラウザでの編集、iPhone切断後のAMS再取得、Service Changedによる再探索、長時間運転は未確認。未確認を非対応とは扱わない。</p>
+<p>操作割り当てはAndroidアプリまたはWi-Fi編集画面で変更でき、初期値へ戻せる。ノブ2回は次へ、3回は前へが初期値。設定は本体に保存し、両画面で共有する。</p><h2>設定画面</h2><div class="screens"><figure><img src="screenshots/android-connected.png"><figcaption>接続・明るさ・ビジュアライザ</figcaption></figure><figure><img src="screenshots/android-display-editor.png"><figcaption>待機表示の編集：静止画／最大8コマ</figcaption></figure><figure><img src="screenshots/android-display-preview.png"><figcaption>並べ替えと保存前の画面内プレビュー</figcaption></figure><figure><img src="screenshots/android-control-assignments.png"><figcaption>Androidで操作を変更・初期値復元</figcaption></figure><figure><img src="screenshots/web-control-assignments.png"><figcaption>Wi-Fi設定画面で操作を編集・保存</figcaption></figure></div><p>スクリーンショットはAndroid実機の英語UI。Web画面もAndroid Chromeで撮影。アプリ内のLED図は装飾で、実音量の表示ではありません。エディターのオレンジは実物LEDの発光色ではありません。</p></html>

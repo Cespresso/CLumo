@@ -8,7 +8,7 @@ This is the headphone stand hardware, with a XIAO ESP32-C3, MAX7219 matrix, two 
 
 ## Print project
 
-Download [clumo-headphone-stand-p1s.3mf](models/clumo-headphone-stand-p1s.3mf) and open it as a project in Bambu Studio. The filename identifies the product and printer; it is a byte-for-byte copy of the approved `clumo_p1s.3mf`, with no changes to parts, placement, orientation or print settings.
+Download [clumo-headphone-stand-p1s.3mf](models/clumo-headphone-stand-p1s.3mf) and open it as a project in Bambu Studio. The filename identifies the product and printer; it is a byte-for-byte copy of the latest `clumo_final_four_plates_p1s_studio_v3_spacing_20261114.3mf`. The source revision changes plate 4 spacing to resolve first-layer interference: the weight box moves 20 mm in Y+ and 10 mm in X+, and its lid moves 10 mm in X+. Part geometry and print settings are preserved.
 
 | Plate | Parts | Count |
 | --- | --- | ---: |
@@ -21,7 +21,7 @@ Total: **4 plates, 33 parts**. Saved settings: Bambu Lab P1S, 0.4 mm nozzle, 0.1
 
 The included cable clip leaves the cable accessible; the alternative terminal holder prioritizes a tidy appearance. These can be mixed on the two sides. The weight box can hold ballast; a recommended weight has not yet been established. The user's non-slip feet use four 3M SJ5302 pads (7.9 mm diameter, 2.2 mm thick).
 
-Do not overwrite this project using earlier automatic layout scripts: they do not reproduce the user's final adjustments. Import verification checked the file hash and ZIP integrity; this import did not re-slice or print it.
+Do not overwrite this project using earlier automatic layout scripts: they do not reproduce the user's final adjustments. The source session verified all four plates with “Slice ok” and no interference warnings in Bambu Studio. Estimated total: 34 h 21 min and 559.32 g. This import checked the file hash, ZIP integrity, plate/part counts and saved settings; it did not repeat slicing or physical printing.
 
 ## Wiring
 
@@ -49,7 +49,7 @@ Follow the [photo assembly guide (English)](assembly/clumo-assembly-en.pdf) or [
 
 ## Asset provenance and regeneration
 
-Assets were copied from the `nothing-headphone-accessory` project in `maker-projects`. [sources.json](sources.json) records original paths and SHA-256 hashes. The cover uses the selected real photograph; the wiring is the approved publication version from commit `64567b6`. The approved print project is recorded in commits `c69dae2` / `6d5742f`.
+Assets were copied from the `nothing-headphone-accessory` project in `maker-projects`. [sources.json](sources.json) records original paths and SHA-256 hashes. The cover uses the selected real photograph; the wiring is the approved publication version from commit `64567b6`. The earlier print project is recorded in commits `c69dae2` / `6d5742f`; the imported spacing revision is identified by its source path and SHA-256.
 
 The diagram generator and its part artwork are bundled in `wiring/`; they need no other repository. From the CLumo root:
 

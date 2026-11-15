@@ -6,17 +6,18 @@
     {
       "source": "nothing-headphone-accessory/publishing/makerworld/guides/clumo-assembly-ja.pdf",
       "file": "clumo-assembly-ja.pdf",
-      "sha256": "50e052b6709e6cbc6edb6ab411abc54edcff7709579e37102591cf629283ab38"
+      "sha256": "6687af2df08de405a9937c997b49cdf050bfb8ec3f2e075839d341ac82d93b7d"
     },
     {
       "source": "nothing-headphone-accessory/publishing/makerworld/guides/clumo-assembly-en.pdf",
       "file": "clumo-assembly-en.pdf",
-      "sha256": "13b5e68ee1e00af08a6c65cfb44113524f5a91c354fe6861f3727226bdcf0643"
+      "sha256": "496eb1ed22fb66fe3cbc5202352d2a5d0a73c9ce3e2e9bd38d700d19b3114398"
     },
     {
       "source": "nothing-headphone-accessory/publishing/makerworld/guides/assembly-content.json",
       "file": "assembly-content.json",
-      "sha256": "9336d82fbe8b29085a227edc47aa5935d8b7cd0a85a9a44450bdee72649ed011"
+      "sha256": "3ed246c26c08274615e4a7358251ab857cd7ea3b52dbdbdb77e7436e4601ca79"
     }
-  ]
+  ],
+  "source_commit": "293e6dc"
 }

@@ -24,9 +24,11 @@
       "sha256": "4e7be9c330e7a771f83be56784ccceb3c59b2a27f340b02130af1b7030f7b050"
     },
     {
-      "source": "3MF/clumo_p1s.3mf",
+      "source": "3MF/layouts/clumo_final_four_plates_p1s_studio_v3_spacing_20261114.3mf",
       "destination": "hardware/headphone-stand/models/clumo-headphone-stand-p1s.3mf",
-      "sha256": "660226ad23e865d732544963f467df98c7d1619e7d387c7024abf48ecf212389"
+      "sha256": "816900dbf25d58f93b4eb887bf3e275365d049483659515aa85bc97131726960"
     }
-  ]
+  ],
+  "model_import_date": "2026-11-15",
+  "model_source_commits_note": "These commits describe the earlier model; the spacing revision is identified by its source path and SHA-256."
 }

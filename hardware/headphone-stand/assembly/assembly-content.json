@@ -5,8 +5,16 @@
     [],
     [
       [
-        "同梱の3MFは4プレート・33部品です。保存されている印刷設定はBambu Lab P1S、ノズル径0.4 mm、積層ピッチ0.12 mmです。スライス前に、使用するプリンターとフィラメントに合わせて調整してください。",
-        "The supplied 3MF contains 33 parts on four plates. Its saved print settings use a Bambu Lab P1S, a 0.4 mm nozzle and a 0.12 mm layer height. Adjust these settings for your printer and filament before slicing."
+        "同梱の3MFは4プレート・33部品です。基本的にはプレートの構成に沿って印刷できます。色を変えたい部品は、必要に応じて別のプレートや印刷ジョブに分けてください。",
+        "The supplied 3MF contains 33 parts on four plates. You can use the supplied plate layout as the starting point for printing. Move parts you want in different colors to separate plates or print jobs as needed."
+      ],
+      [
+        "写真の作例は、コンテストの締切に間に合わせるため2台で分担して印刷しました。本体側はP1S（ノズル径0.4 mm・積層ピッチ0.2 mm）、デカールや小物類はA1 mini（ノズル径0.2 mm・積層ピッチ0.1 mm）を使用しています。これは作例の条件で、2台のプリンターが必要という意味ではありません。",
+        "To meet the contest deadline, I split the example build between two printers: a P1S with a 0.4 mm nozzle and 0.2 mm layer height for the main body, and an A1 mini with a 0.2 mm nozzle and 0.1 mm layer height for the decals and small parts. These are the settings used for the photographed build; two printers are not required."
+      ],
+      [
+        "同梱3MFの保存設定はP1S・ノズル径0.4 mm・積層ピッチ0.12 mmで、作例の印刷条件とは異なります。スライス前に、使用するプリンター・ノズル・フィラメントに合わせて調整してください。",
+        "The supplied 3MF is saved with P1S settings, a 0.4 mm nozzle and 0.12 mm layer height, which differ from the settings used for the photographed build. Adjust the settings for your printer, nozzle and filament before slicing."
       ],
       [
         "電子部品の目安：XIAO ESP32-C3 ×1、MAX7219 8×8モジュール ×1、押し込み式ロータリーエンコーダー ×1、タクトスイッチ ×2、LED ×4と各LED用の電流制限抵抗、10 kΩプルアップ抵抗 ×2、配線材、JSTコネクタ、USB-Cケーブル。",
@@ -144,20 +152,28 @@
     ]
   ],
   [
-    "07  裏蓋とセットアップ",
-    "07  Rear cover and setup",
+    "07  仕上げとセットアップ",
+    "07  Finishing and setup",
     [
       "082544133",
       "082552637"
     ],
     [
       [
+        "表面装飾パーツは、使用したプラスチックに対応する接着剤で、必要に応じて筐体に貼り付けてください。",
+        "Attach the surface decoration parts to the enclosure as needed using an adhesive compatible with the plastic you printed them in."
+      ],
+      [
         "USB開口に合わせて裏蓋を取り付けます。ヘッドバンドストッパー2個を上面に差し込みます。",
         "Fit the rear cover with its USB opening aligned. Insert the two headband stoppers into the top."
       ],
       [
-        "CLumo GitHubのヘッドホンスタンド用手順に従い、対応するファームウェアとアプリを組み合わせて使用します。現時点では公開Webインストーラーやリリース用ビルドにスタンド対応は含まれず、ソースからのビルドが必要です。従来CLumo用ファームウェアは使わないでください。",
-        "Follow the headphone-stand instructions in the CLumo GitHub repository and use matching firmware and app versions. Stand support is not yet in the public web installer or release builds; building from source is currently required. Do not use the original CLumo firmware."
+        "スタンド用の<a href=\"https://cespresso.github.io/CLumo/?fw=headphone-stand\" color=\"#b64d20\"><u>ブラウザインストーラー</u></a>でファームウェアを書き込みます。Androidでは<a href=\"https://github.com/Cespresso/CLumo/releases/tag/v1.1.0\" color=\"#b64d20\"><u>GitHub Releases</u></a>から、ファームウェアと同じリリースのclumo.apkを入手します。iPhoneはアプリ不要です。",
+        "Install the stand firmware using the <a href=\"https://cespresso.github.io/CLumo/?fw=headphone-stand\" color=\"#b64d20\"><u>browser installer</u></a>. On Android, download clumo.apk from <a href=\"https://github.com/Cespresso/CLumo/releases/tag/v1.1.0\" color=\"#b64d20\"><u>GitHub Releases</u></a>, using the same release as the firmware. No app is needed on iPhone."
+      ],
+      [
+        "スタンド版と対応AndroidアプリはCLumo v1.1.0で公開済みです。インストーラーではヘッドホンスタンドを選択します。専用ファームウェアはclumo-headphone-stand.binです。standalone・companion版は従来CLumo用です。",
+        "The stand firmware and matching Android app are available in CLumo v1.1.0. Select the headphone stand in the installer (clumo-headphone-stand.bin). The standalone and companion images are for the original CLumo hardware."
       ],
       [
         "USBで給電し、ノブを3秒長押しして離します。60秒間の受付中にスマホのBluetooth設定からスタンドを選択してペアリングします。",

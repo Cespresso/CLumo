@@ -11,3 +11,7 @@
 PDF内では配線図の掲載先をMakerWorld Descriptionと案内しています。CLumoリポジトリでは上記の配線図を併用してください。PDFは最新版の原本をそのまま取り込み、変更していません。編集・再生成は制作元のスクリプトと組立写真で行い、更新時は日英PDFと構造化本文を一緒に同期します。
 
 Each PDF has eight pages. The statement that soldering is not required applies only to the JST connections in the control assembly. The PDF refers to the wiring diagram in the MakerWorld listing; when using this repository, use the wiring diagram linked above. These PDFs are unchanged copies of the latest source guides.
+
+最終節では表面装飾パーツの必要に応じた接着と、公開済みv1.1.0のセットアップを案内します。
+
+The final section covers optional gluing of the surface decorations and setup using the published v1.1.0 release.

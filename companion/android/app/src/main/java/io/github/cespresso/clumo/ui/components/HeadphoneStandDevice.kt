@@ -53,7 +53,7 @@ internal fun HeadphoneStandDevice(
         // Visible lens faces are 6 mm squares; rear flanges are 8 mm.
         repeat(3) { panel(19.1f, 72.45f - it * 9f, 6f, 6f, .8f, appearance.windowColor.toComposeColor()) }
         panel(19.1f, 45.45f, 6f, 6f, .8f, accent)
-        panel(-28.85f, 31.9f, 1.8f, 18f, .9f, accent)
+        panel(-28.85f, 31.9f, 1.8f, 18f, .9f, appearance.standColor("power_led").toComposeColor())
         for (x in listOf(-16.4f, .6f)) {
             drawCircle(shell, 4.5f * u, point(x, 22.9f))
             drawCircle(buttons, 3.7f * u, point(x, 22.9f))

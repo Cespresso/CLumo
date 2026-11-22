@@ -1,0 +1,30 @@
+material {
+    name : floor_assignment,
+    shadingModel : unlit,
+    blending : transparent,
+    depthWrite : false,
+    doubleSided : true,
+    parameters : [
+        { type : sampler2d, name : image },
+        { type : float, name : reveal },
+        { type : float, name : minU },
+        { type : float, name : maxU },
+        { type : float, name : firstThreshold },
+        { type : float, name : stepThreshold },
+        { type : float, name : firstRow },
+        { type : float, name : rowStep }
+    ],
+    requires : [ uv0 ]
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        float2 uv = getUV0();
+        float row = floor((uv.y - materialParams.firstRow) / materialParams.rowStep + 0.5);
+        float threshold = row < 0.0 ? materialParams.firstThreshold * 0.8
+            : materialParams.firstThreshold + row * materialParams.stepThreshold;
+        float mask = step(threshold, materialParams.reveal);
+        mask *= step(materialParams.minU, uv.x) * step(uv.x, materialParams.maxU);
+        material.baseColor = texture(materialParams_image, uv) * mask;
+    }
+}

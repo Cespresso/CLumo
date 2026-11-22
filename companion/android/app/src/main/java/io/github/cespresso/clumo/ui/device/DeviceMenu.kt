@@ -9,17 +9,16 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -64,54 +63,57 @@ internal fun BoxScope.DeviceMenu(
                 onClick = onDismiss,
             ),
     )
-    Column(
-        modifier = Modifier
-            .align(Alignment.TopEnd)
-            .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.End,
-                ),
-            )
-            .offset(x = (-16).dp, y = 52.dp)
-            .widthIn(min = 176.dp)
-            .width(IntrinsicSize.Max)
-            .shadow(14.dp, RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
-            .background(ClumoColors.White)
-            .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(20.dp))
-            .padding(8.dp),
+    // Insets and header spacing constrain measurement, not just the drawn position.
+    // This keeps the last action reachable even with a side navigation bar or large fonts.
+    Box(
+        Modifier.fillMaxSize()
+            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(start = 16.dp, end = 16.dp, top = 52.dp, bottom = 16.dp),
     ) {
-        @Composable
-        fun Entry(label: String, color: Color, enabled: Boolean = true, action: () -> Unit) {
-            MenuItem(label = label, color = color, enabled = enabled) {
-                onDismiss()
-                action()
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .widthIn(min = 176.dp)
+                .width(IntrinsicSize.Max)
+                .shadow(14.dp, RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(20.dp))
+                .background(ClumoColors.White)
+                .border(1.5.dp, ClumoColors.CardBorder, RoundedCornerShape(20.dp))
+                .verticalScroll(rememberScrollState())
+                .padding(8.dp),
+        ) {
+            @Composable
+            fun Entry(label: String, color: Color, enabled: Boolean = true, action: () -> Unit) {
+                MenuItem(label = label, color = color, enabled = enabled) {
+                    onDismiss()
+                    action()
+                }
             }
-        }
 
-        Entry(stringResource(R.string.device_menu_rename), ClumoColors.Text, action = onRename)
-        Entry(
-            label = stringResource(R.string.device_menu_appearance),
-            color = ClumoColors.Text,
-            enabled = identified,
-            action = onAppearance,
-        )
-        Entry(
-            label = stringResource(
-                if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary,
-            ),
-            color = ClumoColors.Text,
-            enabled = identified,
-            action = onTogglePrimary,
-        )
-        Entry(stringResource(R.string.device_menu_settings), ClumoColors.Text, action = onSettings)
-        Entry(
-            stringResource(R.string.device_menu_refresh_gatt),
-            ClumoColors.Text,
-            action = onRefreshGatt,
-        )
-        Entry(stringResource(R.string.device_menu_disconnect), ClumoColors.Coral, action = onDisconnect)
-        Entry(stringResource(R.string.device_menu_forget), ClumoColors.Coral, action = onForget)
+            Entry(stringResource(R.string.device_menu_rename), ClumoColors.Text, action = onRename)
+            Entry(
+                label = stringResource(R.string.device_menu_appearance),
+                color = ClumoColors.Text,
+                enabled = identified,
+                action = onAppearance,
+            )
+            Entry(
+                label = stringResource(
+                    if (isPrimary) R.string.device_menu_unset_primary else R.string.device_menu_set_primary,
+                ),
+                color = ClumoColors.Text,
+                enabled = identified,
+                action = onTogglePrimary,
+            )
+            Entry(stringResource(R.string.device_menu_settings), ClumoColors.Text, action = onSettings)
+            Entry(
+                stringResource(R.string.device_menu_refresh_gatt),
+                ClumoColors.Text,
+                action = onRefreshGatt,
+            )
+            Entry(stringResource(R.string.device_menu_disconnect), ClumoColors.Coral, action = onDisconnect)
+            Entry(stringResource(R.string.device_menu_forget), ClumoColors.Coral, action = onForget)
+        }
     }
 }
 

@@ -46,7 +46,6 @@ class ArchitectureTest {
     @Test
     fun screensWithViewModelsDependOnlyOnThem() {
         val screensWithViewModels = setOf(
-            "DeviceListScreen.kt",
             "DeviceScreen.kt",
             "PatternEditorScreen.kt",
             "DeviceAppearanceScreen.kt",

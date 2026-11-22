@@ -4,32 +4,41 @@ import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,12 +53,14 @@ import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.DeviceMode
 import io.github.cespresso.clumo.domain.backgroundCountdownsFor
 import io.github.cespresso.clumo.ui.components.ClumoActionDialog
-import io.github.cespresso.clumo.ui.components.ClumoDevice
 import io.github.cespresso.clumo.ui.components.ClumoSlider
 import io.github.cespresso.clumo.ui.components.ModeHelpDialog
 import io.github.cespresso.clumo.ui.components.ModeHelpHeader
 import io.github.cespresso.clumo.ui.components.NameInputDialog
-import io.github.cespresso.clumo.ui.components.SegmentedControl
+import io.github.cespresso.clumo.ui.components.product.FloorSettingsState
+import io.github.cespresso.clumo.ui.components.product.MatrixPage
+import io.github.cespresso.clumo.ui.components.product.ProductDisplayState
+import io.github.cespresso.clumo.ui.components.product.StandPart
 import io.github.cespresso.clumo.ui.theme.LocalClumoAccents
 import io.github.cespresso.clumo.ui.theme.RoundedFontFamily
 import kotlinx.coroutines.delay
@@ -62,9 +73,19 @@ fun DeviceScreen(
     onOpenAppearance: (deviceId: String) -> Unit,
     onOpenEditor: (patternId: String?) -> Unit,
     modifier: Modifier = Modifier,
+    matrixPage: MatrixPage = MatrixPage.Overview,
+    onMatrixSelect: (MatrixPage) -> Unit = {},
+    onLeaveDevice: () -> Unit = onBack,
+    onStandbyPreview: (Long?) -> Unit = {},
+    selectedPart: StandPart? = null,
+    floorSettings: FloorSettingsState? = null,
+    onPartSelect: (StandPart?) -> Unit = {},
+    onPartBusyChange: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
     val ui by viewModel.uiState.collectAsStateWithLifecycle()
+    // Keep the shared scene visible; the placeholder kind must not mount another device's controls.
+    if (!ui.initialized) return
     val settingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) {
@@ -86,11 +107,11 @@ fun DeviceScreen(
         if (!brightnessDragging) brightnessUi = ui.brightnessPercent
     }
     val ready = ui.ready
+    val spatialStand = ui.kind == DeviceKind.HEADPHONE_STAND
+    var partBusy by remember { mutableStateOf(false) }
     val stableId = ui.stableId
     val appearance = ui.appearance
     val displayName = ui.displayName
-    val mirrorBits = ui.mirrorBits
-    val litAlpha = ui.litAlpha
     val stateLabel = ui.stateLabel.text(ui.reconnectAttempt)
     val stateLabelColor = when (ui.stateTone) {
         DeviceStateTone.Accent -> LocalClumoAccents.current.accent
@@ -110,20 +131,45 @@ fun DeviceScreen(
             DeviceFailureAction.OpenBluetoothSettings -> settingsLauncher.launch(
                 Intent(Settings.ACTION_BLUETOOTH_SETTINGS),
             )
-            DeviceFailureAction.BackToList -> onBack()
+            DeviceFailureAction.BackToList -> onLeaveDevice()
             DeviceFailureAction.Retry -> viewModel.onReconnect()
         }
     }
 
-    var bindingsOpen by remember { mutableStateOf(false) }
-    if (bindingsOpen) StandBindingsEditor(appearance = ui.appearance, readSettings = viewModel::readControlBindings, saveSettings = viewModel::saveControlBindings, onClose = { bindingsOpen = false })
-    var standEditorOpen by remember { mutableStateOf(false) }
+    var standEditorOpen by androidx.compose.runtime.saveable.rememberSaveable(stableId) { mutableStateOf(false) }
     if (standEditorOpen) {
         StandDisplayEditor(
+            onPreview = onStandbyPreview,
             readSettings = viewModel::readStandDisplay,
+            spatial = spatialStand,
+            ready = ready,
+            accent = Color(appearance.buttonBColor.value or 0xFF000000.toInt()),
             saveSettings = viewModel::saveStandDisplay,
             onClose = { standEditorOpen = false },
         )
+    }
+
+    if (spatialStand && floorSettings != null) {
+        StandFloorSettings(
+            state = floorSettings, part = selectedPart, ready = ready, brightness = brightnessUi,
+            connectionLabel = stateLabel,
+            onBrightness = {
+                brightnessDragging = true
+                brightnessUi = it
+                viewModel.onBrightnessChanged(it)
+            },
+            onEditDisplay = { standEditorOpen = true },
+            onClose = onBack, onReconnect = { runFailureAction(ui.bannerAction) },
+            read = viewModel::readControlBindings, save = viewModel::saveControlBindings,
+            onBusy = {
+                partBusy = it
+                onPartBusyChange(it)
+            },
+        )
+        LaunchedEffect(brightnessUi) {
+            delay(300)
+            brightnessDragging = false
+        }
     }
 
     var menuOpen by remember { mutableStateOf(false) }
@@ -131,222 +177,235 @@ fun DeviceScreen(
     var forgetOpen by remember { mutableStateOf(false) }
     var modeHelpOpen by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            DeviceTopBar(
-                title = displayName,
-                onBack = onBack,
-                onToggleMenu = { menuOpen = !menuOpen },
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                        ),
-                    )
-                    .padding(bottom = 40.dp),
-            ) {
-                if (state == ConnectionState.Bonding) {
-                    PairingHintBanner()
-                }
-
-                if (state == ConnectionState.Error || state == ConnectionState.Reconnecting) {
-                    ConnectionTroubleBanner(
-                        reconnecting = state == ConnectionState.Reconnecting,
-                        reconnectAttempt = reconnectAttempt,
-                        failureMessage = failureMessage,
-                        action = ui.bannerAction.takeIf { state == ConnectionState.Error },
-                        onAction = { runFailureAction(ui.bannerAction) },
-                    )
-                }
-
-                if (ready && ui.kind == DeviceKind.CLUMO) {
-                    backgroundCountdownsFor(effectiveMode, pomodoroStatus, timerStatus)
-                        .forEach { countdown ->
-                            BackgroundCountdownBanner(
-                                countdown = countdown,
-                                pomodoro = pomodoroStatus,
-                                timer = timerStatus,
-                                onPomodoroReset = viewModel::onPomodoroReset,
-                                onTimerCancel = viewModel::onTimerCancel,
-                            )
+    BoxWithConstraints(modifier = modifier.fillMaxSize().testTag("device-screen")) {
+        val landscape = maxWidth > maxHeight
+        val screenHeight = maxHeight
+        if (spatialStand && floorSettings?.floorUi == false && selectedPart != null) {
+            AnchoredPartControls(
+                state = floorSettings,
+                accent = Color(
+                    (
+                        if (selectedPart == StandPart.Matrix) {
+                            appearance.buttonBColor.value
+                        } else {
+                            ProductDisplayState(appearance = appearance).regionColors()[selectedPart.nodeName]
+                                ?: appearance.panelColor.value
                         }
-                }
+                        ) or 0xFF000000.toInt(),
+                ),
+                modifier = Modifier.fillMaxSize(),
+                displayControl = {
+                    StandVisualizerControl(
+                        active = ui.visualizerActive,
+                        ready = ready && floorSettings.cameraSettled,
+                        accent = Color(appearance.buttonBColor.value or 0xFF000000.toInt()),
+                        onStart = viewModel::onVisualizerStart,
+                        onStop = viewModel::onVisualizerStop,
+                        showHeading = false,
+                    )
+                },
+            )
+        }
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (floorSettings?.snapshot?.choosing != true) {
+                DeviceTopBar(
+                    title = displayName,
+                    connection = state,
+                    failureMessage = failureMessage,
+                    recoveryLabel = when (ui.bannerAction) {
+                        DeviceFailureAction.OpenAppSettings -> "Permissions"
+                        DeviceFailureAction.OpenBluetoothSettings -> "Bluetooth settings"
+                        DeviceFailureAction.BackToList -> "Back to devices"
+                        DeviceFailureAction.Retry -> "Reconnect"
+                    },
+                    onRecover = { if (!partBusy) runFailureAction(ui.bannerAction) },
+                    onBack = {
+                        if (!partBusy) {
+                            onBack()
+                        }
+                    },
+                    onToggleMenu = { if (!partBusy) menuOpen = !menuOpen },
+                )
+            }
 
-                // Device face: the live LED mirror
+            Spacer(Modifier.weight(1f))
+            if (spatialStand && floorSettings != null) {
+                if (!floorSettings.floorUi && selectedPart == null) {
+                    StandOverview(
+                        ui,
+                        floorSettings.snapshot.overviewAssignments,
+                        onPartSelect,
+                        enabled = !partBusy,
+                        modifier = Modifier.align(Alignment.End)
+                            .fillMaxWidth(if (landscape) .46f else 1f),
+                    )
+                }
+            } else if (spatialStand) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 22.dp, end = 22.dp, top = 10.dp, bottom = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    Modifier.align(Alignment.End).fillMaxWidth(if (landscape) .43f else 1f)
+                        .height(screenHeight * if (landscape) .65f else .42f)
+                        .verticalScroll(rememberScrollState())
+                        .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    ClumoDevice(
-                        bits = mirrorBits,
-                        kind = ui.kind,
-                        size = 188.dp,
-                        appearance = appearance,
-                        connectionState = state,
-                        litAlpha = litAlpha,
-                        shadowElevation = 14.dp,
+                    if (state == ConnectionState.Bonding) PairingHintBanner()
+                    if (state == ConnectionState.Error || state == ConnectionState.Reconnecting) {
+                        ConnectionTroubleBanner(
+                            reconnecting = state == ConnectionState.Reconnecting,
+                            reconnectAttempt = reconnectAttempt,
+                            failureMessage = failureMessage,
+                            action = ui.bannerAction.takeIf { state == ConnectionState.Error },
+                            onAction = { runFailureAction(ui.bannerAction) },
+                        )
+                    } else if (!ready) {
+                        Text(stateLabel, color = stateLabelColor, fontSize = 12.sp)
+                    }
+                    StandPartControls(
+                        part = selectedPart, ready = ready, brightness = brightnessUi,
+                        onBrightnessChange = {
+                            brightnessDragging = true
+                            brightnessUi = it
+                            viewModel.onBrightnessChanged(it)
+                        },
+                        onEditDisplay = { standEditorOpen = true },
+                        onClose = { if (!partBusy) onPartSelect(null) },
+                        readSettings = viewModel::readControlBindings, saveSettings = viewModel::saveControlBindings,
+                        onBusyChange = {
+                            partBusy = it
+                            onPartBusyChange(it)
+                        },
                     )
-                    Text(
-                        text = if (ui.kind == DeviceKind.HEADPHONE_STAND) stringResource(R.string.stand_app_connection, stateLabel) else stateLabel,
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        fontFamily = RoundedFontFamily,
-                        color = stateLabelColor,
-                    )
+                    LaunchedEffect(brightnessUi) {
+                        delay(300)
+                        brightnessDragging = false
+                    }
                 }
+            } else if (matrixPage == MatrixPage.Overview) {
+                MatrixOverview(ui, onMatrixSelect, Modifier.align(Alignment.End).fillMaxWidth(if (landscape) .46f else 1f))
+            } else {
+                key(matrixPage) {
+                    Column(
+                        modifier = Modifier.align(Alignment.End)
+                            .fillMaxWidth(if (landscape) .43f else 1f)
+                            .heightIn(max = screenHeight * if (landscape) .65f else .42f)
+                            .background(Color.White.copy(alpha = .96f), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                            .testTag("device-controls")
+                            .verticalScroll(rememberScrollState())
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
+                                ),
+                            )
+                            .padding(bottom = 40.dp),
+                    ) {
+                        if (state == ConnectionState.Bonding) {
+                            PairingHintBanner()
+                        }
 
-                if (ui.kind == DeviceKind.HEADPHONE_STAND) {
-                    StandHelp(
-                        title = stringResource(R.string.stand_media_title),
-                        help = stringResource(R.string.stand_media_hint) + "\n\n" + stringResource(R.string.stand_volume_hint),
-                        modifier = Modifier.padding(horizontal = 22.dp),
-                    )
-                }
+                        if (state == ConnectionState.Error || state == ConnectionState.Reconnecting) {
+                            ConnectionTroubleBanner(
+                                reconnecting = state == ConnectionState.Reconnecting,
+                                reconnectAttempt = reconnectAttempt,
+                                failureMessage = failureMessage,
+                                action = ui.bannerAction.takeIf { state == ConnectionState.Error },
+                                onAction = { runFailureAction(ui.bannerAction) },
+                            )
+                        }
 
-                Column {
-                    ReadyGate(ready) {
-                        Column {
-                            // Brightness
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 26.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.device_brightness),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontFamily = RoundedFontFamily,
-                                    color = ClumoColors.Muted,
+                        if (ready && ui.kind == DeviceKind.CLUMO) {
+                            backgroundCountdownsFor(effectiveMode, pomodoroStatus, timerStatus)
+                                .forEach { countdown ->
+                                    BackgroundCountdownBanner(
+                                        countdown = countdown,
+                                        pomodoro = pomodoroStatus,
+                                        timer = timerStatus,
+                                        onPomodoroReset = viewModel::onPomodoroReset,
+                                        onTimerCancel = viewModel::onTimerCancel,
+                                    )
+                                }
+                        }
+
+                        when (matrixPage) {
+                            MatrixPage.Display -> MatrixDisplaySettings(
+                                brightnessUi,
+                                effectiveMode,
+                                ready,
+                                onBrightness = {
+                                    brightnessUi = it
+                                    viewModel.onBrightnessChanged(it)
+                                },
+                                onMode = viewModel::onModeSelected,
+                            )
+                            MatrixPage.MainButton, MatrixPage.SubButton -> MatrixButtonInfo(ui, matrixPage)
+                            MatrixPage.Mode -> {
+                                ModeHelpHeader(
+                                    mode = effectiveMode,
+                                    onHelpClick = { modeHelpOpen = true },
+                                    modifier = Modifier.padding(horizontal = 22.dp, vertical = 2.dp),
                                 )
-                                ClumoSlider(
-                                    value = brightnessUi,
-                                    onValueChange = {
-                                        brightnessDragging = true
-                                        brightnessUi = it
-                                        viewModel.onBrightnessChanged(it)
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = ready,
-                                )
-                            }
-                            LaunchedEffect(brightnessUi) {
-                                // Release the "dragging" hold shortly after the last move.
-                                delay(300)
-                                brightnessDragging = false
-                            }
 
-                            // Mode selector
-                            if (ui.kind == DeviceKind.CLUMO) {
-                                SegmentedControl(
-                                    items = listOf(
-                                        stringResource(R.string.seg_pomodoro),
-                                        stringResource(R.string.seg_timer),
-                                        stringResource(R.string.seg_patterns),
-                                        stringResource(R.string.seg_viz),
-                                    ),
-                                    selectedIndex = effectiveMode.coerceIn(0, 3),
-                                    onSelect = { index ->
-                                        viewModel.onModeSelected(index)
-                                    },
+                                // The mode-specific controls
+                                ReadyGate(
+                                    ready = ready,
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 22.dp, vertical = 8.dp),
-                                )
+                                        .padding(start = 22.dp, end = 22.dp, top = 2.dp),
+                                ) {
+                                    Box {
+                                        when (effectiveMode) {
+                                            DeviceMode.DISPLAY -> PatternsSection(
+                                                patterns = patterns,
+                                                selectedId = shownPatternId,
+                                                appearance = appearance,
+                                                onSelect = viewModel::onPatternApplied,
+                                                onAddNew = { onOpenEditor(null) },
+                                                onEdit = {
+                                                    shownPatternId?.let { onOpenEditor(it) }
+                                                },
+                                            )
+
+                                            DeviceMode.VISUALIZER -> VisualizerSection(
+                                                visualizerActive = ui.visualizerActive,
+                                                visualizerSensitivity = ui.visualizerSensitivity,
+                                                automaticLowVolumeBoost = ui.automaticLowVolumeBoost,
+                                                onStart = { viewModel.onVisualizerStart() },
+                                                onStop = viewModel::onVisualizerStop,
+                                                onVisualizerSensitivityChange =
+                                                viewModel::onVisualizerSensitivityChanged,
+                                                onVisualizerSensitivityChangeFinished =
+                                                viewModel::onVisualizerSensitivityChangeFinished,
+                                                onAutomaticLowVolumeBoostChange =
+                                                viewModel::onAutomaticLowVolumeBoostChanged,
+                                                hardwareMediaControls = ui.kind == DeviceKind.HEADPHONE_STAND,
+                                                ready = ready,
+                                            )
+
+                                            DeviceMode.POMODORO -> PomodoroSection(
+                                                status = pomodoroStatus,
+                                                onDurationsChange = viewModel::onPomodoroDurationsChanged,
+                                                onStart = viewModel::onPomodoroStart,
+                                                onPause = viewModel::onPomodoroPause,
+                                                onReset = viewModel::onPomodoroReset,
+                                            )
+
+                                            DeviceMode.TIMER -> CountdownTimerSection(
+                                                status = timerStatus,
+                                                completionBlinkOn = timerBlinkOn,
+                                                onDurationChange = viewModel::onTimerDurationChanged,
+                                                onStart = viewModel::onTimerStart,
+                                                onPause = viewModel::onTimerPause,
+                                                onCancel = viewModel::onTimerCancel,
+                                            )
+
+                                            else -> Unit
+                                        }
+                                    }
+                                }
                             }
+                            MatrixPage.Overview -> Unit
                         }
                     }
-
-                    if (ui.kind == DeviceKind.CLUMO) {
-                        ModeHelpHeader(
-                            mode = effectiveMode,
-                            onHelpClick = { modeHelpOpen = true },
-                            modifier = Modifier.padding(horizontal = 22.dp, vertical = 2.dp),
-                        )
-                    }
-
-                    // The mode-specific controls
-                    ReadyGate(
-                        ready = ready,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 22.dp, end = 22.dp, top = 2.dp),
-                    ) {
-                        Box {
-                            when (effectiveMode) {
-                                DeviceMode.DISPLAY -> PatternsSection(
-                                    patterns = patterns,
-                                    selectedId = shownPatternId,
-                                    appearance = appearance,
-                                    onSelect = viewModel::onPatternApplied,
-                                    onAddNew = { onOpenEditor(null) },
-                                    onEdit = {
-                                        shownPatternId?.let { onOpenEditor(it) }
-                                    },
-                                )
-
-                                DeviceMode.VISUALIZER -> VisualizerSection(
-                                    visualizerActive = ui.visualizerActive,
-                                    visualizerSensitivity = ui.visualizerSensitivity,
-                                    automaticLowVolumeBoost = ui.automaticLowVolumeBoost,
-                                    onStart = { viewModel.onVisualizerStart() },
-                                    onStop = viewModel::onVisualizerStop,
-                                    onVisualizerSensitivityChange =
-                                    viewModel::onVisualizerSensitivityChanged,
-                                    onVisualizerSensitivityChangeFinished =
-                                    viewModel::onVisualizerSensitivityChangeFinished,
-                                    onAutomaticLowVolumeBoostChange =
-                                    viewModel::onAutomaticLowVolumeBoostChanged,
-                                    hardwareMediaControls = ui.kind == DeviceKind.HEADPHONE_STAND,
-                                    ready = ready,
-                                )
-
-                                DeviceMode.POMODORO -> PomodoroSection(
-                                    status = pomodoroStatus,
-                                    onDurationsChange = viewModel::onPomodoroDurationsChanged,
-                                    onStart = viewModel::onPomodoroStart,
-                                    onPause = viewModel::onPomodoroPause,
-                                    onReset = viewModel::onPomodoroReset,
-                                )
-
-                                DeviceMode.TIMER -> CountdownTimerSection(
-                                    status = timerStatus,
-                                    completionBlinkOn = timerBlinkOn,
-                                    onDurationChange = viewModel::onTimerDurationChanged,
-                                    onStart = viewModel::onTimerStart,
-                                    onPause = viewModel::onTimerPause,
-                                    onCancel = viewModel::onTimerCancel,
-                                )
-
-                                else -> Unit
-                            }
-                        }
-                    }
-                    if (ui.kind == DeviceKind.HEADPHONE_STAND) {
-                        ReadyGate(ready) {
-                            Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                io.github.cespresso.clumo.ui.components.OutlinePillButton(
-                                    text = stringResource(R.string.stand_editor_title),
-                                    onClick = { standEditorOpen = true },
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        }
-                    }
-                }
-                if (ui.kind == DeviceKind.HEADPHONE_STAND) {
-                    io.github.cespresso.clumo.ui.components.OutlinePillButton(text = stringResource(R.string.bindings_title), onClick = { bindingsOpen = true }, modifier = Modifier.padding(horizontal = 22.dp).fillMaxWidth())
-                    StandSetupGuide()
                 }
             }
         }
@@ -364,7 +423,7 @@ fun DeviceScreen(
                 onRefreshGatt = viewModel::onReconnectWithCacheRefresh,
                 onDisconnect = {
                     viewModel.onDisconnect()
-                    onBack()
+                    onLeaveDevice()
                 },
                 onForget = { forgetOpen = true },
             )
@@ -379,7 +438,7 @@ fun DeviceScreen(
             onConfirm = {
                 forgetOpen = false
                 viewModel.onForgetDevice()
-                onBack()
+                onLeaveDevice()
             },
             onDismiss = { forgetOpen = false },
         )

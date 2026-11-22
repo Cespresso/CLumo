@@ -18,7 +18,7 @@ class HeadphoneStandProtocolTest {
         }.toSet()
         assertEquals(GattCompatibilityAction.ACCEPT, gattCompatibilityAction(discovered, HeadphoneStandProtocol.REQUIRED, emptySet(), false))
         assertEquals(
-            listOf(2, 3, 4, 6).map { UUID.fromString("d973000$it-b19e-4c81-a5e8-36fbd47a9c10") },
+            listOf(2, 3, 4, 6, 8).map { UUID.fromString("d973000$it-b19e-4c81-a5e8-36fbd47a9c10") },
             HeadphoneStandProtocol.INITIAL_READS,
         )
         assertFalse(HeadphoneStandProtocol.REQUIRED.contains(BleUuids.TIMER))

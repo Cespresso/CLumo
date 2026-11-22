@@ -156,6 +156,8 @@ private data class LicenseEntry(
 )
 
 private val LICENSE_ENTRIES = listOf(
+    LicenseEntry("Material Symbols (question mark)", "Copyright Google LLC", "Apache License 2.0"),
+    LicenseEntry("SceneView / Google Filament", "Copyright SceneView contributors / The Filament Authors", "Apache License 2.0"),
     LicenseEntry(
         name = "AndroidX Jetpack Compose (ui, material3, activity-compose, ui-tooling)",
         copyright = "Copyright The Android Open Source Project",

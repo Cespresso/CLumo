@@ -13,24 +13,7 @@
     <string name="ob2_permission_denied">接続するにはBluetoothの許可が必要です。あとから一覧画面でも許可できます。</string>
 
     <!-- Device list -->
-    <string name="list_title">マイデバイス</string>
-    <string name="list_settings">設定</string>
-    <string name="list_empty_title">まだデバイスがありません</string>
-    <string name="list_empty_body">電源を入れて近くに置いてください</string>
     <string name="list_scanning">スキャン中…</string>
-    <string name="list_found">見つかったデバイス</string>
-    <string name="list_connect">接続</string>
-    <string name="list_passkey_prefix">通常のCLumoはパスキー </string>
-    <string name="list_passkey">123456</string>
-    <string name="list_passkey_suffix"> を入力。スタンドはノブを3秒長押しし、Bluetooth設定で先にペアリングしてください。</string>
-    <string name="list_scan_button">CLumoを探す</string>
-    <string name="list_edit_done">完了</string>
-    <string name="list_remove_device">%1$s を削除</string>
-    <string name="scan_empty">近くにCLumoが見つかりませんでした。本体の電源と距離を確認してください。</string>
-    <string name="scan_error_bluetooth_off">Bluetoothがオフになっています。</string>
-    <string name="scan_error_permission">Bluetoothの権限がありません。</string>
-    <string name="scan_error_unavailable">この端末ではBluetoothを利用できません。</string>
-    <string name="scan_error_generic">スキャンを開始できませんでした。</string>
 
     <!-- Connection states -->
     <string name="state_connected">接続済み</string>
@@ -47,8 +30,6 @@
     <string name="device_menu_appearance">外観設定</string>
     <string name="device_menu_set_primary">メインのCLumoに設定</string>
     <string name="device_menu_unset_primary">メイン設定を解除</string>
-    <string name="device_primary_marker">メインのCLumo</string>
-    <string name="device_primary_badge">メイン</string>
     <string name="device_menu_settings">設定</string>
     <string name="device_menu_refresh_gatt">デバイス情報を再取得</string>
     <string name="device_menu_disconnect">切断</string>
@@ -69,8 +50,6 @@
     <string name="connection_error_services">CLumoの接続情報を取得できませんでした。</string>
     <string name="connection_error_incompatible">このCLumoのファームウェアには対応していません。ファームウェアを更新してください。</string>
     <string name="connection_error_sync">CLumoの初期設定を完了できませんでした。メニューの「デバイス情報を再取得」をお試しください。解決しない場合はBluetooth設定でCLumoのペアリングを解除し、再設定してください。</string>
-    <string name="permission_dialog_title">Bluetoothの許可が必要です</string>
-    <string name="permission_dialog_body">近くのCLumoを探して接続するには、Androidの設定でBluetoothを許可してください。</string>
     <string name="action_open_settings">設定を開く</string>
     <string name="action_retry">もう一度試す</string>
     <string name="action_back_to_list">一覧に戻る</string>
@@ -89,8 +68,6 @@
     <string name="button_role_viz_sub">感度を下げる</string>
 
     <!-- Main CLumo help -->
-    <string name="primary_help_open">メインのCLumoの説明を開く</string>
-    <string name="primary_help_body">いちばんよく使うCLumoを1台だけ選べます。アプリの配色が、メインに選んだCLumoの筐体・ボタン・LEDの色に合わせて変わります。\n\n一覧の☆をタップすると設定、★をもう一度タップすると解除できます。</string>
 
     <!-- Mode help -->
     <string name="mode_help_open">%1$sの説明を開く</string>
@@ -246,25 +223,19 @@
     <string name="widget_action_cancel">キャンセル</string>
     <string name="widget_action_retry">再試行</string>
 
-    <string name="stand_app_connection">アプリ通信：%1$s</string>
     <string name="stand_name">ヘッドホンスタンド</string>
     <string name="stand_connected">アプリ通信 接続済み</string>
     <string name="stand_disconnected">アプリ通信 未接続</string>
     <string name="stand_connecting">アプリ通信 接続中</string>
     <string name="stand_failed">アプリ通信 接続失敗</string>
     <string name="stand_device_illustration">ヘッドホンスタンドのイラスト。音量LEDは実際の状態ではありません</string>
-    <string name="stand_media_title">メディア操作</string>
-    <string name="stand_media_hint">ノブを回して音量、短押しで再生／一時停止、2つのボタンで前曲／次曲。これらはアプリなしでも操作できます。</string>
-    <string name="stand_volume_hint">アプリが接続しサービスが動作している間、本体の3連LEDに実音量を表示します。この画面を離れてもサービスは継続します。</string>
     <string name="stand_visualizer_title">オーディオビジュアライザ</string>
     <string name="stand_visualizer_background">バックグラウンドでも配信できます。停止するのはビジュアライザだけで、メディア操作と音量配信は継続します。</string>
     <string name="stand_wifi_title">Wi-Fi・ペアリング</string>
     <string name="stand_wifi_steps">1. 前曲＋次曲を同時に3秒長押し。\n2. Wi-Fi設定でCLumo-Setup-XXXXへ接続。\n3. ログイン画面からプリセット選択や最大8コマの編集。画面が開かない場合はブラウザで http://192.168.71.1/ を開いてください。</string>
     <string name="stand_wifi_return">設定中はBluetooth操作が停止します。本体に保存した後、前曲＋次曲を再び3秒長押しして戻ります。保存だけでは設定モードを終了しません。</string>
     <string name="stand_pairing_hint">新しいスマホの登録はノブを3秒長押し。登録済みスマホへの再接続では長押し不要です。</string>
-    <string name="stand_editor_title">待機表示を編集</string>
-    <string name="stand_editor_discard">未保存の変更を破棄しますか？</string>
-    <string name="stand_editor_leave">破棄して閉じる</string>
+    <string name="stand_editor_title">待機パターン</string>
     <string name="appearance_stand_panel">操作パネル</string>
     <string name="appearance_stand_matrixsurface">マトリクス面</string>
     <string name="appearance_stand_windows">LED窓</string>
@@ -282,4 +253,11 @@
     <string name="bindings_reset_confirm">割り当てを初期値に戻しますか？</string>
     <string name="bindings_help_title">操作について</string>
     <string name="bindings_help">変更は本体に保存されます。初期値は左＝前へ、右＝次へ、ノブ1回＝再生／一時停止、2回＝次へ、3回＝前へ、回転＝音量です。ノブ長押しのペアリングと左右同時長押しのWi-Fi設定は固定です。音声アシスタントは端末設定に依存し、早送り／巻き戻しは固定秒数の移動ではありません。</string>
+    <string name="appearance_front_holder">Front holder</string>
+    <string name="appearance_rear_holder">Rear holder</string>
+    <string name="appearance_stand_clip">Headphone clip</string>
+    <string name="appearance_stand_logo">Logo</string>
+    <string name="appearance_front_trim">Front trim</string>
+    <string name="appearance_power_led">Power lens</string>
+    <string name="appearance_front_insert">Front insert</string>
 </resources>

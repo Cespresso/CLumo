@@ -12,13 +12,13 @@ import io.github.cespresso.clumo.domain.ConnectionState
 import io.github.cespresso.clumo.domain.Device
 import io.github.cespresso.clumo.domain.DeviceAdvertisement
 import io.github.cespresso.clumo.domain.DeviceAppearance
+import io.github.cespresso.clumo.domain.DeviceKind
 import io.github.cespresso.clumo.domain.DeviceNaming
 import io.github.cespresso.clumo.domain.DeviceSessionState
 import io.github.cespresso.clumo.domain.FaceBits
 import io.github.cespresso.clumo.domain.ScanEvent
 import io.github.cespresso.clumo.domain.ScanFailure
 import io.github.cespresso.clumo.domain.mirrorBitsFor
-import io.github.cespresso.clumo.domain.resolveAppearance
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -36,6 +36,8 @@ data class DeviceCardLiveState(
     val session: DeviceSessionState,
     val visualizerColumns: IntArray = IntArray(0),
     val visualizerActive: Boolean = false,
+    val standbyBits: Long? = null,
+    val volumeSegments: Int = 0,
 )
 
 data class KnownDeviceCardState(
@@ -46,6 +48,8 @@ data class KnownDeviceCardState(
     val mirrorBits: Long,
     val litAlpha: Float,
     val isPrimary: Boolean,
+    val volumeSegments: Int = 0,
+    val brightnessLevel: Int = Brightness.MAX_LEVEL,
 )
 
 data class DeviceScanState(
@@ -70,6 +74,7 @@ internal fun buildKnownDeviceCards(
     aliases: Map<String, String>,
     appearances: Map<String, DeviceAppearance>,
     primaryDeviceId: String?,
+    defaultStandAppearance: DeviceAppearance,
 ): List<KnownDeviceCardState> =
     devices.map { device ->
         val live = liveStates[device.address]
@@ -83,10 +88,16 @@ internal fun buildKnownDeviceCards(
                 aliases = aliases,
                 fallbackName = device.fallbackName,
             ),
-            appearance = resolveAppearance(device.id, appearances),
+            appearance = appearances[device.id] ?: if (device.kind == DeviceKind.HEADPHONE_STAND) defaultStandAppearance else DeviceAppearance.DEFAULT,
             connectionState = state.link,
             mirrorBits = if (!ready) {
                 FaceBits.EMPTY
+            } else if (device.kind == io.github.cespresso.clumo.domain.DeviceKind.HEADPHONE_STAND) {
+                if (live?.visualizerActive == true) {
+                    FaceBits.fromColumns(live.visualizerColumns)
+                } else {
+                    live?.standbyBits ?: FaceBits.EMPTY
+                }
             } else {
                 mirrorBitsFor(
                     mode = observed?.mode,
@@ -98,9 +109,11 @@ internal fun buildKnownDeviceCards(
                     timerBlinkOn = true,
                 )
             },
+            brightnessLevel = state.effectiveBrightnessLevel ?: Brightness.MAX_LEVEL,
             litAlpha = Brightness.litAlpha(
                 state.effectiveBrightnessLevel ?: Brightness.MAX_LEVEL,
             ),
+            volumeSegments = live?.volumeSegments ?: 0,
             isPrimary = device.id == primaryDeviceId,
         )
     }
@@ -111,6 +124,8 @@ data class DeviceListUiState(
     val scanning: Boolean = false,
     val scanFailure: ScanFailure? = null,
     val scanFinishedEmpty: Boolean = false,
+    val discoveredDevices: List<DeviceAdvertisement> = emptyList(),
+    val connectionStates: Map<String, ConnectionState> = emptyMap(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -119,6 +134,7 @@ class DeviceListViewModel(
     private val repository: DeviceRepository,
     private val preferences: AppPreferences,
     private val scanner: DeviceScanner,
+    private val defaultStandAppearance: DeviceAppearance,
 ) : ViewModel() {
     private val scanState = MutableStateFlow(DeviceScanState())
     private var scanJob: Job? = null
@@ -142,10 +158,13 @@ class DeviceListViewModel(
                 aliases = identity.aliases,
                 appearances = identity.appearances,
                 primaryDeviceId = identity.primaryDeviceId,
+                defaultStandAppearance = defaultStandAppearance,
             ),
             foundDevices = scan.advertisements.values
                 .filter { it.address !in knownAddresses }
                 .sortedByDescending { it.rssi },
+            discoveredDevices = scan.advertisements.values.toList(),
+            connectionStates = liveStates.mapValues { it.value.session.link },
             scanning = scan.scanning,
             scanFailure = scan.failure,
             scanFinishedEmpty = scan.finishedEmpty,
@@ -210,7 +229,9 @@ class DeviceListViewModel(
                     session.state,
                     session.visualizerColumns,
                     session.visualizerActive,
-                ) { state, columns, active -> DeviceCardLiveState(state, columns, active) }
+                    session.standbyBits,
+                    session.volumeSegments,
+                ) { state, columns, active, standby, volume -> DeviceCardLiveState(state, columns, active, standby, volume) }
             },
         ) { values ->
             entries.indices.associate { index -> entries[index].key to values[index] }

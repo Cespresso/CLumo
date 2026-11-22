@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -36,6 +37,30 @@ class DeviceSession internal constructor(
     private val audioVisualizer: AudioVisualizerManager = AudioVisualizerManager(),
 ) {
     val kind: StateFlow<DeviceKind> get() = transport.kind
+    private val _volumeSegments = MutableStateFlow(0)
+    val volumeSegments = _volumeSegments.asStateFlow()
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val standbyBits = kotlinx.coroutines.flow.combine(
+        transport.standDisplay,
+        transport.standbyMode,
+        transport.connectionState,
+        audioVisualizer.isActive,
+    ) { settings, mode, link, active ->
+        (settings.takeIf { link == ConnectionState.Ready && !active }) to mode
+    }.flatMapLatest { (settings, mode) ->
+        kotlinx.coroutines.flow.flow {
+            val period = settings?.framePeriod(mode) ?: 0L
+            var step = 0
+            while (true) {
+                emit(settings?.frameBits(mode, step++))
+                if (period == 0L) break
+                delay(period)
+            }
+        }
+    }
+
+    val standDisplay get() = transport.standDisplay
     val standbyMode: StateFlow<Int?> get() = transport.standbyMode
     val address: String get() = transport.address
     val deviceId: StateFlow<String?> get() = transport.deviceId
@@ -99,7 +124,10 @@ class DeviceSession internal constructor(
             resend(pending)
             return
         }
-        if (link != ConnectionState.Ready) wasReady = false
+        if (link != ConnectionState.Ready) {
+            wasReady = false
+            _volumeSegments.value = 0
+        }
         _state.update {
             it.copy(
                 link = link,
@@ -304,6 +332,7 @@ class DeviceSession internal constructor(
     fun sendMediaVolume(percent: Int?) {
         if (kind.value == DeviceKind.HEADPHONE_STAND && state.value.link == ConnectionState.Ready) {
             transport.writeMediaVolume(percent)
+            _volumeSegments.value = ((percent ?: 0) + 32).div(33).coerceIn(0, 3)
         }
     }
 

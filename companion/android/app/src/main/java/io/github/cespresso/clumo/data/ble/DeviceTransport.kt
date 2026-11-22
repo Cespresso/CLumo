@@ -28,6 +28,7 @@ sealed interface DeviceObservation {
  */
 interface DeviceTransport {
     val kind: StateFlow<DeviceKind> get() = defaultDeviceKind
+    val standDisplay: StateFlow<StandDisplaySettings?> get() = defaultStandDisplay
     val standbyMode: StateFlow<Int?> get() = defaultStandbyMode
     val address: String
     val connectionState: StateFlow<ConnectionState>
@@ -76,4 +77,5 @@ interface DeviceTransport {
 }
 
 private val defaultDeviceKind = MutableStateFlow(DeviceKind.CLUMO).asStateFlow()
+private val defaultStandDisplay = MutableStateFlow<StandDisplaySettings?>(null).asStateFlow()
 private val defaultStandbyMode = MutableStateFlow<Int?>(null).asStateFlow()

@@ -1,0 +1,5 @@
+{
+  "source": "/Users/noguchinaoya/learn/maker-projects/clumo-studio-render/assets/ledbox_green.glb",
+  "sha256": "d79b5053867060eb099ac2384cb3c58a0033e141c02a23343572604a96d8b697",
+  "note": "Unmodified source GLB. Preview rotates 180 degrees around Y to face the same direction as the headphone stand. No live LED or appearance synchronization."
+}

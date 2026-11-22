@@ -34,8 +34,11 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.CLumo">
 
+        <!-- BLE HID reconnects change keyboard/navigation configuration, not this UI layout.
+             Keep the shared 3D scene alive instead of replaying its entry animation. -->
         <activity
             android:name=".MainActivity"
+            android:configChanges="keyboard|keyboardHidden|navigation"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>

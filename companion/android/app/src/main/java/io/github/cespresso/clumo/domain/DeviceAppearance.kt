@@ -69,8 +69,16 @@ data class DeviceAppearance(
     val panelColor: RgbColor = RgbColor.of(0x90928A),
     val matrixSurfaceColor: RgbColor = RgbColor.of(0xF4F2EE),
     val windowColor: RgbColor = RgbColor.of(0xD5D6CC),
-
+    val standColors: Map<String, RgbColor> = emptyMap(),
+    val palette: Map<String, RgbColor> = emptyMap(),
+    val assignments: Map<String, String> = emptyMap(),
 ) {
+    fun standColor(role: String): RgbColor =
+        standColors[role] ?: when (role) {
+            "front_holder" -> RgbColor.of(0x303030)
+            else -> buttonBColor
+        }
+
     companion object {
         val DEFAULT = DeviceAppearance(
             enclosureColor = requireNotNull(RgbColor.parseOrNull("#7E9E7C")),

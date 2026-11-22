@@ -36,6 +36,7 @@ class DeviceListViewModelTest {
             ),
             aliases = emptyMap(),
             appearances = emptyMap(),
+            defaultStandAppearance = io.github.cespresso.clumo.ui.appearance.defaultStandAppearance,
             primaryDeviceId = "device-a",
         )
 

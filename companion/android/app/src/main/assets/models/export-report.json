@@ -1,0 +1,26 @@
+{
+  "source": "/Users/noguchinaoya/learn/maker-projects/noise-emitter/renders/noise-emitter-cover-window-led.blend",
+  "source_sha256": "0a8528c83eb2a446268f0c0cc475be855d91fe4f4ad3b5504a0df155611b6c71",
+  "parts": [
+    "Noise Emitter / shell",
+    "Noise Emitter / frame",
+    "Noise Emitter / lid",
+    "Noise Emitter / knob"
+  ],
+  "texture_size": 1024,
+  "bake_samples": 16,
+  "modes": {
+    "baked": "Cycles combined lighting, unlit glTF. Fixed lighting and LED; no dynamic reflections.",
+    "pbr": "Base color, roughness, baked tangent normals. No LED emission."
+  },
+  "files": {
+    "noise-emitter-pbr.glb": {
+      "bytes": 5124876,
+      "sha256": "d08a3108bd611a3d6a15dc910f7036cbc536954ae6aca34b72dccef1bc819c89"
+    },
+    "noise-emitter-baked.glb": {
+      "bytes": 2293228,
+      "sha256": "f9370c4004039fda9f28bec50dd6d78f0c9e96e424ceb9da1d143b14bbc29dd8"
+    }
+  }
+}

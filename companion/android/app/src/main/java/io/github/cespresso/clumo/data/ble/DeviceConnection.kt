@@ -78,6 +78,8 @@ class DeviceConnection(
 
     private val _kind = MutableStateFlow(initialKind)
     override val kind = _kind.asStateFlow()
+    private val _standDisplay = MutableStateFlow<StandDisplaySettings?>(null)
+    override val standDisplay = _standDisplay.asStateFlow()
     private val _standbyMode = MutableStateFlow<Int?>(null)
     override val standbyMode = _standbyMode.asStateFlow()
     private var standInfoValidated = false
@@ -291,6 +293,7 @@ class DeviceConnection(
         standInfoValidated = false
         awaitingMtu = false
         discoveringStand = false
+        _standDisplay.value = null
         _standbyMode.value = null
         characteristics.clear()
         _currentMode.value = null
@@ -840,6 +843,7 @@ class DeviceConnection(
             }
             HeadphoneStandProtocol.DISPLAY_SETTINGS -> {
                 val decoded = StandDisplaySettings.decode(value)
+                _standDisplay.value = decoded
                 displayReads.value = (displayReads.value.first + 1) to decoded
                 if (decoded != null) {
                     handleValue(HeadphoneStandProtocol.BRIGHTNESS, value.copyOfRange(0, 1))

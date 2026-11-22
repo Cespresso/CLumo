@@ -1,0 +1,17 @@
+material {
+    name : floor_ribbon,
+    shadingModel : lit,
+    blending : masked,
+    maskThreshold : 0.5,
+    parameters : [ { type : float, name : reveal }, { type : float3, name : tint } ],
+    requires : [ uv0 ]
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = float4(materialParams.tint, step(getUV0().x, materialParams.reveal));
+        material.roughness = 0.8;
+        material.metallic = 0.0;
+        material.reflectance = 0.1;
+    }
+}

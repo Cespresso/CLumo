@@ -99,6 +99,9 @@ data class DeviceUiState(
     val timerBlinkOn: Boolean = true,
     val kind: io.github.cespresso.clumo.domain.DeviceKind = io.github.cespresso.clumo.domain.DeviceKind.CLUMO,
     val standbyMode: Int = 0,
+    val standDisplay: io.github.cespresso.clumo.data.ble.StandDisplaySettings? = null,
+    /** False only for the placeholder before repository/session inputs have emitted. */
+    val initialized: Boolean = true,
 )
 
 /**
@@ -130,7 +133,7 @@ object DeviceUiStateFactory {
             visualizerActive = false,
             timerBlinkOn = true,
             dismissedDialogFailure = null,
-        ).copy(displayName = displayName)
+        ).copy(displayName = displayName, initialized = false)
 
     /** The five failures no amount of retrying from this screen can clear. */
     private val BLOCKING = setOf(

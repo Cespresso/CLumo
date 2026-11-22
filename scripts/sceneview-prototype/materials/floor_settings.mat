@@ -1,0 +1,34 @@
+material {
+    name : floor_settings,
+    shadingModel : unlit,
+    blending : transparent,
+    depthWrite : false,
+    doubleSided : true,
+    parameters : [
+        { type : sampler2d, name : image },
+        { type : float, name : reveal },
+        { type : float, name : minU },
+        { type : float, name : maxU },
+        { type : float, name : grouped },
+        { type : float4, name : rowThresholds },
+        { type : float3, name : rowCuts }
+    ],
+    requires : [ uv0 ]
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        float2 uv = getUV0();
+        float4 color = texture(materialParams_image, uv);
+        float mask = 1.0 - smoothstep(materialParams.reveal * 1.12 - 0.10, materialParams.reveal * 1.12, uv.y);
+        if (materialParams.grouped > 0.5) {
+            float threshold = uv.y < materialParams.rowCuts.x ? materialParams.rowThresholds.x
+                : uv.y < materialParams.rowCuts.y ? materialParams.rowThresholds.y
+                : uv.y < materialParams.rowCuts.z ? materialParams.rowThresholds.z
+                : materialParams.rowThresholds.w;
+            mask = step(threshold, materialParams.reveal);
+        }
+        mask *= step(materialParams.minU, uv.x) * step(uv.x, materialParams.maxU);
+        material.baseColor = color * mask;
+    }
+}

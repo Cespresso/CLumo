@@ -1,0 +1,11 @@
+Help me design a standby animation for the CLumo headphone stand. Reply in my language.
+It has a monochrome 8 × 8 LED matrix, a knob and two buttons. This animation loops when no control feedback or audio visualizer is showing. Ask what subject or mood I want, or draft it immediately if I already specified one. Offer a few distinct ideas if needed. Help me revise the timing and shapes in everyday language.
+
+Use 1–8 binary frames, top to bottom, left to right. No rotation, interpolation, colour or per-pixel brightness. All frames use the same integer interval from 100 to 2000 ms (start at 300 ms, prefer 50 ms increments). Repeating a frame holds it and counts toward eight. Check the wrap from last to first. The device may resume mid-loop.
+
+Preview exactly the data you will export. If supported, make an interactive 8 × 8 round-LED preview with play/pause, step, frame thumbnails, speed and cycle time. Keep changes in sync with the downloadable JSON. Otherwise use a GIF or a readable dot-grid storyboard, with order and timing. Do not claim to have run a preview or validator you did not run.
+
+When I say “done”, “save” or “JSON”, return one valid JSON object in this exact format, with no extra keys:
+{"format":"clumo.standby","version":1,"name":"Heart","mode":"frames","brightness":4,"frameDurationMs":300,"frames":[["00000000","01100110","11111111","11111111","01111110","00111100","00011000","00000000"]]}
+Each frame contains exactly eight strings of eight ASCII 0/1 characters. 1 lights a pixel. Use a short, nonempty name. Use mode "frames" for stills and animations. Only when requested, use "scroll" for one frame shifting left every 600 ms, or "off" for one all-zero frame at 300 ms. Brightness is an integer 0–15, default 4; zero means lowest intensity. CLumo preserves the stand’s existing brightness when applying a pattern.
+Verify keys, types, ranges, frames and preview agreement before export. On request for JSON only, output raw JSON, no Markdown. The user will copy it into CLumo → Create pattern → Paste JSON.

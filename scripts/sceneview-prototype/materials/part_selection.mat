@@ -1,0 +1,37 @@
+material {
+    name : part_selection,
+    shadingModel : lit,
+    variables : [ lensOffset ],
+    parameters : [
+        { type : float, name : outline },
+        { type : float3, name : tint },
+        { type : float, name : selected },
+        { type : float, name : powered },
+        { type : float2, name : lensCenter }
+    ]
+}
+vertex {
+    void materialVertex(inout MaterialVertexInputs material) {
+        // Front face of the 8 mm indicator lens in the exported stand's local XY plane.
+        material.lensOffset.xy = (getPosition().xy - materialParams.lensCenter) / 0.004;
+    }
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = float4(materialParams.tint, 1.0);
+        material.roughness = 0.8;
+        material.reflectance = 0.1;
+        float pulse = 0.9 + 0.1 * sin(getUserTimeMod(2.0) * 3.14159265);
+        float3 emission = float3(0.10, 0.65, 0.95) * materialParams.selected * pulse;
+        if (materialParams.powered > 0.0) {
+            float2 offset = variable_lensOffset.xy;
+            float diffusion = exp(-2.6 * dot(offset, offset));
+            float3 transmitted = mix(materialParams.tint, float3(1.0, 0.93, 0.81), 0.23);
+            emission += transmitted * (0.045 + 1.35 * diffusion);
+            material.roughness = 0.62;
+        }
+        emission += float3(1.0, 0.96, 0.85) * materialParams.outline * smoothstep(0.67, 0.95, 1.0 - abs(dot(getWorldNormalVector(), getWorldViewVector())));
+        material.emissive = float4(emission, 0.0);
+    }
+}

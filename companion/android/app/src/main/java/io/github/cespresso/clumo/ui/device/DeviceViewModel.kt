@@ -82,6 +82,7 @@ class DeviceViewModel(
                         visualizerActive = visualizerActive,
                     )
                 }.combine(active.kind) { presentation, kind -> presentation.copy(kind = kind) }
+                    .combine(active.standDisplay) { presentation, settings -> presentation.copy(standDisplay = settings) }
                     .combine(active.standbyMode) { presentation, mode -> presentation.copy(standbyMode = mode ?: 0) }
             }
         }
@@ -154,6 +155,7 @@ class DeviceViewModel(
             kind = if (live.connected) live.kind else identity.knownDevice?.kind ?: DeviceKind.CLUMO,
             effectiveMode = if (live.kind == DeviceKind.HEADPHONE_STAND || identity.knownDevice?.kind == DeviceKind.HEADPHONE_STAND) DeviceMode.VISUALIZER else live.state.effectiveMode,
             standbyMode = live.standbyMode,
+            standDisplay = live.standDisplay,
         )
     }.stateIn(
         viewModelScope,
@@ -276,6 +278,7 @@ class DeviceViewModel(
         val visualizerActive: Boolean,
         val kind: DeviceKind = DeviceKind.CLUMO,
         val standbyMode: Int = 0,
+        val standDisplay: io.github.cespresso.clumo.data.ble.StandDisplaySettings? = null,
     ) {
         companion object {
             fun disconnected() =

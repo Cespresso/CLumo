@@ -1,0 +1,25 @@
+material {
+    name : selection_halo,
+    shadingModel : unlit,
+    blending : transparent,
+    depthWrite : false,
+    doubleSided : true,
+    parameters : [
+        { type : float3, name : tint },
+        { type : float, name : strength }
+    ],
+    requires : [ uv0 ]
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        float radius = length((getUV0() - 0.5) * 2.0);
+        float phase = getUserTimeMod(3.0) / 3.0;
+        float ringRadius = mix(0.30, 0.90, phase);
+        float ring = 1.0 - smoothstep(0.015, 0.14, abs(radius - ringRadius));
+        float envelope = smoothstep(0.0, 0.15, phase) * (1.0 - smoothstep(0.35, 1.0, phase));
+        float pool = 1.0 - smoothstep(0.12, 0.66, radius);
+        float alpha = (pool * 0.16 + ring * envelope * 0.32) * materialParams.strength;
+        material.baseColor = float4(materialParams.tint * alpha, alpha);
+    }
+}

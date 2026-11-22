@@ -21,6 +21,11 @@ internal fun decodeDeviceAppearances(raw: String?): Map<String, DeviceAppearance
                         panelColor = value.rgbOrDefault("panel", defaults.panelColor),
                         matrixSurfaceColor = value.rgbOrDefault("matrixSurface", defaults.matrixSurfaceColor),
                         windowColor = value.rgbOrDefault("window", defaults.windowColor),
+                        standColors = value.colorMap("standColors"),
+                        palette = value.colorMap("palette"),
+                        assignments = value.optJSONObject("assignments")?.let { obj ->
+                            obj.keys().asSequence().associateWith { obj.optString(it) }
+                        }.orEmpty(),
                         ledColor = value.rgbOrDefault("led", defaults.ledColor),
                     ),
                 )
@@ -41,6 +46,10 @@ internal fun encodeDeviceAppearances(appearances: Map<String, DeviceAppearance>)
                 put("panel", appearance.panelColor.toHex())
                 put("matrixSurface", appearance.matrixSurfaceColor.toHex())
                 put("window", appearance.windowColor.toHex())
+                for ((key, colors) in mapOf("standColors" to appearance.standColors, "palette" to appearance.palette)) {
+                    if (colors.isNotEmpty()) put(key, JSONObject(colors.mapValues { it.value.toHex() }))
+                }
+                if (appearance.assignments.isNotEmpty()) put("assignments", JSONObject(appearance.assignments))
                 put("led", appearance.ledColor.toHex())
             },
         )
@@ -58,3 +67,8 @@ internal fun updatedDeviceAppearances(
     }
 
 private fun JSONObject.rgbOrDefault(key: String, default: RgbColor): RgbColor = optString(key).takeIf { it.isNotEmpty() }?.let(RgbColor::parseOrNull) ?: default
+
+private fun JSONObject.colorMap(key: String): Map<String, RgbColor> =
+    optJSONObject(key)?.let { obj ->
+        obj.keys().asSequence().mapNotNull { k -> RgbColor.parseOrNull(obj.optString(k))?.let { k to it } }.toMap()
+    }.orEmpty()

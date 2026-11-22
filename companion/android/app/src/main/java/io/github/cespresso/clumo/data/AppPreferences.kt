@@ -54,6 +54,7 @@ class AppPreferences(context: Context) : AppearancePreferences {
     private val store = context.applicationContext.dataStore
 
     companion object {
+        private val KEY_HOME_3D_HINT_SEEN = booleanPreferencesKey("home_3d_hint_seen")
         private val KEY_ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         private val KEY_ALIASES = stringPreferencesKey("device_aliases_json")
         private val KEY_DEVICE_APPEARANCES = stringPreferencesKey("device_appearances_json")
@@ -65,6 +66,12 @@ class AppPreferences(context: Context) : AppearancePreferences {
 
     private val data = store.data.catch { exception ->
         if (exception is IOException) emit(emptyPreferences()) else throw exception
+    }
+
+    val home3DHintSeen: Flow<Boolean> = data.map { it[KEY_HOME_3D_HINT_SEEN] ?: false }
+
+    suspend fun dismissHome3DHint() {
+        store.edit { it[KEY_HOME_3D_HINT_SEEN] = true }
     }
 
     val onboardingDone: Flow<Boolean> = data.map { it[KEY_ONBOARDING_DONE] ?: false }

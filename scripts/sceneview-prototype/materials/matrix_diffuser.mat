@@ -1,0 +1,42 @@
+material {
+    name : matrix_diffuser,
+    shadingModel : lit,
+    variables : [ facePosition ],
+    parameters : [
+        { type : float, name : outline },
+        { type : float3, name : tint },
+        { type : float, name : selected },
+        { type : float3, name : grid },
+        { type : sampler2d, name : pixels }
+    ]
+}
+vertex {
+    void materialVertex(inout MaterialVertexInputs material) {
+        material.facePosition.xy = getPosition().xy;
+    }
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        highp float2 pos = variable_facePosition.xy;
+        material.baseColor = float4(materialParams.tint * 0.96, 1.0);
+        material.roughness = 0.91;
+        material.reflectance = 0.16;
+        float2 cell = (pos - materialParams.grid.xy) * float2(materialParams.grid.z, -250.0);
+        float2 index = floor(cell + 0.5);
+        float radius = length(cell - index);
+        float blur = max(0.08, min(fwidth(radius), 0.20));
+        float glow = 1.0 - smoothstep(0.36 - blur, 0.39 + blur, radius);
+        float4 led = texture(materialParams_pixels, (index + 0.5) / 8.0);
+        if (any(lessThan(index, float2(0.0))) || any(greaterThan(index, float2(7.0)))) glow = 0.0;
+        // Both 40 mm diffusers span ten cell pitches. Trace the rounded perimeter.
+        float2 corner = abs(cell - 3.5) - 4.55;
+        float edgeDistance = length(max(corner, 0.0)) + min(max(corner.x, corner.y), 0.0) - 0.45;
+        float rim = 1.0 - smoothstep(0.08, 0.25, abs(edgeDistance + 0.17));
+        float pulse = 0.9 + 0.1 * sin(getUserTimeMod(2.0) * 3.14159265);
+        // Calibrate the preview independently of the device duty cycle.
+        float emission = led.a > 0.0 ? mix(0.12, 2.0, led.a) : 0.0;
+        material.emissive = float4(led.rgb * emission * glow + float3(1.0, 0.96, 0.85) * rim * materialParams.outline
+            + float3(0.10, 0.65, 0.95) * materialParams.selected * pulse * rim, 0.0);
+    }
+}

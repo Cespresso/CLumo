@@ -1,0 +1,29 @@
+{
+  "source": "/Users/noguchinaoya/learn/maker-projects/nothing-headphone-accessory/publishing/makerworld/features/clumo-front-controls-matrix-red.blend",
+  "source_sha256": "a77919659c9a8983bfc1dcffda5eacdbf4909a756bc1693fa29045ba4f08f6a1",
+  "source_objects": 1476,
+  "polygons": 440919,
+  "exported_meshes": 1,
+  "texture_size": 4096,
+  "samples": 32,
+  "variant": "white/orange; red 8x8 all-on illustrative matrix and status LEDs",
+  "geometry": "joined without decimation; original coordinates preserved",
+  "files": {
+    "headphone-stand-baked.glb": {
+      "bytes": 22550764,
+      "sha256": "f48403379d6f8c1f2a57fab5dfcaa9fa06869063a5c748a8f162135301923afd"
+    },
+    "headphone-stand-reference.jpg": {
+      "bytes": 40034,
+      "sha256": "38b9544af593b161f5bb39758506ef703adbfc76d45061922696ab69b5e21b62"
+    },
+    "headphone-stand-export-report.json": {
+      "bytes": 978,
+      "sha256": "6beea566e0fb57144ae063ee768627db5538749e5fcceb0e575f151802a775ea"
+    },
+    "headphone-stand-pbr.glb": {
+      "bytes": 31513080,
+      "sha256": "77e3642167d99b6b5f65df762cdeb587a1cacb3697f29e5f40685883fbdae729"
+    }
+  }
+}

@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.cespresso.clumo.design.ClumoColors
@@ -33,6 +34,7 @@ fun ScreenHeader(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    titleAccessory: (@Composable () -> Unit)? = null,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -58,14 +60,19 @@ fun ScreenHeader(
                 .clickable(onClick = onBack)
                 .padding(horizontal = 10.dp, vertical = 6.dp),
         )
-        Text(
-            text = title,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = RoundedFontFamily,
-            color = ClumoColors.Text,
-            modifier = Modifier.weight(1f),
-        )
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = title,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.ExtraBold,
+                fontFamily = RoundedFontFamily,
+                color = ClumoColors.Text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = titleAccessory == null),
+            )
+            titleAccessory?.invoke()
+        }
         trailing()
     }
 }

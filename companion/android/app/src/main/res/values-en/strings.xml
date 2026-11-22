@@ -12,24 +12,7 @@
     <string name="ob2_permission_denied">Bluetooth permission is required to connect. You can also allow it later from the device list.</string>
 
     <!-- Device list -->
-    <string name="list_title">My Devices</string>
-    <string name="list_settings">Settings</string>
-    <string name="list_empty_title">No devices yet</string>
-    <string name="list_empty_body">Turn one on and place it nearby</string>
     <string name="list_scanning">Scanning…</string>
-    <string name="list_found">Discovered devices</string>
-    <string name="list_connect">Connect</string>
-    <string name="list_passkey_prefix">For a standard CLumo, enter passkey </string>
-    <string name="list_passkey">123456</string>
-    <string name="list_passkey_suffix">. For a stand, hold the knob for 3 seconds and pair in Bluetooth settings first.</string>
-    <string name="list_scan_button">Find CLumo</string>
-    <string name="list_edit_done">Done</string>
-    <string name="list_remove_device">Remove %1$s</string>
-    <string name="scan_empty">No CLumo was found nearby. Check that the device is powered on and close to your phone.</string>
-    <string name="scan_error_bluetooth_off">Bluetooth is turned off.</string>
-    <string name="scan_error_permission">Bluetooth permission has not been granted.</string>
-    <string name="scan_error_unavailable">Bluetooth is not available on this phone.</string>
-    <string name="scan_error_generic">Scanning could not be started.</string>
 
     <!-- Connection states -->
     <string name="state_connected">Connected</string>
@@ -46,8 +29,6 @@
     <string name="device_menu_appearance">Appearance settings</string>
     <string name="device_menu_set_primary">Set as main CLumo</string>
     <string name="device_menu_unset_primary">Unset main CLumo</string>
-    <string name="device_primary_marker">Main CLumo</string>
-    <string name="device_primary_badge">Main</string>
     <string name="device_menu_settings">Settings</string>
     <string name="device_menu_refresh_gatt">Refresh device info</string>
     <string name="device_menu_disconnect">Disconnect</string>
@@ -68,8 +49,6 @@
     <string name="connection_error_services">Couldn’t load CLumo connection information.</string>
     <string name="connection_error_incompatible">This CLumo firmware is not supported. Update the device firmware.</string>
     <string name="connection_error_sync">Couldn’t finish preparing CLumo. Try “Refresh device info” from the menu. If that doesn’t help, forget CLumo in Bluetooth settings and pair it again.</string>
-    <string name="permission_dialog_title">Bluetooth permission required</string>
-    <string name="permission_dialog_body">Allow Bluetooth in Android Settings to find and connect to nearby CLumo devices.</string>
     <string name="action_open_settings">Open Settings</string>
     <string name="action_retry">Try again</string>
     <string name="action_back_to_list">Back to list</string>
@@ -88,8 +67,6 @@
     <string name="button_role_viz_sub">Sensitivity down</string>
 
     <!-- Main CLumo help -->
-    <string name="primary_help_open">Open main CLumo help</string>
-    <string name="primary_help_body">Pick the one CLumo you use most. The app\'s colors follow your main CLumo\'s enclosure, button and LED colors.\n\nTap ☆ in the list to set it, or tap ★ again to clear it.</string>
 
     <!-- Mode help -->
     <string name="mode_help_open">Open %1$s help</string>
@@ -243,25 +220,19 @@
     <string name="widget_action_cancel">Cancel</string>
     <string name="widget_action_retry">Retry</string>
 
-    <string name="stand_app_connection">App connection: %1$s</string>
     <string name="stand_name">Headphone stand</string>
     <string name="stand_connected">App connected</string>
     <string name="stand_disconnected">App disconnected</string>
     <string name="stand_connecting">Connecting app</string>
     <string name="stand_failed">App connection failed</string>
     <string name="stand_device_illustration">Headphone stand illustration; volume LEDs are decorative</string>
-    <string name="stand_media_title">Media controls</string>
-    <string name="stand_media_hint">Turn the knob for volume. Press to play or pause. Use the two buttons for previous and next tracks. These controls work without the app.</string>
-    <string name="stand_volume_hint">The stand shows actual volume while this app is connected and its service is running. Leaving this screen does not stop the service.</string>
     <string name="stand_visualizer_title">Audio visualizer</string>
     <string name="stand_visualizer_background">Streaming can continue in the background. Stop pauses visualization, not media controls or volume reporting.</string>
     <string name="stand_wifi_title">Wi-Fi &amp; pairing</string>
     <string name="stand_wifi_steps">1. Hold Previous + Next together for 3 seconds.\n2. Connect to CLumo-Setup-XXXX in Wi-Fi settings.\n3. Open the sign-in page to choose a preset or edit up to 8 frames. If it does not open, visit http://192.168.71.1/ in your browser.</string>
     <string name="stand_wifi_return">Bluetooth controls pause during setup. Save to device, then hold Previous + Next for 3 seconds again to return. Saving alone keeps the stand in setup mode.</string>
     <string name="stand_pairing_hint">Pairing a new phone? Hold the knob for 3 seconds. For a registered phone, reconnect without holding the knob.</string>
-    <string name="stand_editor_title">Edit standby display</string>
-    <string name="stand_editor_discard">Discard unsaved changes?</string>
-    <string name="stand_editor_leave">Discard and close</string>
+    <string name="stand_editor_title">Standby pattern</string>
     <string name="appearance_stand_panel">Control panel</string>
     <string name="appearance_stand_matrixsurface">Matrix surface</string>
     <string name="appearance_stand_windows">LED windows</string>
@@ -279,4 +250,11 @@
     <string name="bindings_reset_confirm">Restore default assignments?</string>
     <string name="bindings_help_title">About controls</string>
     <string name="bindings_help">Changes are saved on the stand. Defaults: left Previous, right Next; knob single Play / pause, double Next, triple Previous, rotation Volume. Pairing and Wi-Fi setup holds stay fixed. Assistant support depends on the phone. Fast forward and rewind do not specify a number of seconds.</string>
+    <string name="appearance_front_holder">Front holder</string>
+    <string name="appearance_rear_holder">Rear holder</string>
+    <string name="appearance_stand_clip">Headphone clip</string>
+    <string name="appearance_stand_logo">Logo</string>
+    <string name="appearance_front_trim">Front trim</string>
+    <string name="appearance_power_led">Power lens</string>
+    <string name="appearance_front_insert">Front insert</string>
 </resources>
